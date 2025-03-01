@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import NetworkStatus from './NetworkStatus';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -42,6 +43,8 @@ const Header: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-4">
+          <NetworkStatus />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 relative transition-normal">

@@ -33,3 +33,10 @@ export type FilterOption = {
 
 export type AttendanceStage = 'all' | 'robeSlot1' | 'robeSlot1Completed' | 'bothRobeSlotsCompleted' | 'folderCompleted';
 
+export interface NetworkStatusProps {
+  lastSyncTime: Date | null;
+  isOnline: boolean;
+  isSyncing: boolean;
+  needsSync: boolean;
+  onSync: () => void;
+}
