@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, Search, ChevronDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Student, FilterOption } from '@/types';
+import { Student, FilterOption, AttendanceStage } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useStudents } from '@/contexts/StudentContext';
@@ -25,9 +25,24 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
   const [schoolFilter, setSchoolFilter] = useState<string>('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
   const [sectionFilter, setSectionFilter] = useState<string>('');
+  const [attendanceStage, setAttendanceStage] = useState<AttendanceStage>('all');
+  const [activeRobeTab, setActiveRobeTab] = useState<'slot1' | 'slot2'>('slot1');
   
   const { students, isLoading, updateStudentStatus, filterStudents, getFilterOptions } = useStudents();
   const { user } = useAuth();
+
+  // Set the appropriate attendance stage based on the role
+  useEffect(() => {
+    if (role === 'robe-in-charge') {
+      setAttendanceStage(activeRobeTab === 'slot1' ? 'robeSlot1' : 'robeSlot1Completed');
+    } else if (role === 'folder-in-charge') {
+      setAttendanceStage('bothRobeSlotsCompleted');
+    } else if (role === 'presenter') {
+      setAttendanceStage('folderCompleted');
+    } else {
+      setAttendanceStage('all');
+    }
+  }, [role, activeRobeTab]);
 
   const locationOptions = getFilterOptions('location');
   const schoolOptions = getFilterOptions('school');
@@ -51,7 +66,8 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     locationFilter,
     schoolFilter,
     departmentFilter,
-    sectionFilter
+    sectionFilter,
+    attendanceStage
   );
 
   // Determine which columns to show based on role
@@ -145,6 +161,55 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
         </div>
       </div>
       
+      {/* Robe stage tabs for robe-in-charge */}
+      {role === 'robe-in-charge' && (
+        <div className="flex gap-2 mb-4">
+          <Button 
+            variant={activeRobeTab === 'slot1' ? 'default' : 'outline'} 
+            onClick={() => setActiveRobeTab('slot1')}
+            className="transition-normal"
+          >
+            Robe Slot 1
+          </Button>
+          <Button 
+            variant={activeRobeTab === 'slot2' ? 'default' : 'outline'} 
+            onClick={() => setActiveRobeTab('slot2')}
+            className="transition-normal"
+            disabled={filteredStudents.filter(s => s.robeSlot1).length === 0}
+          >
+            Robe Slot 2 
+            {filteredStudents.filter(s => s.robeSlot1).length === 0 && (
+              <Badge variant="outline" className="ml-2">
+                Complete Slot 1 first
+              </Badge>
+            )}
+          </Button>
+        </div>
+      )}
+      
+      {/* Display information about filtered students */}
+      <div className="bg-convocation-50 p-4 rounded-md border border-convocation-100 mb-4">
+        <h3 className="font-medium mb-2">
+          {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "First Robe Attendance"}
+          {role === 'robe-in-charge' && activeRobeTab === 'slot2' && "Second Robe Attendance (Students who completed Slot 1)"}
+          {role === 'folder-in-charge' && "Folder Distribution (Students who completed both robe slots)"}
+          {role === 'presenter' && "Presentation (Students who completed all previous steps)"}
+          {role === 'super-admin' && "All Students"}
+        </h3>
+        <p className="text-sm text-convocation-400">
+          {role === 'robe-in-charge' && activeRobeTab === 'slot1' && 
+            "Mark students who are present to collect their robes in Slot 1."}
+          {role === 'robe-in-charge' && activeRobeTab === 'slot2' && 
+            `Showing only ${filteredStudents.length} students who completed Slot 1. Mark their attendance for Slot 2.`}
+          {role === 'folder-in-charge' && 
+            `Showing only ${filteredStudents.length} students who completed both robe slots. Mark students who have collected their folders.`}
+          {role === 'presenter' && 
+            `Showing only ${filteredStudents.length} students who have completed all previous steps. Mark students who have been presented.`}
+          {role === 'super-admin' && 
+            `Showing all students with their current progress through the graduation process.`}
+        </p>
+      </div>
+      
       <div className="rounded-md border border-convocation-100 bg-white overflow-hidden">
         <div className="relative overflow-x-auto">
           <Table>
@@ -157,7 +222,13 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                 <TableHead>Department</TableHead>
                 <TableHead>Section</TableHead>
                 <TableHead>Attendance</TableHead>
-                {canManageRobes && (
+                {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
+                  <TableHead>Robe Slot 1</TableHead>
+                )}
+                {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
+                  <TableHead>Robe Slot 2</TableHead>
+                )}
+                {canManageRobes && role === 'super-admin' && (
                   <>
                     <TableHead>Robe</TableHead>
                     <TableHead>Slot 1</TableHead>
@@ -199,7 +270,25 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                         disabled={user?.role !== 'super-admin'}
                       />
                     </TableCell>
-                    {canManageRobes && (
+                    {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
+                      <TableCell>
+                        <StatusButton
+                          status={student.robeSlot1}
+                          onClick={() => handleStatusUpdate(student.id, 'robeSlot1', student.robeSlot1)}
+                          disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                        />
+                      </TableCell>
+                    )}
+                    {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
+                      <TableCell>
+                        <StatusButton
+                          status={student.robeSlot2}
+                          onClick={() => handleStatusUpdate(student.id, 'robeSlot2', student.robeSlot2)}
+                          disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                        />
+                      </TableCell>
+                    )}
+                    {canManageRobes && role === 'super-admin' && (
                       <>
                         <TableCell>
                           <StatusButton
@@ -313,24 +402,26 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ label, options, value, 
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 max-h-[300px] overflow-y-auto" align="end">
+        <DropdownMenuItem 
+          key="all-option" 
+          onClick={() => onChange('')} 
+          className="cursor-pointer"
+        >
+          All {label}s
+        </DropdownMenuItem>
         {options.length > 0 ? (
-          <>
-            <DropdownMenuItem onClick={() => onChange('')} className="cursor-pointer">
-              All {label}s
+          options.map((option) => (
+            <DropdownMenuItem
+              key={option.value}
+              className={`cursor-pointer ${value === option.value ? 'bg-convocation-50 font-medium' : ''}`}
+              onClick={() => onChange(option.value)}
+            >
+              {option.label}
+              {value === option.value && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuItem>
-            {options.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                className={`cursor-pointer ${value === option.value ? 'bg-convocation-50 font-medium' : ''}`}
-                onClick={() => onChange(option.value)}
-              >
-                {option.label}
-                {value === option.value && <Check className="ml-auto h-4 w-4" />}
-              </DropdownMenuItem>
-            ))}
-          </>
+          ))
         ) : (
-          <DropdownMenuItem disabled>No options available</DropdownMenuItem>
+          <DropdownMenuItem key="no-options" disabled>No options available</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

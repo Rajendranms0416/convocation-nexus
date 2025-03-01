@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Student, FilterOption } from '@/types';
+import { Student, FilterOption, AttendanceStage } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 
 interface StudentContextType {
@@ -16,7 +16,8 @@ interface StudentContextType {
     location?: string, 
     school?: string, 
     department?: string, 
-    section?: string
+    section?: string,
+    attendanceStage?: AttendanceStage
   ) => Student[];
   getFilterOptions: (field: 'location' | 'school' | 'department' | 'section') => FilterOption[];
 }
@@ -134,7 +135,8 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     location?: string, 
     school?: string, 
     department?: string, 
-    section?: string
+    section?: string,
+    attendanceStage?: AttendanceStage
   ): Student[] => {
     let filtered = students;
     
@@ -160,6 +162,35 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     if (section) {
       filtered = filtered.filter(student => student.section === section);
+    }
+    
+    // Apply attendance stage filtering
+    if (attendanceStage) {
+      switch (attendanceStage) {
+        case 'robeSlot1':
+          // Show all students for the first robe slot
+          break;
+        case 'robeSlot1Completed':
+          // For the second robe slot, only show students who completed the first slot
+          filtered = filtered.filter(student => student.robeSlot1 === true);
+          break;
+        case 'bothRobeSlotsCompleted':
+          // For folder-in-charge, only show students who completed both robe slots
+          filtered = filtered.filter(student => student.robeSlot1 === true && student.robeSlot2 === true);
+          break;
+        case 'folderCompleted':
+          // For presenter, only show students who have completed all previous steps
+          filtered = filtered.filter(student => 
+            student.robeSlot1 === true && 
+            student.robeSlot2 === true && 
+            student.hasTakenFolder === true
+          );
+          break;
+        case 'all':
+        default:
+          // Show all students
+          break;
+      }
     }
     
     return filtered;

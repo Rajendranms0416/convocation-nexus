@@ -30,3 +30,6 @@ export type FilterOption = {
   value: string;
   label: string;
 };
+
+export type AttendanceStage = 'all' | 'robeSlot1' | 'robeSlot1Completed' | 'bothRobeSlotsCompleted' | 'folderCompleted';
+
