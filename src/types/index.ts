@@ -14,8 +14,19 @@ export interface Student {
   name: string;
   registrationNumber: string;
   program: string;
+  location: string;
+  school: string;
+  department: string;
+  section: string;
   hasTakenRobe: boolean;
   hasTakenFolder: boolean;
   hasBeenPresented: boolean;
   attendance: boolean;
+  robeSlot1: boolean;
+  robeSlot2: boolean;
 }
+
+export type FilterOption = {
+  value: string;
+  label: string;
+};
