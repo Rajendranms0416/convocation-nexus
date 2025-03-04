@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Search, ChevronDown, AlertTriangle, Clock, Loader2 } from 'lucide-react';
+import { Check, X, Search, ChevronDown, AlertTriangle, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -20,22 +20,6 @@ interface StudentTableProps {
   role: 'robe-in-charge' | 'folder-in-charge' | 'presenter' | 'super-admin';
 }
 
-// Define the time windows for each role's operations
-const TIME_WINDOWS = {
-  'robe-in-charge': {
-    start: new Date('2023-06-01T08:00:00'),
-    end: new Date('2023-06-02T17:00:00')
-  },
-  'folder-in-charge': {
-    start: new Date('2023-06-03T08:00:00'),
-    end: new Date('2023-06-04T17:00:00')
-  },
-  'presenter': {
-    start: new Date('2023-06-05T08:00:00'),
-    end: new Date('2023-06-06T17:00:00')
-  }
-};
-
 const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState<string>('');
@@ -44,7 +28,6 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
   const [sectionFilter, setSectionFilter] = useState<string>('');
   const [attendanceStage, setAttendanceStage] = useState<AttendanceStage>('all');
   const [activeRobeTab, setActiveRobeTab] = useState<'slot1' | 'slot2'>('slot1');
-  const [isWithinTimeWindow, setIsWithinTimeWindow] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20); // Fixed page size
   
@@ -56,7 +39,8 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     updateStudentStatus, 
     filterOptions,
     needsSync,
-    applyFilters
+    applyFilters,
+    isWithinTimeWindow
   } = useStudents();
   
   const { user } = useAuth();
@@ -88,30 +72,6 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     applyFilters
   ]);
 
-  // Check if current time is within the allowed window
-  useEffect(() => {
-    // For demo purposes, we're setting this to true
-    // In a real application, you'd check against actual time windows
-    setIsWithinTimeWindow(true);
-    
-    // Uncomment for real implementation
-    // const now = new Date();
-    // const timeWindow = TIME_WINDOWS[role];
-    
-    // if (timeWindow && now >= timeWindow.start && now <= timeWindow.end) {
-    //   setIsWithinTimeWindow(true);
-    // } else {
-    //   setIsWithinTimeWindow(false);
-    //   if (role !== 'super-admin') {
-    //     toast({
-    //       title: "Outside operating hours",
-    //       description: `You can only make changes between ${timeWindow?.start.toLocaleString()} and ${timeWindow?.end.toLocaleString()}.`,
-    //       variant: "destructive"
-    //     });
-    //   }
-    // }
-  }, [role, toast]);
-
   // Set the appropriate attendance stage based on the role
   useEffect(() => {
     if (role === 'robe-in-charge') {
@@ -139,10 +99,20 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     currentValue: boolean
   ) => {
     // Check if within time window for non-super-admin users
-    if (role !== 'super-admin' && !isWithinTimeWindow) {
+    if (role !== 'super-admin' && !isWithinTimeWindow(role)) {
       toast({
         title: "Outside operating hours",
         description: "You cannot make changes at this time. Please try during the designated hours.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check if attendance and not super-admin
+    if (statusType === 'attendance' && user?.role !== 'super-admin') {
+      toast({
+        title: "Permission denied",
+        description: "Only super admins can modify attendance.",
         variant: "destructive"
       });
       return;
@@ -164,11 +134,6 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     // Scroll to top of table when changing pages
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  // Determine which columns to show based on role
-  const canManageRobes = ['robe-in-charge', 'super-admin'].includes(role);
-  const canManageFolders = ['folder-in-charge', 'super-admin'].includes(role);
-  const canManagePresentation = ['presenter', 'super-admin'].includes(role);
 
   // Loading state for the table
   if (isLoading) {
@@ -257,18 +222,13 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
       )}
       
       {/* Time window restriction message */}
-      {role !== 'super-admin' && !isWithinTimeWindow && (
+      {role !== 'super-admin' && !isWithinTimeWindow(role) && (
         <div className="bg-convocation-error/10 border border-convocation-error/20 rounded-md p-4 flex items-center gap-3 text-convocation-error mb-4">
           <Clock className="h-5 w-5" />
           <div className="flex-1">
             <h4 className="font-medium">Outside operating hours</h4>
             <p className="text-sm">
               You can only view records at this time. Editing is restricted to the designated operating hours.
-              {TIME_WINDOWS[role] && (
-                <span className="block mt-1">
-                  Operating hours: {TIME_WINDOWS[role].start.toLocaleString()} to {TIME_WINDOWS[role].end.toLocaleString()}
-                </span>
-              )}
             </p>
           </div>
         </div>
@@ -329,21 +289,21 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                 <TableHead>Department</TableHead>
                 <TableHead>Section</TableHead>
                 <TableHead>Attendance</TableHead>
-                {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
+                {role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
                   <TableHead>Robe Slot 1</TableHead>
                 )}
-                {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
+                {role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
                   <TableHead>Robe Slot 2</TableHead>
                 )}
-                {canManageRobes && role === 'super-admin' && (
+                {role === 'super-admin' && (
                   <>
                     <TableHead>Robe</TableHead>
                     <TableHead>Slot 1</TableHead>
                     <TableHead>Slot 2</TableHead>
                   </>
                 )}
-                {canManageFolders && <TableHead>Folder</TableHead>}
-                {canManagePresentation && <TableHead>Presented</TableHead>}
+                {role === 'folder-in-charge' && <TableHead>Folder</TableHead>}
+                {role === 'presenter' && <TableHead>Presented</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -377,25 +337,25 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                         disabled={user?.role !== 'super-admin'}
                       />
                     </TableCell>
-                    {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
+                    {role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
                       <TableCell>
                         <StatusButton
                           status={student.robeSlot1}
                           onClick={() => handleStatusUpdate(student.id, 'robeSlot1', student.robeSlot1)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge') || !isWithinTimeWindow}
+                          disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge')}
                         />
                       </TableCell>
                     )}
-                    {canManageRobes && role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
+                    {role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
                       <TableCell>
                         <StatusButton
                           status={student.robeSlot2}
                           onClick={() => handleStatusUpdate(student.id, 'robeSlot2', student.robeSlot2)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge') || !isWithinTimeWindow}
+                          disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge')}
                         />
                       </TableCell>
                     )}
-                    {canManageRobes && role === 'super-admin' && (
+                    {role === 'super-admin' && (
                       <>
                         <TableCell>
                           <StatusButton
@@ -420,21 +380,21 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                         </TableCell>
                       </>
                     )}
-                    {canManageFolders && (
+                    {role === 'folder-in-charge' && (
                       <TableCell>
                         <StatusButton
                           status={student.hasTakenFolder}
                           onClick={() => handleStatusUpdate(student.id, 'hasTakenFolder', student.hasTakenFolder)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'folder-in-charge') || !isWithinTimeWindow}
+                          disabled={(user?.role !== 'super-admin' && user?.role !== 'folder-in-charge')}
                         />
                       </TableCell>
                     )}
-                    {canManagePresentation && (
+                    {role === 'presenter' && (
                       <TableCell>
                         <StatusButton
                           status={student.hasBeenPresented}
                           onClick={() => handleStatusUpdate(student.id, 'hasBeenPresented', student.hasBeenPresented)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'presenter') || !isWithinTimeWindow}
+                          disabled={(user?.role !== 'super-admin' && user?.role !== 'presenter')}
                         />
                       </TableCell>
                     )}

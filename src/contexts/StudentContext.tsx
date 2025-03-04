@@ -1,6 +1,5 @@
-
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Student, FilterOption, AttendanceStage, StudentFilters, PaginatedData } from '@/types';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { Student, FilterOption, AttendanceStage, StudentFilters, PaginatedData, Role } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { studentApi } from '@/services/api';
@@ -26,6 +25,7 @@ interface StudentContextType {
   isSyncing: boolean;
   needsSync: boolean;
   applyFilters: (filters: StudentFilters) => void;
+  isWithinTimeWindow: (role: Role) => boolean;
 }
 
 const StudentContext = createContext<StudentContextType>({
@@ -40,6 +40,7 @@ const StudentContext = createContext<StudentContextType>({
   isSyncing: false,
   needsSync: false,
   applyFilters: () => {},
+  isWithinTimeWindow: () => false,
 });
 
 // Mock student locations, schools, departments, and sections
@@ -128,6 +129,48 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
   
   const { toast } = useToast();
   const { user } = useAuth();
+  const pendingUpdatesRef = useRef<{
+    timestamp: number;
+    studentId: string;
+    status: 'hasTakenRobe' | 'hasTakenFolder' | 'hasBeenPresented' | 'attendance' | 'robeSlot1' | 'robeSlot2';
+    value: boolean;
+  }[]>([]);
+  
+  // Auto-submit timer (5 seconds)
+  const AUTO_SUBMIT_DELAY = 5000;
+
+  // Check if the current time is within the allowed window for a role
+  const isWithinTimeWindow = useCallback((role: Role): boolean => {
+    // Super admin can always edit
+    if (role === 'super-admin') return true;
+    
+    // Get time windows from localStorage or use defaults
+    const storedTimeWindows = localStorage.getItem('convocation_time_windows');
+    const timeWindows = storedTimeWindows ? JSON.parse(storedTimeWindows) : {
+      'robe-in-charge': {
+        start: '2023-06-01T08:00',
+        end: '2023-06-02T17:00'
+      },
+      'folder-in-charge': {
+        start: '2023-06-03T08:00',
+        end: '2023-06-04T17:00'
+      },
+      'presenter': {
+        start: '2023-06-05T08:00',
+        end: '2023-06-06T17:00'
+      },
+      'super-admin': {
+        start: '2023-06-01T07:00',
+        end: '2023-06-06T19:00'
+      }
+    };
+    
+    const now = new Date();
+    const windowStart = new Date(timeWindows[role].start);
+    const windowEnd = new Date(timeWindows[role].end);
+    
+    return now >= windowStart && now <= windowEnd;
+  }, []);
 
   // Apply filters and fetch students based on current filters
   const applyFilters = useCallback((filters: StudentFilters) => {
@@ -263,6 +306,58 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [needsSync, syncData]);
 
+  // Process any pending updates that have exceeded the auto-submit threshold
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      const updates = pendingUpdatesRef.current;
+      
+      if (updates.length > 0) {
+        const expiredUpdates = updates.filter(update => now - update.timestamp >= AUTO_SUBMIT_DELAY);
+        
+        if (expiredUpdates.length > 0) {
+          // Process expired updates
+          expiredUpdates.forEach(async update => {
+            try {
+              const updatedStudent = await studentApi.updateStudentStatus(
+                update.studentId,
+                update.status,
+                update.value
+              );
+              
+              // Update local state
+              setStudentsData(prev => ({
+                ...prev,
+                data: prev.data.map(student => 
+                  student.id === update.studentId ? updatedStudent : student
+                )
+              }));
+              
+              setNeedsSync(true);
+              
+              toast({
+                title: "Auto-submitted change",
+                description: `Change for ${updatedStudent.name} was automatically saved.`,
+              });
+            } catch (error) {
+              console.error("Error processing auto-submit:", error);
+            }
+          });
+          
+          // Remove processed updates
+          pendingUpdatesRef.current = updates.filter(update => now - update.timestamp < AUTO_SUBMIT_DELAY);
+          
+          // Try to sync if we're online
+          if (navigator.onLine && !isSyncing) {
+            syncData();
+          }
+        }
+      }
+    }, 1000); // Check every second
+    
+    return () => clearInterval(intervalId);
+  }, [isSyncing, syncData, toast]);
+
   // Check if the current user has permission to edit based on role and time window
   const hasEditPermission = useCallback((status: string): boolean => {
     if (!user) return false;
@@ -271,8 +366,6 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (user.role === 'super-admin') return true;
     
     // For other roles, check if they have permission for this status type
-    const now = new Date();
-    
     // Map status types to roles
     const roleForStatus = {
       'hasTakenRobe': 'robe-in-charge',
@@ -288,17 +381,9 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return false;
     }
     
-    // Check if the current time is within the allowed window
-    // For demo purposes, we're using fixed dates - in a real app, you'd use dynamic dates
-    const timeWindow = TIME_WINDOWS[user.role as keyof typeof TIME_WINDOWS];
-    
-    // Skip time check for demo purposes - uncomment for real implementation
-    // if (!timeWindow || now < timeWindow.start || now > timeWindow.end) {
-    //   return false;
-    // }
-    
-    return true;
-  }, [user]);
+    // Check if within time window
+    return isWithinTimeWindow(user.role);
+  }, [user, isWithinTimeWindow]);
 
   // Update student status function
   const updateStudentStatus = useCallback(async (
@@ -317,19 +402,23 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     
     try {
-      // Update via API
-      const updatedStudent = await studentApi.updateStudentStatus(studentId, status, value);
+      // Add to pending updates with current timestamp
+      pendingUpdatesRef.current.push({
+        timestamp: Date.now(),
+        studentId,
+        status,
+        value
+      });
       
-      // Update local state
+      // Optimistically update the UI immediately
       setStudentsData(prev => ({
         ...prev,
         data: prev.data.map(student => 
-          student.id === studentId ? updatedStudent : student
+          student.id === studentId 
+            ? { ...student, [status]: value } 
+            : student
         )
       }));
-      
-      // Mark that we need to sync
-      setNeedsSync(true);
       
       // Show toast notification
       const statusMap = {
@@ -341,21 +430,13 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         robeSlot2: 'Robe Slot 2',
       };
       
+      const student = studentsData.data.find(s => s.id === studentId);
+      
       toast({
         title: `${statusMap[status]} updated`,
-        description: `${updatedStudent.name}'s ${statusMap[status].toLowerCase()} status has been ${value ? 'confirmed' : 'unconfirmed'}.`,
+        description: `${student?.name}'s ${statusMap[status].toLowerCase()} status will be ${value ? 'confirmed' : 'unconfirmed'} in a few seconds. You can make more changes before it's submitted.`,
       });
       
-      // Sync if online
-      if (navigator.onLine) {
-        syncData();
-      } else {
-        toast({
-          variant: "destructive",
-          title: "No internet connection",
-          description: "Changes saved locally and will sync when you're back online.",
-        });
-      }
     } catch (error) {
       console.error("Error updating student status:", error);
       toast({
@@ -364,7 +445,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         description: "Failed to update student status. Please try again.",
       });
     }
-  }, [hasEditPermission, syncData, toast]);
+  }, [hasEditPermission, studentsData.data, toast]);
 
   return (
     <StudentContext.Provider value={{
@@ -378,7 +459,8 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       syncData,
       isSyncing,
       needsSync,
-      applyFilters
+      applyFilters,
+      isWithinTimeWindow
     }}>
       {children}
     </StudentContext.Provider>
