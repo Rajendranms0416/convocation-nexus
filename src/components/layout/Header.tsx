@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { LogOut, User } from 'lucide-react';
 import TimeSettings from '@/components/settings/TimeSettings';
+import TimeDisplay from '@/components/settings/TimeDisplay';
 
 const Header: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -30,6 +31,10 @@ const Header: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-4">
+          {/* Time display for all roles */}
+          <TimeDisplay className="mr-2" />
+          
+          {/* Time settings only for super-admin */}
           {user.role === 'super-admin' && (
             <TimeSettings className="mr-2" />
           )}

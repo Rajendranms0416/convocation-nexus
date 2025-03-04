@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Search, ChevronDown, AlertTriangle, Loader2 } from 'lucide-react';
+import { Check, X, Search, ChevronDown, AlertTriangle, Loader2, Clock } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
 import { Input } from '@/components/ui/input';
