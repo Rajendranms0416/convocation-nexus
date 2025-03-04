@@ -40,3 +40,22 @@ export interface NetworkStatusProps {
   needsSync: boolean;
   onSync: () => void;
 }
+
+export interface PaginatedData<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface StudentFilters {
+  query?: string;
+  location?: string;
+  school?: string;
+  department?: string;
+  section?: string;
+  attendanceStage?: AttendanceStage;
+  page?: number;
+  pageSize?: number;
+}

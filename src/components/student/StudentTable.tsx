@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
-import { Check, X, Search, ChevronDown, AlertTriangle, Clock } from 'lucide-react';
+import { Check, X, Search, ChevronDown, AlertTriangle, Clock, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Student, FilterOption, AttendanceStage } from '@/types';
+import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import Pagination from '@/components/common/Pagination';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,10 +45,48 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
   const [attendanceStage, setAttendanceStage] = useState<AttendanceStage>('all');
   const [activeRobeTab, setActiveRobeTab] = useState<'slot1' | 'slot2'>('slot1');
   const [isWithinTimeWindow, setIsWithinTimeWindow] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20); // Fixed page size
   
-  const { students, isLoading, updateStudentStatus, filterStudents, getFilterOptions, needsSync } = useStudents();
+  const { 
+    students, 
+    totalStudents,
+    totalPages,
+    isLoading, 
+    updateStudentStatus, 
+    filterOptions,
+    needsSync,
+    applyFilters
+  } = useStudents();
+  
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Apply filters when any filter changes
+  useEffect(() => {
+    const filters: StudentFilters = {
+      query: searchQuery,
+      location: locationFilter,
+      school: schoolFilter,
+      department: departmentFilter,
+      section: sectionFilter,
+      attendanceStage,
+      page: currentPage,
+      pageSize
+    };
+    
+    applyFilters(filters);
+  }, [
+    searchQuery, 
+    locationFilter, 
+    schoolFilter, 
+    departmentFilter, 
+    sectionFilter, 
+    attendanceStage, 
+    currentPage, 
+    pageSize,
+    applyFilters
+  ]);
 
   // Check if current time is within the allowed window
   useEffect(() => {
@@ -85,38 +123,15 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     } else {
       setAttendanceStage('all');
     }
+    
+    // Reset to first page when filters change
+    setCurrentPage(1);
   }, [role, activeRobeTab]);
 
-  const locationOptions = getFilterOptions('location');
-  const schoolOptions = getFilterOptions('school');
-  const departmentOptions = getFilterOptions('department');
-  const sectionOptions = getFilterOptions('section');
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-60">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-12 w-12 bg-convocation-100 rounded-full mb-4"></div>
-          <div className="h-4 w-40 bg-convocation-100 rounded mb-2"></div>
-          <div className="h-3 w-32 bg-convocation-100 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  const filteredStudents = filterStudents(
-    searchQuery,
-    locationFilter,
-    schoolFilter,
-    departmentFilter,
-    sectionFilter,
-    attendanceStage
-  );
-
-  // Determine which columns to show based on role
-  const canManageRobes = ['robe-in-charge', 'super-admin'].includes(role);
-  const canManageFolders = ['folder-in-charge', 'super-admin'].includes(role);
-  const canManagePresentation = ['presenter', 'super-admin'].includes(role);
+  const locationOptions = filterOptions?.location || [];
+  const schoolOptions = filterOptions?.school || [];
+  const departmentOptions = filterOptions?.department || [];
+  const sectionOptions = filterOptions?.section || [];
 
   const handleStatusUpdate = (
     studentId: string, 
@@ -143,6 +158,30 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     setDepartmentFilter('');
     setSectionFilter('');
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of table when changing pages
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Determine which columns to show based on role
+  const canManageRobes = ['robe-in-charge', 'super-admin'].includes(role);
+  const canManageFolders = ['folder-in-charge', 'super-admin'].includes(role);
+  const canManagePresentation = ['presenter', 'super-admin'].includes(role);
+
+  // Loading state for the table
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-60">
+        <div className="animate-pulse flex flex-col items-center">
+          <Loader2 className="h-12 w-12 animate-spin text-convocation-300 mb-4" />
+          <div className="h-4 w-40 bg-convocation-100 rounded mb-2"></div>
+          <div className="h-3 w-32 bg-convocation-100 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -249,14 +288,8 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
             variant={activeRobeTab === 'slot2' ? 'default' : 'outline'} 
             onClick={() => setActiveRobeTab('slot2')}
             className="transition-normal"
-            disabled={filteredStudents.filter(s => s.robeSlot1).length === 0}
           >
-            Robe Slot 2 
-            {filteredStudents.filter(s => s.robeSlot1).length === 0 && (
-              <Badge variant="outline" className="ml-2">
-                Complete Slot 1 first
-              </Badge>
-            )}
+            Robe Slot 2
           </Button>
         </div>
       )}
@@ -274,13 +307,13 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
           {role === 'robe-in-charge' && activeRobeTab === 'slot1' && 
             "Mark students who are present to collect their robes in Slot 1."}
           {role === 'robe-in-charge' && activeRobeTab === 'slot2' && 
-            `Showing only ${filteredStudents.length} students who completed Slot 1. Mark their attendance for Slot 2.`}
+            `Showing students who completed Slot 1. Mark their attendance for Slot 2.`}
           {role === 'folder-in-charge' && 
-            `Showing only ${filteredStudents.length} students who completed both robe slots. Mark students who have collected their folders.`}
+            `Showing students who completed both robe slots. Mark students who have collected their folders.`}
           {role === 'presenter' && 
-            `Showing only ${filteredStudents.length} students who have completed all previous steps. Mark students who have been presented.`}
+            `Showing students who have completed all previous steps. Mark students who have been presented.`}
           {role === 'super-admin' && 
-            `Showing all students with their current progress through the graduation process.`}
+            `Showing students with their current progress through the graduation process.`}
         </p>
       </div>
       
@@ -314,10 +347,10 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((student, index) => (
+              {students.length > 0 ? (
+                students.map((student, index) => (
                   <TableRow key={student.id} className="hover:bg-convocation-50 transition-normal">
-                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell className="font-medium">{(currentPage - 1) * pageSize + index + 1}</TableCell>
                     <TableCell>{student.name}</TableCell>
                     <TableCell>
                       <code className="px-1 py-0.5 rounded bg-convocation-100 text-xs">
@@ -419,9 +452,13 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
         </div>
       </div>
       
-      <div className="text-sm text-convocation-400 italic">
-        Showing {filteredStudents.length} of {students.length} students
-      </div>
+      <Pagination 
+        currentPage={currentPage} 
+        totalPages={totalPages} 
+        onPageChange={handlePageChange} 
+        totalItems={totalStudents}
+        pageSize={pageSize}
+      />
     </div>
   );
 };
@@ -495,7 +532,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ label, options, value, 
             </DropdownMenuItem>
           ))
         ) : (
-          <DropdownMenuItem key="no-options" disabled>No options available</DropdownMenuItem>
+          <DropdownMenuItem disabled>No options available</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,42 +1,45 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Student, FilterOption, AttendanceStage } from '@/types';
+import { Student, FilterOption, AttendanceStage, StudentFilters, PaginatedData } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { studentApi } from '@/services/api';
 
 interface StudentContextType {
   students: Student[];
+  totalStudents: number;
+  totalPages: number;
   isLoading: boolean;
   updateStudentStatus: (
     studentId: string, 
     status: 'hasTakenRobe' | 'hasTakenFolder' | 'hasBeenPresented' | 'attendance' | 'robeSlot1' | 'robeSlot2', 
     value: boolean
   ) => void;
-  filterStudents: (
-    query: string, 
-    location?: string, 
-    school?: string, 
-    department?: string, 
-    section?: string,
-    attendanceStage?: AttendanceStage
-  ) => Student[];
-  getFilterOptions: (field: 'location' | 'school' | 'department' | 'section') => FilterOption[];
+  filterOptions: {
+    location: FilterOption[];
+    school: FilterOption[];
+    department: FilterOption[];
+    section: FilterOption[];
+  } | null;
   lastSyncTime: Date | null;
   syncData: () => Promise<void>;
   isSyncing: boolean;
   needsSync: boolean;
+  applyFilters: (filters: StudentFilters) => void;
 }
 
 const StudentContext = createContext<StudentContextType>({
   students: [],
+  totalStudents: 0,
+  totalPages: 0,
   isLoading: true,
   updateStudentStatus: () => {},
-  filterStudents: () => [],
-  getFilterOptions: () => [],
+  filterOptions: null,
   lastSyncTime: null,
   syncData: async () => {},
   isSyncing: false,
   needsSync: false,
+  applyFilters: () => {},
 });
 
 // Mock student locations, schools, departments, and sections
@@ -45,7 +48,7 @@ const SCHOOLS = ['Engineering', 'Business', 'Arts & Sciences', 'Medicine', 'Law'
 const DEPARTMENTS = ['Computer Science', 'Electrical Engineering', 'Mechanical Engineering', 'Civil Engineering', 'Chemical Engineering', 'Business Administration', 'Finance', 'Marketing', 'Biology', 'Chemistry', 'Physics', 'Mathematics', 'Medicine', 'Law'];
 const SECTIONS = ['A', 'B', 'C', 'D', 'E'];
 
-// Mock student data for demonstration
+// Mock student data for demonstration (only used if no data exists in localStorage)
 const MOCK_STUDENTS: Student[] = Array(50).fill(null).map((_, index) => {
   const department = DEPARTMENTS[Math.floor(Math.random() * DEPARTMENTS.length)];
   let school = '';
@@ -96,35 +99,72 @@ const TIME_WINDOWS = {
   }
 };
 
-// Auto-submit timeout in milliseconds (5 minutes)
-const AUTO_SUBMIT_TIMEOUT = 5 * 60 * 1000;
-
 export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [students, setStudents] = useState<Student[]>([]);
+  // Students state now includes pagination data
+  const [studentsData, setStudentsData] = useState<PaginatedData<Student>>({
+    data: [],
+    total: 0,
+    page: 1,
+    pageSize: 20,
+    totalPages: 0
+  });
+  
   const [isLoading, setIsLoading] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [needsSync, setNeedsSync] = useState(false);
-  const [pendingChanges, setPendingChanges] = useState<{
-    studentId: string;
-    status: 'hasTakenRobe' | 'hasTakenFolder' | 'hasBeenPresented' | 'attendance' | 'robeSlot1' | 'robeSlot2';
-    value: boolean;
-    timeout: ReturnType<typeof setTimeout> | null;
-  }[]>([]);
+  const [filterOptions, setFilterOptions] = useState<{
+    location: FilterOption[];
+    school: FilterOption[];
+    department: FilterOption[];
+    section: FilterOption[];
+  } | null>(null);
+  
+  // Current filters
+  const [currentFilters, setCurrentFilters] = useState<StudentFilters>({
+    page: 1,
+    pageSize: 20
+  });
   
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Load data from localStorage initially
+  // Apply filters and fetch students based on current filters
+  const applyFilters = useCallback((filters: StudentFilters) => {
+    setCurrentFilters(filters);
+  }, []);
+
+  // Fetch filter options
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const [locationOptions, schoolOptions, departmentOptions, sectionOptions] = await Promise.all([
+        studentApi.getFilterOptions('location'),
+        studentApi.getFilterOptions('school'),
+        studentApi.getFilterOptions('department'),
+        studentApi.getFilterOptions('section')
+      ]);
+      
+      setFilterOptions({
+        location: locationOptions,
+        school: schoolOptions,
+        department: departmentOptions,
+        section: sectionOptions
+      });
+    } catch (error) {
+      console.error("Error fetching filter options:", error);
+    }
+  }, []);
+
+  // Initial data loading - only runs once
   useEffect(() => {
-    const fetchStudents = () => {
-      setTimeout(() => {
-        // Check if students are already in localStorage
-        const savedStudents = localStorage.getItem('convocation_students');
-        if (savedStudents) {
-          setStudents(JSON.parse(savedStudents));
-        } else {
-          setStudents(MOCK_STUDENTS);
+    const initializeData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Check if we need to initialize with mock data
+        const storedStudents = localStorage.getItem('convocation_students');
+        if (!storedStudents) {
+          // Initialize with mock data
           localStorage.setItem('convocation_students', JSON.stringify(MOCK_STUDENTS));
         }
         
@@ -134,12 +174,45 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setLastSyncTime(new Date(storedSyncTime));
         }
         
+        // Fetch filter options
+        await fetchFilterOptions();
+        
+        // Initial fetch with default filters
+        const result = await studentApi.getStudents(currentFilters);
+        setStudentsData(result);
+      } catch (error) {
+        console.error("Error initializing student data:", error);
+        toast({
+          variant: "destructive",
+          title: "Loading error",
+          description: "Could not load student data. Please try refreshing the page.",
+        });
+      } finally {
         setIsLoading(false);
-      }, 800);
+      }
     };
 
+    initializeData();
+  }, [toast, fetchFilterOptions]);
+
+  // Fetch students when filters change
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!currentFilters) return;
+      
+      setIsLoading(true);
+      try {
+        const result = await studentApi.getStudents(currentFilters);
+        setStudentsData(result);
+      } catch (error) {
+        console.error("Error fetching students:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
     fetchStudents();
-  }, []);
+  }, [currentFilters]);
 
   // Sync data with "server" (in this demo, we're just simulating a network request)
   const syncData = useCallback(async () => {
@@ -148,9 +221,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsSyncing(true);
     
     try {
-      // In a real app, this would be an API call to your backend
-      // For now, we'll simulate a network request with a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await studentApi.syncData();
       
       // Update last sync time
       const now = new Date();
@@ -162,6 +233,10 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         title: "Sync completed",
         description: "All changes have been saved to the server.",
       });
+      
+      // Refresh data after sync
+      const result = await studentApi.getStudents(currentFilters);
+      setStudentsData(result);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -171,7 +246,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, toast]);
+  }, [isSyncing, toast, currentFilters]);
 
   // Auto-sync when online
   useEffect(() => {
@@ -225,61 +300,8 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   }, [user]);
 
-  // Process pending changes
-  const processPendingChange = useCallback((
-    studentId: string, 
-    status: 'hasTakenRobe' | 'hasTakenFolder' | 'hasBeenPresented' | 'attendance' | 'robeSlot1' | 'robeSlot2', 
-    value: boolean
-  ) => {
-    // Update students state
-    const updatedStudents = students.map(student => {
-      if (student.id === studentId) {
-        return { ...student, [status]: value };
-      }
-      return student;
-    });
-    
-    setStudents(updatedStudents);
-    
-    // Save to localStorage
-    localStorage.setItem('convocation_students', JSON.stringify(updatedStudents));
-    
-    // Mark that we need to sync
-    setNeedsSync(true);
-    
-    // Show toast notification
-    const statusMap = {
-      hasTakenRobe: 'Robe collection',
-      hasTakenFolder: 'Folder collection',
-      hasBeenPresented: 'Presentation',
-      attendance: 'Attendance',
-      robeSlot1: 'Robe Slot 1',
-      robeSlot2: 'Robe Slot 2',
-    };
-    
-    const student = students.find(s => s.id === studentId);
-    
-    if (student) {
-      toast({
-        title: `${statusMap[status]} updated`,
-        description: `${student.name}'s ${statusMap[status].toLowerCase()} status has been ${value ? 'confirmed' : 'unconfirmed'}.`,
-      });
-    }
-    
-    // Sync if online
-    if (navigator.onLine) {
-      syncData();
-    } else {
-      toast({
-        variant: "destructive",
-        title: "No internet connection",
-        description: "Changes saved locally and will sync when you're back online.",
-      });
-    }
-  }, [students, syncData, toast]);
-
-  // Update student status with auto-submit functionality
-  const updateStudentStatus = useCallback((
+  // Update student status function
+  const updateStudentStatus = useCallback(async (
     studentId: string, 
     status: 'hasTakenRobe' | 'hasTakenFolder' | 'hasBeenPresented' | 'attendance' | 'robeSlot1' | 'robeSlot2', 
     value: boolean
@@ -294,138 +316,69 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
     
-    // Find and clear any existing timeout for this student+status
-    const existingPendingIndex = pendingChanges.findIndex(
-      change => change.studentId === studentId && change.status === status
-    );
-    
-    if (existingPendingIndex !== -1) {
-      const existingTimeout = pendingChanges[existingPendingIndex].timeout;
-      if (existingTimeout) {
-        clearTimeout(existingTimeout);
-      }
+    try {
+      // Update via API
+      const updatedStudent = await studentApi.updateStudentStatus(studentId, status, value);
       
-      // Remove the existing pending change
-      const newPendingChanges = [...pendingChanges];
-      newPendingChanges.splice(existingPendingIndex, 1);
-      setPendingChanges(newPendingChanges);
-    }
-    
-    // Set a timeout for auto-submit
-    const timeout = setTimeout(() => {
-      processPendingChange(studentId, status, value);
-      
-      // Remove this pending change
-      setPendingChanges(prev => 
-        prev.filter(change => 
-          !(change.studentId === studentId && change.status === status)
+      // Update local state
+      setStudentsData(prev => ({
+        ...prev,
+        data: prev.data.map(student => 
+          student.id === studentId ? updatedStudent : student
         )
-      );
+      }));
+      
+      // Mark that we need to sync
+      setNeedsSync(true);
+      
+      // Show toast notification
+      const statusMap = {
+        hasTakenRobe: 'Robe collection',
+        hasTakenFolder: 'Folder collection',
+        hasBeenPresented: 'Presentation',
+        attendance: 'Attendance',
+        robeSlot1: 'Robe Slot 1',
+        robeSlot2: 'Robe Slot 2',
+      };
       
       toast({
-        title: "Auto-submitted",
-        description: "Your changes have been automatically submitted after the timeout period.",
+        title: `${statusMap[status]} updated`,
+        description: `${updatedStudent.name}'s ${statusMap[status].toLowerCase()} status has been ${value ? 'confirmed' : 'unconfirmed'}.`,
       });
-    }, AUTO_SUBMIT_TIMEOUT);
-    
-    // Add to pending changes
-    setPendingChanges(prev => [
-      ...prev.filter(change => 
-        !(change.studentId === studentId && change.status === status)
-      ),
-      { studentId, status, value, timeout }
-    ]);
-    
-    // Process the change immediately for now
-    // In a real implementation, you might want to wait for the auto-submit
-    // or provide a way for users to manually submit their changes
-    processPendingChange(studentId, status, value);
-  }, [hasEditPermission, pendingChanges, processPendingChange, toast]);
-
-  // Filter students by name, registration number, and other filters
-  const filterStudents = useCallback((
-    query: string, 
-    location?: string, 
-    school?: string, 
-    department?: string, 
-    section?: string,
-    attendanceStage?: AttendanceStage
-  ): Student[] => {
-    let filtered = students;
-    
-    if (query.trim()) {
-      const lowercaseQuery = query.toLowerCase();
-      filtered = filtered.filter(student => 
-        student.name.toLowerCase().includes(lowercaseQuery) || 
-        student.registrationNumber.toLowerCase().includes(lowercaseQuery)
-      );
-    }
-    
-    if (location) {
-      filtered = filtered.filter(student => student.location === location);
-    }
-    
-    if (school) {
-      filtered = filtered.filter(student => student.school === school);
-    }
-    
-    if (department) {
-      filtered = filtered.filter(student => student.department === department);
-    }
-    
-    if (section) {
-      filtered = filtered.filter(student => student.section === section);
-    }
-    
-    // Apply attendance stage filtering
-    if (attendanceStage) {
-      switch (attendanceStage) {
-        case 'robeSlot1':
-          // Show all students for the first robe slot
-          break;
-        case 'robeSlot1Completed':
-          // For the second robe slot, only show students who completed the first slot
-          filtered = filtered.filter(student => student.robeSlot1 === true);
-          break;
-        case 'bothRobeSlotsCompleted':
-          // For folder-in-charge, only show students who completed both robe slots
-          filtered = filtered.filter(student => student.robeSlot1 === true && student.robeSlot2 === true);
-          break;
-        case 'folderCompleted':
-          // For presenter, only show students who have completed all previous steps
-          filtered = filtered.filter(student => 
-            student.robeSlot1 === true && 
-            student.robeSlot2 === true && 
-            student.hasTakenFolder === true
-          );
-          break;
-        case 'all':
-        default:
-          // Show all students
-          break;
+      
+      // Sync if online
+      if (navigator.onLine) {
+        syncData();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "No internet connection",
+          description: "Changes saved locally and will sync when you're back online.",
+        });
       }
+    } catch (error) {
+      console.error("Error updating student status:", error);
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: "Failed to update student status. Please try again.",
+      });
     }
-    
-    return filtered;
-  }, [students]);
-
-  // Get unique filter options for a specific field
-  const getFilterOptions = useCallback((field: 'location' | 'school' | 'department' | 'section'): FilterOption[] => {
-    const uniqueValues = Array.from(new Set(students.map(student => student[field])));
-    return uniqueValues.map(value => ({ value, label: value }));
-  }, [students]);
+  }, [hasEditPermission, syncData, toast]);
 
   return (
     <StudentContext.Provider value={{
-      students,
+      students: studentsData.data,
+      totalStudents: studentsData.total,
+      totalPages: studentsData.totalPages,
       isLoading,
       updateStudentStatus,
-      filterStudents,
-      getFilterOptions,
+      filterOptions,
       lastSyncTime,
       syncData,
       isSyncing,
-      needsSync
+      needsSync,
+      applyFilters
     }}>
       {children}
     </StudentContext.Provider>
