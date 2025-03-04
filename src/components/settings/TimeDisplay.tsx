@@ -117,7 +117,7 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className }) => {
           <Timer className="h-4 w-4" />
           <span className="hidden md:inline">Time Windows</span>
           {activeRole && isWithinTimeWindow(activeRole) && (
-            <Badge variant="success" className="ml-2 h-5 px-1">
+            <Badge variant="outline" className="ml-2 h-5 px-1 bg-green-100 text-green-800 border-green-200">
               {getRemainingTime()}
             </Badge>
           )}
