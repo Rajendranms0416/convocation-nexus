@@ -32,17 +32,17 @@ const Header: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-sm border-b border-convocation-100">
-      <div className="container flex h-16 items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-xl font-semibold">Convocation Nexus</span>
-          <div className="ml-2 hidden md:flex">
+      <div className="container flex h-14 sm:h-16 items-center justify-between px-2 sm:px-6">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="font-display text-base sm:text-xl font-semibold truncate">Convocation Nexus</span>
+          <div className="ml-1 hidden sm:flex">
             <span className="rounded-full bg-convocation-100 px-2 py-1 text-xs font-medium">
               {roleDisplay}
             </span>
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <NetworkStatus />
           
           <DropdownMenu>
@@ -59,6 +59,11 @@ const Header: React.FC = () => {
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">{user.name}</p>
                   <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                  <p className="text-xs leading-none text-muted-foreground mt-1">
+                    <span className="inline-flex sm:hidden items-center rounded-full bg-convocation-100 px-2 py-0.5 text-xs font-medium">
+                      {roleDisplay}
+                    </span>
+                  </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
