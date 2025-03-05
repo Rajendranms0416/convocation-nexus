@@ -24,6 +24,13 @@ const Header: React.FC = () => {
     <header className="bg-white border-b border-convocation-100 shadow-sm">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center">
+          <div className="mr-3">
+            <img 
+              src="/convocation-logo.svg" 
+              alt="Convocation Nexus Logo" 
+              className="h-8 w-auto"
+            />
+          </div>
           <h1 className="text-xl font-bold text-convocation-700">Convocation Nexus</h1>
           <span className="ml-2 px-2 py-1 text-xs rounded-full bg-convocation-100 text-convocation-600">
             {user.role.replace(/-/g, ' ')}
