@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { LogOut, User } from 'lucide-react';
 import TimeSettings from '@/components/settings/TimeSettings';
 import TimeDisplay from '@/components/settings/TimeDisplay';
-import NotificationBell from '@/components/notifications/NotificationBell';
 
 const Header: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -46,9 +45,6 @@ const Header: React.FC = () => {
           {user.role === 'super-admin' && (
             <TimeSettings className="mr-2" />
           )}
-          
-          {/* Notification Bell */}
-          <NotificationBell className="mr-2" />
           
           <div className="flex items-center">
             <div className="flex items-center mr-4">
