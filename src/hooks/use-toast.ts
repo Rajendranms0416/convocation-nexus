@@ -1,6 +1,7 @@
 
 import * as React from "react";
 import {
+  Toast,
   ToastActionElement,
   ToastProps
 } from "@/components/ui/toast";

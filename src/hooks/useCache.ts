@@ -65,7 +65,7 @@ export function useCache<T>(
         JSON.stringify({ data, timestamp })
       );
     } else {
-      memoryCache.set(key, { data, timestamp });
+      memoryCache.set<T>(key, { data, timestamp });
     }
     
     setLastFetched(timestamp);
