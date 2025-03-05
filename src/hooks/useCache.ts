@@ -36,13 +36,17 @@ export function useCache<T>(
     if (storageType === 'localStorage') {
       const cachedItem = localStorage.getItem(`cache_${key}`);
       if (cachedItem) {
-        const { data, timestamp } = JSON.parse(cachedItem);
-        if (isCacheValid(timestamp)) {
-          return { data, timestamp };
+        try {
+          const { data, timestamp } = JSON.parse(cachedItem);
+          if (isCacheValid(timestamp)) {
+            return { data: data as T, timestamp };
+          }
+        } catch (error) {
+          console.error('Failed to parse cache from localStorage:', error);
         }
       }
     } else {
-      const cachedItem = memoryCache.get(key);
+      const cachedItem = memoryCache.get<T>(key);
       if (cachedItem && isCacheValid(cachedItem.timestamp)) {
         return cachedItem;
       }
