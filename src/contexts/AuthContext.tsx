@@ -1,11 +1,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Role, User } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { logDeviceUsage } from '@/utils/deviceLogger';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, deviceType: 'mobile' | 'desktop') => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -68,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, deviceType: 'mobile' | 'desktop' = 'desktop') => {
     setIsLoading(true);
     
     // In a real app, this would be an API call
@@ -80,6 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (foundUser && password === MOCK_PASSWORD) {
           setUser(foundUser);
           localStorage.setItem('convocation_user', JSON.stringify(foundUser));
+          
+          // Log device usage
+          logDeviceUsage(foundUser, deviceType);
+          
           toast({
             title: 'Login successful',
             description: `Welcome back, ${foundUser.name}!`,

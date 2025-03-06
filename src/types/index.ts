@@ -59,3 +59,14 @@ export interface StudentFilters {
   page?: number;
   pageSize?: number;
 }
+
+export interface DeviceLog {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  deviceType: 'mobile' | 'desktop';
+  userAgent: string;
+  timestamp: Date;
+  ipAddress?: string;
+}

@@ -13,6 +13,7 @@ import NetworkStatusBar from "@/components/layout/NetworkStatusBar";
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MobileDashboard = lazy(() => import("./pages/MobileDashboard"));
+const DeviceLogs = lazy(() => import("./pages/DeviceLogs"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/mobile-dashboard" element={<MobileDashboard />} />
+                <Route path="/device-logs" element={<DeviceLogs />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
