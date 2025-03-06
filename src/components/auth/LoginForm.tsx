@@ -18,7 +18,8 @@ const LoginForm: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      await login(email, password);
+      // Pass 'desktop' as the third argument for device type
+      await login(email, password, 'desktop');
     } catch (error) {
       console.error('Login failed', error);
     } finally {
