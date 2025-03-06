@@ -22,6 +22,9 @@ const Login: React.FC = () => {
       if (storedPreference) {
         setDeviceType(storedPreference);
       }
+    } else {
+      // Ensure the preference is saved in localStorage when coming from URL params
+      localStorage.setItem('devicePreference', deviceType);
     }
   }, [deviceType]);
 
@@ -35,6 +38,9 @@ const Login: React.FC = () => {
       }
     }
   }, [isAuthenticated, isLoading, navigate, deviceType]);
+
+  // Add debugging log
+  console.log('Current device type:', deviceType);
 
   if (isLoading) {
     return (

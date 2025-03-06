@@ -24,7 +24,7 @@ const DeviceSelectionPrompt: React.FC = () => {
     // Save preference to localStorage
     localStorage.setItem('devicePreference', device);
     // Navigate to login with device preference
-    navigate(`/login?device=${device}`);
+    navigate(`/login?device=${device}`, { replace: true });
   };
 
   // If user has already selected, don't render the prompt
