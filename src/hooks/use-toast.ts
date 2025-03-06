@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { Toast } from "@/components/ui/toast";
-import { useToast as useToastUI } from "@radix-ui/react-toast";
 
 type ToastProps = React.ComponentProps<typeof Toast>;
 
@@ -165,13 +164,16 @@ export function useToast() {
 }
 
 // Re-export for convenience
-export const toast = (options: ToastOptions) => {
-  // This is a stub function that will be replaced at runtime with the actual toast function
-  // from the useToast hook. This is just for better DX so you can import { toast } directly.
-  console.warn("You are trying to use toast outside of a component. This won't work.");
-  return {
-    id: "0",
-    dismiss: () => {},
-    update: () => {},
-  };
+export const toast = {
+  // Create a global toast function
+  (...args: Parameters<ReturnType<typeof useToast>['toast']>) {
+    console.warn("You are trying to use toast outside of a component. This won't work properly.");
+    return {
+      id: "0",
+      dismiss: () => {},
+      update: () => {},
+    };
+  },
+  // Method overrides to support the same API as the toast() function returned by useToast()
+  dismiss: (toastId?: string) => {},
 };
