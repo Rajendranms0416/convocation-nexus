@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Toast } from "@/components/ui/toast";
 
 type ToastProps = React.ComponentProps<typeof Toast>;
@@ -32,6 +32,7 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const;
 
+// Create a counter outside the component to avoid recreation
 let count = 0;
 
 function createToast(props: ToastOptions) {
@@ -125,11 +126,11 @@ const reducer = (state: State, action: Action): State => {
 function useStateReducer(reducer: React.Reducer<State, Action>): [State, React.Dispatch<Action>] {
   const [state, setState] = useState<State>({ toasts: [] });
 
-  const dispatch = (action: Action) => {
+  const dispatch = useCallback((action: Action) => {
     const newState = reducer(state, action);
     setState(newState);
     return newState;
-  };
+  }, [state]);
 
   return [state, dispatch];
 }
@@ -137,7 +138,7 @@ function useStateReducer(reducer: React.Reducer<State, Action>): [State, React.D
 export function useToast() {
   const [state, dispatch] = useStateReducer(reducer);
 
-  const toast = (props: ToastOptions) => {
+  const toast = useCallback((props: ToastOptions) => {
     const toasterToast = createToast(props);
     dispatch({ type: "ADD_TOAST", toast: toasterToast });
 
@@ -150,11 +151,11 @@ export function useToast() {
           toast: { ...props, id: toasterToast.id },
         }),
     };
-  };
+  }, [dispatch]);
 
-  const dismiss = (toastId?: string) => {
+  const dismiss = useCallback((toastId?: string) => {
     dispatch({ type: "DISMISS_TOAST", toastId });
-  };
+  }, [dispatch]);
 
   return {
     toasts: state.toasts,
