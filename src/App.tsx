@@ -9,9 +9,16 @@ import { StudentProvider } from "@/contexts/StudentContext";
 import NetworkStatusBar from "@/components/layout/NetworkStatusBar";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import MobileDashboard from "./pages/MobileDashboard";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -25,6 +32,7 @@ const App = () => (
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/mobile-dashboard" element={<MobileDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

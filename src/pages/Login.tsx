@@ -1,18 +1,40 @@
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
+import MobileLoginForm from '@/components/auth/MobileLoginForm';
+import DeviceSelectionPrompt from '@/components/common/DeviceSelectionPrompt';
 
 const Login: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const deviceParam = searchParams.get('device');
+  const [deviceType, setDeviceType] = useState<'desktop' | 'mobile' | null>(
+    (deviceParam as 'desktop' | 'mobile') || null
+  );
+
+  useEffect(() => {
+    // Check localStorage if deviceParam is not provided
+    if (!deviceType) {
+      const storedPreference = localStorage.getItem('devicePreference') as 'desktop' | 'mobile';
+      if (storedPreference) {
+        setDeviceType(storedPreference);
+      }
+    }
+  }, [deviceType]);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      navigate('/dashboard');
+      // Redirect to appropriate dashboard based on device type
+      if (deviceType === 'mobile') {
+        navigate('/mobile-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, navigate, deviceType]);
 
   if (isLoading) {
     return (
@@ -27,7 +49,9 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
-      <LoginForm />
+      {!deviceType && <DeviceSelectionPrompt />}
+      {deviceType === 'desktop' && <LoginForm />}
+      {deviceType === 'mobile' && <MobileLoginForm />}
     </div>
   );
 };
