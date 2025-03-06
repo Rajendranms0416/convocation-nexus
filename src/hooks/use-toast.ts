@@ -163,17 +163,17 @@ export function useToast() {
   };
 }
 
-// Re-export for convenience
-export const toast = {
-  // Create a global toast function that serves as a fallback
-  toast: function(...args: Parameters<ReturnType<typeof useToast>['toast']>) {
-    console.warn("You are trying to use toast outside of a component. This won't work properly.");
-    return {
-      id: "0",
-      dismiss: () => {},
-      update: () => {},
-    };
-  },
-  // Method overrides to support the same API as the toast() function returned by useToast()
-  dismiss: (toastId?: string) => {}
+// Create a toast function that can be imported directly
+const toastFunction = (props: ToastOptions) => {
+  console.warn("You are trying to use toast outside of a component. This won't work properly.");
+  return {
+    id: "0",
+    dismiss: () => {},
+    update: () => {},
+  };
 };
+
+toastFunction.dismiss = (toastId?: string) => {};
+
+// Export the toast function
+export const toast = toastFunction;
