@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle } from 'lucide-react';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
@@ -56,7 +55,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
   
   const { user } = useAuth();
 
-  // Apply filters when any filter changes
   useEffect(() => {
     const filters: StudentFilters = {
       query: searchQuery,
@@ -82,7 +80,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
     applyFilters
   ]);
 
-  // Set the appropriate attendance stage based on the role
   useEffect(() => {
     if (role === 'robe-in-charge') {
       setAttendanceStage(activeRobeTab === 'slot1' ? 'robeSlot1' : 'robeSlot1Completed');
@@ -94,7 +91,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
       setAttendanceStage('all');
     }
     
-    // Reset to first page when filters change
     setCurrentPage(1);
   }, [role, activeRobeTab]);
 
@@ -103,12 +99,11 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
   const departmentOptions = filterOptions?.department || [];
   const sectionOptions = filterOptions?.section || [];
 
-  const handleStatusUpdate = (
+  const handleStatusUpdate = async (
     studentId: string, 
     statusType: 'hasTakenRobe' | 'hasTakenFolder' | 'hasBeenPresented' | 'attendance' | 'robeSlot1' | 'robeSlot2', 
     currentValue: boolean
   ) => {
-    // Check if within time window for non-super-admin users
     if (role !== 'super-admin' && !isWithinTimeWindow(role)) {
       toast({
         title: "Outside operating hours",
@@ -118,7 +113,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
       return;
     }
     
-    // Check if attendance and not super-admin
     if (statusType === 'attendance' && user?.role !== 'super-admin') {
       toast({
         title: "Permission denied",
@@ -128,13 +122,19 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
       return;
     }
     
-    // Update status
-    updateStudentStatus(studentId, statusType, !currentValue).then(() => {
+    try {
+      await updateStudentStatus(studentId, statusType, !currentValue);
       toast({
         title: "Status updated",
         description: `Student ${statusType} has been ${!currentValue ? 'marked' : 'unmarked'}.`,
       });
-    });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "Could not update student status. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const clearFilters = () => {
@@ -147,7 +147,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Scroll to top when changing pages
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
@@ -162,7 +161,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
     return 'attendance';
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-60">
@@ -316,7 +314,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         </Sheet>
       </div>
       
-      {/* Sync status warning when offline changes exist */}
       {needsSync && (
         <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center gap-2 text-amber-800">
           <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
@@ -324,7 +321,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         </div>
       )}
       
-      {/* Time window restriction message */}
       {role !== 'super-admin' && !isWithinTimeWindow(role) && (
         <div className="bg-convocation-error/10 border border-convocation-error/20 rounded-md p-3 flex items-center gap-2 text-convocation-error">
           <Clock className="h-4 w-4 flex-shrink-0" />
@@ -332,7 +328,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         </div>
       )}
       
-      {/* Status message */}
       <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
         <h3 className="font-medium text-sm">
           {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "First Robe Attendance"}
@@ -347,7 +342,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         </p>
       </div>
 
-      {/* Student list */}
       <div className="space-y-2">
         {students.length > 0 ? (
           students.map((student) => (
@@ -404,7 +398,6 @@ const StudentCard: React.FC<StudentCardProps> = ({
   onStatusUpdate,
   isDisabled
 }) => {
-  // Get status value based on status type
   const getStatusValue = () => {
     switch (statusType) {
       case 'attendance': return student.attendance;
