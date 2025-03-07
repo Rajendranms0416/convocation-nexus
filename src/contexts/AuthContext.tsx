@@ -64,13 +64,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for saved user in localStorage
     const savedUser = localStorage.getItem('convocation_user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Error parsing saved user:', error);
+        localStorage.removeItem('convocation_user');
+      }
     }
     setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string, deviceType: 'mobile' | 'desktop' = 'desktop') => {
     setIsLoading(true);
+    console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
     
     // In a real app, this would be an API call
     // This is just for demo purposes
@@ -84,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Log device usage
           logDeviceUsage(foundUser, deviceType);
+          console.log(`Logged in successfully as ${foundUser.name} using ${deviceType} device`);
           
           toast({
             title: 'Login successful',
@@ -96,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             description: 'Invalid email or password.',
             variant: 'destructive',
           });
+          console.error('Login failed: Invalid credentials');
           reject(new Error('Invalid email or password'));
         }
         setIsLoading(false);

@@ -51,7 +51,7 @@ export const getDeviceLogs = (): DeviceLog[] => {
     const logs = logsString ? JSON.parse(logsString) : [];
     console.log('Retrieved device logs:', logs.length);
     
-    // Ensure timestamps are Date objects
+    // Ensure timestamps are converted back from strings to Date objects
     return logs.map((log: any) => ({
       ...log,
       timestamp: new Date(log.timestamp)

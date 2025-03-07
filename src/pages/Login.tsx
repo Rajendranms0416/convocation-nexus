@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,30 +10,29 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const deviceParam = searchParams.get('device');
-  const [deviceType, setDeviceType] = useState<'desktop' | 'mobile' | null>(
-    (deviceParam as 'desktop' | 'mobile') || null
-  );
+  const [deviceType, setDeviceType] = useState<'desktop' | 'mobile' | null>(null);
 
   // Debug logs
-  console.log('Current device type:', deviceType);
+  console.log('Login rendering, device param:', deviceParam);
 
   useEffect(() => {
-    // Check localStorage if deviceParam is not provided
-    if (!deviceType) {
-      const storedPreference = localStorage.getItem('devicePreference') as 'desktop' | 'mobile';
-      if (storedPreference) {
-        setDeviceType(storedPreference);
-        console.log('Using stored device preference:', storedPreference);
-      }
+    // If device is in URL params, use it and save to localStorage
+    if (deviceParam === 'desktop' || deviceParam === 'mobile') {
+      console.log('Setting device from URL params:', deviceParam);
+      setDeviceType(deviceParam);
+      localStorage.setItem('devicePreference', deviceParam);
     } else {
-      // Ensure the preference is saved in localStorage when coming from URL params
-      localStorage.setItem('devicePreference', deviceType);
-      console.log('Saved device preference to localStorage:', deviceType);
+      // Otherwise check localStorage
+      const storedPreference = localStorage.getItem('devicePreference') as 'desktop' | 'mobile' | null;
+      if (storedPreference) {
+        console.log('Using stored device preference:', storedPreference);
+        setDeviceType(storedPreference);
+      }
     }
-  }, [deviceType]);
+  }, [deviceParam]);
 
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (isAuthenticated && !isLoading && deviceType) {
       console.log('Authenticated, redirecting to dashboard for device type:', deviceType);
       // Redirect to appropriate dashboard based on device type
       if (deviceType === 'mobile') {
@@ -45,6 +43,7 @@ const Login: React.FC = () => {
     }
   }, [isAuthenticated, isLoading, navigate, deviceType]);
 
+  // If still loading authentication state, show loading spinner
   if (isLoading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center">
@@ -56,9 +55,18 @@ const Login: React.FC = () => {
     );
   }
 
+  // If no device type is set, show the device selection prompt
+  if (!deviceType) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
+        <DeviceSelectionPrompt />
+      </div>
+    );
+  }
+
+  // Otherwise, show the appropriate login form based on device type
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
-      {!deviceType && <DeviceSelectionPrompt />}
       {deviceType === 'desktop' && <LoginForm />}
       {deviceType === 'mobile' && <MobileLoginForm />}
     </div>

@@ -26,7 +26,7 @@ const DeviceSelectionPrompt: React.FC = () => {
     localStorage.setItem('devicePreference', device);
     // Set hasSelected to prevent re-rendering
     setHasSelected(true);
-    // Navigate to login with device preference
+    // Navigate to login with device preference and force a reload
     navigate(`/login?device=${device}`, { replace: true });
   };
 
