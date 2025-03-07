@@ -12,7 +12,7 @@ export interface DeviceLog {
   ipAddress?: string;
 }
 
-// Use localStorage to store logs temporarily
+// Use localStorage to store logs
 const DEVICE_LOGS_KEY = 'convocation_device_logs';
 
 export const logDeviceUsage = (user: User, deviceType: 'mobile' | 'desktop'): void => {
@@ -30,15 +30,16 @@ export const logDeviceUsage = (user: User, deviceType: 'mobile' | 'desktop'): vo
       deviceType,
       userAgent: navigator.userAgent,
       timestamp: new Date(),
-      // Note: IP address can't be reliably obtained on client-side
     };
+    
+    console.log('Logging device usage:', newLog);
     
     // Add new log to existing logs (limit to last 100 entries to prevent storage issues)
     const updatedLogs = [newLog, ...existingLogs].slice(0, 100);
     
     // Save updated logs to localStorage
     localStorage.setItem(DEVICE_LOGS_KEY, JSON.stringify(updatedLogs));
-    console.log('Device log saved:', newLog);
+    console.log('Device log saved, total logs:', updatedLogs.length);
   } catch (error) {
     console.error('Error logging device usage:', error);
   }
@@ -47,8 +48,14 @@ export const logDeviceUsage = (user: User, deviceType: 'mobile' | 'desktop'): vo
 export const getDeviceLogs = (): DeviceLog[] => {
   try {
     const logsString = localStorage.getItem(DEVICE_LOGS_KEY);
+    
     // Parse logs from localStorage
-    const logs = logsString ? JSON.parse(logsString) : [];
+    if (!logsString) {
+      console.log('No device logs found in localStorage');
+      return [];
+    }
+    
+    const logs = JSON.parse(logsString);
     console.log('Retrieved device logs:', logs.length);
     
     // Ensure timestamps are converted back from strings to Date objects

@@ -4,9 +4,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
 import MobileLoginForm from '@/components/auth/MobileLoginForm';
 import DeviceSelectionPrompt from '@/components/common/DeviceSelectionPrompt';
+import { logDeviceUsage } from '@/utils/deviceLogger';
 
 const Login: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const deviceParam = searchParams.get('device');
@@ -32,8 +33,12 @@ const Login: React.FC = () => {
   }, [deviceParam]);
 
   useEffect(() => {
-    if (isAuthenticated && !isLoading && deviceType) {
+    if (isAuthenticated && !isLoading && deviceType && user) {
       console.log('Authenticated, redirecting to dashboard for device type:', deviceType);
+      
+      // Log device usage
+      logDeviceUsage(user, deviceType);
+      
       // Redirect to appropriate dashboard based on device type
       if (deviceType === 'mobile') {
         navigate('/mobile-dashboard', { replace: true });
@@ -41,7 +46,7 @@ const Login: React.FC = () => {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [isAuthenticated, isLoading, navigate, deviceType]);
+  }, [isAuthenticated, isLoading, navigate, deviceType, user]);
 
   // If still loading authentication state, show loading spinner
   if (isLoading) {
@@ -59,7 +64,11 @@ const Login: React.FC = () => {
   if (!deviceType) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
-        <DeviceSelectionPrompt />
+        <DeviceSelectionPrompt onSelect={(type) => {
+          console.log('Device selected:', type);
+          setDeviceType(type);
+          localStorage.setItem('devicePreference', type);
+        }} />
       </div>
     );
   }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle } from 'lucide-react';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
@@ -199,11 +198,11 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         
         <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" onClick={() => setIsFilterOpen(true)}>
+            <Button variant="outline" size="icon">
               <Filter className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[80vh]">
+          <SheetContent className="h-[80vh] overflow-y-auto">
             <SheetHeader>
               <SheetTitle>Filter Students</SheetTitle>
               <SheetDescription>
@@ -304,10 +303,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
               {(locationFilter || schoolFilter || departmentFilter || sectionFilter || searchQuery) && (
                 <Button 
                   variant="outline" 
-                  onClick={() => {
-                    clearFilters();
-                    setIsFilterOpen(false);
-                  }}
+                  onClick={clearFilters}
                   className="w-full mt-4"
                 >
                   Clear All Filters
