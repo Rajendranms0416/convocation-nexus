@@ -5,7 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Laptop, Smartphone } from 'lucide-react';
 
-const DeviceSelectionPrompt: React.FC = () => {
+interface DeviceSelectionPromptProps {
+  onSelect?: (device: 'desktop' | 'mobile') => void;
+}
+
+const DeviceSelectionPrompt: React.FC<DeviceSelectionPromptProps> = ({ onSelect }) => {
   const navigate = useNavigate();
   const [hasSelected, setHasSelected] = useState(false);
 
@@ -26,6 +30,10 @@ const DeviceSelectionPrompt: React.FC = () => {
     localStorage.setItem('devicePreference', device);
     // Set hasSelected to prevent re-rendering
     setHasSelected(true);
+    // Call the onSelect prop if provided
+    if (onSelect) {
+      onSelect(device);
+    }
     // Navigate to login with device preference and force a reload
     navigate(`/login?device=${device}`, { replace: true });
   };
