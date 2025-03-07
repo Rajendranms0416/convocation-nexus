@@ -21,20 +21,23 @@ const Login: React.FC = () => {
       const storedPreference = localStorage.getItem('devicePreference') as 'desktop' | 'mobile';
       if (storedPreference) {
         setDeviceType(storedPreference);
+        console.log('Using stored device preference:', storedPreference);
       }
     } else {
       // Ensure the preference is saved in localStorage when coming from URL params
       localStorage.setItem('devicePreference', deviceType);
+      console.log('Saved device preference to localStorage:', deviceType);
     }
   }, [deviceType]);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
+      console.log('Authenticated, redirecting to dashboard for device type:', deviceType);
       // Redirect to appropriate dashboard based on device type
       if (deviceType === 'mobile') {
-        navigate('/mobile-dashboard');
+        navigate('/mobile-dashboard', { replace: true });
       } else {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
     }
   }, [isAuthenticated, isLoading, navigate, deviceType]);

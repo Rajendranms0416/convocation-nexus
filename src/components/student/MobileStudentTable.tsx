@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle } from 'lucide-react';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
@@ -39,7 +40,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
   const [activeRobeTab, setActiveRobeTab] = useState<'slot1' | 'slot2'>('slot1');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
-  const [showFilters, setShowFilters] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   const { 
     students, 
@@ -196,9 +197,9 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
           )}
         </div>
         
-        <Sheet>
+        <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" onClick={() => setShowFilters(true)}>
+            <Button variant="outline" size="icon" onClick={() => setIsFilterOpen(true)}>
               <Filter className="h-4 w-4" />
             </Button>
           </SheetTrigger>
@@ -303,12 +304,22 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
               {(locationFilter || schoolFilter || departmentFilter || sectionFilter || searchQuery) && (
                 <Button 
                   variant="outline" 
-                  onClick={clearFilters}
+                  onClick={() => {
+                    clearFilters();
+                    setIsFilterOpen(false);
+                  }}
                   className="w-full mt-4"
                 >
                   Clear All Filters
                 </Button>
               )}
+
+              <Button 
+                onClick={() => setIsFilterOpen(false)}
+                className="w-full mt-4"
+              >
+                Apply Filters
+              </Button>
             </div>
           </SheetContent>
         </Sheet>
