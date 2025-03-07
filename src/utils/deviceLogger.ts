@@ -36,8 +36,9 @@ export const logDeviceUsage = (user: User, deviceType: 'mobile' | 'desktop'): vo
     // Add new log to existing logs (limit to last 100 entries to prevent storage issues)
     const updatedLogs = [newLog, ...existingLogs].slice(0, 100);
     
-    // Save updated logs
+    // Save updated logs to localStorage
     localStorage.setItem(DEVICE_LOGS_KEY, JSON.stringify(updatedLogs));
+    console.log('Device log saved:', newLog);
   } catch (error) {
     console.error('Error logging device usage:', error);
   }
@@ -46,7 +47,15 @@ export const logDeviceUsage = (user: User, deviceType: 'mobile' | 'desktop'): vo
 export const getDeviceLogs = (): DeviceLog[] => {
   try {
     const logsString = localStorage.getItem(DEVICE_LOGS_KEY);
-    return logsString ? JSON.parse(logsString) : [];
+    // Parse logs from localStorage
+    const logs = logsString ? JSON.parse(logsString) : [];
+    console.log('Retrieved device logs:', logs.length);
+    
+    // Ensure timestamps are Date objects
+    return logs.map((log: any) => ({
+      ...log,
+      timestamp: new Date(log.timestamp)
+    }));
   } catch (error) {
     console.error('Error retrieving device logs:', error);
     return [];
@@ -55,4 +64,5 @@ export const getDeviceLogs = (): DeviceLog[] => {
 
 export const clearDeviceLogs = (): void => {
   localStorage.removeItem(DEVICE_LOGS_KEY);
+  console.log('Device logs cleared');
 };

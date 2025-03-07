@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DeviceLog } from '@/types';
 import { getDeviceLogs, clearDeviceLogs } from '@/utils/deviceLogger';
 import { format } from 'date-fns';
@@ -17,14 +17,21 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
 
 const DeviceUsageLogs: React.FC = () => {
-  const [logs, setLogs] = useState<DeviceLog[]>(getDeviceLogs());
+  const [logs, setLogs] = useState<DeviceLog[]>([]);
   const { toast } = useToast();
   
+  // Fetch logs on component mount
+  useEffect(() => {
+    refreshLogs();
+  }, []);
+  
   const refreshLogs = () => {
-    setLogs(getDeviceLogs());
+    const fetchedLogs = getDeviceLogs();
+    console.log('Fetched logs:', fetchedLogs);
+    setLogs(fetchedLogs);
     toast({
       title: "Logs refreshed",
-      description: "The device usage logs have been refreshed.",
+      description: `Retrieved ${fetchedLogs.length} device usage logs.`,
     });
   };
   

@@ -15,6 +15,9 @@ const Login: React.FC = () => {
     (deviceParam as 'desktop' | 'mobile') || null
   );
 
+  // Debug logs
+  console.log('Current device type:', deviceType);
+
   useEffect(() => {
     // Check localStorage if deviceParam is not provided
     if (!deviceType) {
@@ -41,9 +44,6 @@ const Login: React.FC = () => {
       }
     }
   }, [isAuthenticated, isLoading, navigate, deviceType]);
-
-  // Add debugging log
-  console.log('Current device type:', deviceType);
 
   if (isLoading) {
     return (

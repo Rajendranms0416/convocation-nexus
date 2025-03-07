@@ -16,13 +16,16 @@ const DeviceSelectionPrompt: React.FC = () => {
       // If preference exists, set hasSelected to true
       setHasSelected(true);
       // Redirect to login with device preference param
-      navigate(`/login?device=${devicePreference}`);
+      navigate(`/login?device=${devicePreference}`, { replace: true });
     }
   }, [navigate]);
 
   const handleDeviceSelection = (device: 'desktop' | 'mobile') => {
+    console.log('Device selected:', device);
     // Save preference to localStorage
     localStorage.setItem('devicePreference', device);
+    // Set hasSelected to prevent re-rendering
+    setHasSelected(true);
     // Navigate to login with device preference
     navigate(`/login?device=${device}`, { replace: true });
   };
