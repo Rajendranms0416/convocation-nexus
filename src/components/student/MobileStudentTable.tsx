@@ -202,7 +202,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
               <Filter className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent className="h-[80vh] overflow-y-auto">
+          <SheetContent side="right" className="overflow-y-auto">
             <SheetHeader>
               <SheetTitle>Filter Students</SheetTitle>
               <SheetDescription>
@@ -240,7 +240,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Locations</SelectItem>
-                    {locationOptions.map(option => (
+                    {locationOptions && locationOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -257,7 +257,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Schools</SelectItem>
-                    {schoolOptions.map(option => (
+                    {schoolOptions && schoolOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -274,7 +274,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Departments</SelectItem>
-                    {departmentOptions.map(option => (
+                    {departmentOptions && departmentOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -291,7 +291,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Sections</SelectItem>
-                    {sectionOptions.map(option => (
+                    {sectionOptions && sectionOptions.map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
