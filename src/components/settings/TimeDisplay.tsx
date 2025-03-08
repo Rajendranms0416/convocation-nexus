@@ -10,15 +10,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Role } from '@/types';
 import { format } from 'date-fns';
+import TimeSettings from './TimeSettings';
 
 interface TimeDisplayProps {
   className?: string;
+  isMobile?: boolean;
 }
 
-const TimeDisplay: React.FC<TimeDisplayProps> = ({ className }) => {
+const TimeDisplay: React.FC<TimeDisplayProps> = ({ className, isMobile = false }) => {
   const [timeWindows, setTimeWindows] = useState<Record<Role, { start: string; end: string }>>({} as any);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeRole, setActiveRole] = useState<Role | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Get time windows from localStorage
@@ -42,6 +45,7 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className }) => {
     if (savedUser) {
       const user = JSON.parse(savedUser);
       setActiveRole(user.role as Role);
+      setIsAdmin(user.role === 'super-admin');
     }
   }, []);
 
@@ -111,49 +115,53 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className }) => {
   if (Object.keys(timeWindows).length === 0) return null;
 
   return (
-    <HoverCard>
-      <HoverCardTrigger asChild>
-        <Button variant="outline" size="sm" className={`${className} gap-2`}>
-          <Timer className="h-4 w-4" />
-          <span className="hidden md:inline">Time Windows</span>
-          {activeRole && isWithinTimeWindow(activeRole) && (
-            <Badge variant="outline" className="ml-2 h-5 px-1 bg-green-100 text-green-800 border-green-200">
-              {getRemainingTime()}
-            </Badge>
-          )}
-        </Button>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-80 p-4">
-        <h3 className="font-medium text-lg mb-2">Convocation Time Windows</h3>
-        <div className="space-y-3">
-          {(Object.keys(timeWindows) as Role[]).map((role) => (
-            <div key={role} className="flex items-center justify-between">
-              <div>
-                <p className="font-medium capitalize">{role.replace(/-/g, ' ')}</p>
-                <p className="text-xs text-muted-foreground">{formatTimeWindow(role)}</p>
-              </div>
-              {getStatusBadge(role)}
-            </div>
-          ))}
-        </div>
-        {activeRole && (
-          <div className="mt-4 pt-3 border-t">
-            <p className="text-sm">
-              <span className="font-medium">Your role:</span> {activeRole.replace(/-/g, ' ')}
-            </p>
-            {isWithinTimeWindow(activeRole) ? (
-              <p className="text-sm text-green-600 font-medium">
-                You can currently edit student records
-              </p>
-            ) : (
-              <p className="text-sm text-convocation-error font-medium">
-                You can only view records at this time
-              </p>
+    <div className="flex items-center gap-2">
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <Button variant="outline" size="sm" className={`${className} gap-2`}>
+            <Timer className="h-4 w-4" />
+            <span className="hidden md:inline">Time Windows</span>
+            {activeRole && isWithinTimeWindow(activeRole) && (
+              <Badge variant="outline" className="ml-2 h-5 px-1 bg-green-100 text-green-800 border-green-200">
+                {getRemainingTime()}
+              </Badge>
             )}
+          </Button>
+        </HoverCardTrigger>
+        <HoverCardContent className="w-80 p-4">
+          <h3 className="font-medium text-lg mb-2">Convocation Time Windows</h3>
+          <div className="space-y-3">
+            {(Object.keys(timeWindows) as Role[]).map((role) => (
+              <div key={role} className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium capitalize">{role.replace(/-/g, ' ')}</p>
+                  <p className="text-xs text-muted-foreground">{formatTimeWindow(role)}</p>
+                </div>
+                {getStatusBadge(role)}
+              </div>
+            ))}
           </div>
-        )}
-      </HoverCardContent>
-    </HoverCard>
+          {activeRole && (
+            <div className="mt-4 pt-3 border-t">
+              <p className="text-sm">
+                <span className="font-medium">Your role:</span> {activeRole.replace(/-/g, ' ')}
+              </p>
+              {isWithinTimeWindow(activeRole) ? (
+                <p className="text-sm text-green-600 font-medium">
+                  You can currently edit student records
+                </p>
+              ) : (
+                <p className="text-sm text-convocation-error font-medium">
+                  You can only view records at this time
+                </p>
+              )}
+            </div>
+          )}
+        </HoverCardContent>
+      </HoverCard>
+      
+      {isAdmin && <TimeSettings isMobile={isMobile} className={isMobile ? "" : "ml-2"} />}
+    </div>
   );
 };
 

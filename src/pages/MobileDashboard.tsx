@@ -1,4 +1,3 @@
-
 import React, { useEffect, useCallback, memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,55 +72,12 @@ const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-convocation-100 text-convocation-600">
                   {user.role.replace(/-/g, ' ')}
                 </span>
-                <TimeDisplay className="ml-2 text-xs" />
+                <TimeDisplay className="ml-2 text-xs" isMobile={true} />
               </div>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8"
-                >
-                  <Clock className="h-4 w-4 text-convocation-500" />
-                </Button>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-64 p-3">
-                <h3 className="font-medium text-sm mb-2">Time Windows</h3>
-                <div className="space-y-2">
-                  {Object.entries(timeWindows).map(([role, window]) => (
-                    <div key={role} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-medium capitalize">{role.replace(/-/g, ' ')}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(window.start).toLocaleDateString()} - {new Date(window.end).toLocaleDateString()}
-                        </p>
-                      </div>
-                      {isWithinTimeWindow(role) ? (
-                        <Badge variant="outline" className="bg-green-100 text-green-800 text-xs">Active</Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-gray-100 text-gray-500 text-xs">Inactive</Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {user && (
-                  <div className="mt-3 pt-2 border-t border-convocation-100">
-                    <p className="text-xs">
-                      {isWithinTimeWindow(user.role) ? (
-                        <span className="text-green-600">You can edit records now</span>
-                      ) : (
-                        <span className="text-convocation-error">View only mode active</span>
-                      )}
-                    </p>
-                  </div>
-                )}
-              </HoverCardContent>
-            </HoverCard>
-
             <Button 
               variant="ghost" 
               size="icon"
