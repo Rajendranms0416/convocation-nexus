@@ -239,9 +239,9 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Locations</SelectItem>
-                    {locationOptions && locationOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locationOptions && locationOptions.length > 0 && locationOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value || "default"}>
                         {option.label}
                       </SelectItem>
                     ))}
@@ -256,9 +256,9 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                     <SelectValue placeholder="Select school" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Schools</SelectItem>
-                    {schoolOptions && schoolOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
+                    <SelectItem value="all">All Schools</SelectItem>
+                    {schoolOptions && schoolOptions.length > 0 && schoolOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value || "default"}>
                         {option.label}
                       </SelectItem>
                     ))}
@@ -273,9 +273,9 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Departments</SelectItem>
-                    {departmentOptions && departmentOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departmentOptions && departmentOptions.length > 0 && departmentOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value || "default"}>
                         {option.label}
                       </SelectItem>
                     ))}
@@ -290,9 +290,9 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
                     <SelectValue placeholder="Select section" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Sections</SelectItem>
-                    {sectionOptions && sectionOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {sectionOptions && sectionOptions.length > 0 && sectionOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value || "default"}>
                         {option.label}
                       </SelectItem>
                     ))}
