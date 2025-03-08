@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header';
 import StudentTable from '@/components/student/StudentTable';
 import StatsCards from '@/components/dashboard/StatsCards';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import TimeDisplay from '@/components/settings/TimeDisplay';
 
 const Dashboard: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -32,8 +33,13 @@ const Dashboard: React.FC = () => {
     <div className="min-h-screen bg-convocation-50 flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-6 md:py-8 animate-fade-in">
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground mb-6">Welcome back, {user.name}</p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+            <p className="text-muted-foreground">Welcome back, {user.name}</p>
+          </div>
+          <TimeDisplay className="hidden md:flex" />
+        </div>
         
         <div className="space-y-6">
           <StatsCards />
