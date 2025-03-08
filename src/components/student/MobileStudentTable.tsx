@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle } from 'lucide-react';
+import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle, Activity } from 'lucide-react';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import Pagination from '@/components/common/Pagination';
@@ -40,6 +47,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('robeSlot1');
   
   const { 
     students, 
@@ -81,7 +89,27 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
   ]);
 
   useEffect(() => {
-    if (role === 'robe-in-charge') {
+    if (role === 'super-admin') {
+      // For super admin, we set the attendance stage based on the active tab
+      switch (activeTab) {
+        case 'robeSlot1':
+          setAttendanceStage('robeSlot1');
+          break;
+        case 'robeSlot2':
+          setAttendanceStage('robeSlot1Completed');
+          break;
+        case 'folder':
+          setAttendanceStage('bothRobeSlotsCompleted');
+          break;
+        case 'presenter':
+          setAttendanceStage('folderCompleted');
+          break;
+        case 'all':
+        default:
+          setAttendanceStage('all');
+          break;
+      }
+    } else if (role === 'robe-in-charge') {
       setAttendanceStage(activeRobeTab === 'slot1' ? 'robeSlot1' : 'robeSlot1Completed');
     } else if (role === 'folder-in-charge') {
       setAttendanceStage('bothRobeSlotsCompleted');
@@ -92,7 +120,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
     }
     
     setCurrentPage(1);
-  }, [role, activeRobeTab]);
+  }, [role, activeRobeTab, activeTab]);
 
   const locationOptions = filterOptions?.location || [];
   const schoolOptions = filterOptions?.school || [];
@@ -151,7 +179,21 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
   };
   
   const getStatusTypeByRole = () => {
-    if (role === 'robe-in-charge') {
+    if (role === 'super-admin') {
+      // For super admin, the status type depends on the active tab
+      switch (activeTab) {
+        case 'robeSlot1':
+          return 'robeSlot1';
+        case 'robeSlot2':
+          return 'robeSlot2';
+        case 'folder':
+          return 'hasTakenFolder';
+        case 'presenter':
+          return 'hasBeenPresented';
+        default:
+          return 'attendance';
+      }
+    } else if (role === 'robe-in-charge') {
       return activeRobeTab === 'slot1' ? 'robeSlot1' : 'robeSlot2';
     } else if (role === 'folder-in-charge') {
       return 'hasTakenFolder';
@@ -159,6 +201,75 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
       return 'hasBeenPresented';
     }
     return 'attendance';
+  };
+
+  const renderSuperAdminTabs = () => {
+    return (
+      <Tabs 
+        defaultValue="robeSlot1" 
+        className="w-full"
+        value={activeTab}
+        onValueChange={setActiveTab}
+      >
+        <TabsList className="grid grid-cols-5 w-full mb-4">
+          <TabsTrigger value="robeSlot1">Robe 1</TabsTrigger>
+          <TabsTrigger value="robeSlot2">Robe 2</TabsTrigger>
+          <TabsTrigger value="folder">Folder</TabsTrigger>
+          <TabsTrigger value="presenter">Present</TabsTrigger>
+          <TabsTrigger value="all">All</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="robeSlot1" className="mt-0">
+          <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
+            <h3 className="font-medium text-sm">Robe Slot 1 Attendance</h3>
+            <p className="text-xs text-convocation-400 mt-1">
+              {students.length} students found
+              {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
+            </p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="robeSlot2" className="mt-0">
+          <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
+            <h3 className="font-medium text-sm">Robe Slot 2 Attendance</h3>
+            <p className="text-xs text-convocation-400 mt-1">
+              {students.length} students found
+              {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
+            </p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="folder" className="mt-0">
+          <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
+            <h3 className="font-medium text-sm">Folder Distribution</h3>
+            <p className="text-xs text-convocation-400 mt-1">
+              {students.length} students found
+              {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
+            </p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="presenter" className="mt-0">
+          <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
+            <h3 className="font-medium text-sm">Presentation Status</h3>
+            <p className="text-xs text-convocation-400 mt-1">
+              {students.length} students found
+              {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
+            </p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="all" className="mt-0">
+          <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
+            <h3 className="font-medium text-sm">All Students</h3>
+            <p className="text-xs text-convocation-400 mt-1">
+              {students.length} students found
+              {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
+            </p>
+          </div>
+        </TabsContent>
+      </Tabs>
+    );
   };
 
   if (isLoading) {
@@ -335,19 +446,22 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         </div>
       )}
       
-      <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
-        <h3 className="font-medium text-sm">
-          {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "First Robe Attendance"}
-          {role === 'robe-in-charge' && activeRobeTab === 'slot2' && "Second Robe Attendance"}
-          {role === 'folder-in-charge' && "Folder Distribution"}
-          {role === 'presenter' && "Presentation"}
-          {role === 'super-admin' && "All Students"}
-        </h3>
-        <p className="text-xs text-convocation-400 mt-1">
-          {students.length} students found
-          {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
-        </p>
-      </div>
+      {role === 'super-admin' ? (
+        renderSuperAdminTabs()
+      ) : (
+        <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
+          <h3 className="font-medium text-sm">
+            {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "First Robe Attendance"}
+            {role === 'robe-in-charge' && activeRobeTab === 'slot2' && "Second Robe Attendance"}
+            {role === 'folder-in-charge' && "Folder Distribution"}
+            {role === 'presenter' && "Presentation"}
+          </h3>
+          <p className="text-xs text-convocation-400 mt-1">
+            {students.length} students found
+            {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         {students.length > 0 ? (

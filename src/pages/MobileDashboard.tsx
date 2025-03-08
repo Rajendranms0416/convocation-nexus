@@ -1,11 +1,17 @@
 
-import React, { useEffect, useCallback, memo } from 'react';
+import React, { useEffect, useCallback, memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, LogOut, RotateCcw } from 'lucide-react';
+import { Loader2, LogOut, RotateCcw, Activity } from 'lucide-react';
 import MobileStudentTable from '@/components/student/MobileStudentTable';
 import { Button } from '@/components/ui/button';
 import TimeDisplay from '@/components/settings/TimeDisplay';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 // Memoized header component to prevent unnecessary re-renders
 const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
@@ -61,9 +67,48 @@ const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
 
 DashboardHeader.displayName = 'DashboardHeader';
 
+// Mock device logs component for mobile view
+const MobileDeviceLogs = () => {
+  return (
+    <div className="space-y-4">
+      <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
+        <h3 className="font-medium text-sm">Device Activity Logs</h3>
+        <p className="text-xs text-convocation-400 mt-1">
+          Recent user logins and actions
+        </p>
+      </div>
+      
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div 
+            key={i}
+            className="bg-white p-3 rounded-md border border-convocation-100"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="font-medium">User {i}</p>
+                <p className="text-xs text-convocation-400">
+                  {i % 2 === 0 ? 'Mobile' : 'Desktop'} • {i % 3 === 0 ? 'Presenter' : 'Robe In-charge'}
+                </p>
+                <p className="text-xs mt-1">
+                  {new Date(Date.now() - i * 3600000).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-convocation-100 p-1 rounded-full">
+                <Activity className="h-4 w-4 text-convocation-500" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const MobileDashboard: React.FC = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<string>("students");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -101,7 +146,24 @@ const MobileDashboard: React.FC = () => {
       />
       
       <main className="flex-1 container mx-auto px-3 py-3">
-        <MobileStudentTable role={user.role as any} />
+        {user.role === 'super-admin' ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 w-full mb-4">
+              <TabsTrigger value="students">Students</TabsTrigger>
+              <TabsTrigger value="logs">Activity Logs</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="students" className="mt-0">
+              <MobileStudentTable role={user.role as any} />
+            </TabsContent>
+            
+            <TabsContent value="logs" className="mt-0">
+              <MobileDeviceLogs />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <MobileStudentTable role={user.role as any} />
+        )}
       </main>
     </div>
   );
