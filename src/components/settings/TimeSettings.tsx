@@ -22,9 +22,17 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { format, parse, set } from 'date-fns';
 
 interface TimeWindow {
   start: string;
@@ -71,12 +79,61 @@ const TimeSettings: React.FC<TimeSettingsProps> = ({ className, isMobile = false
   // Only super admins can edit time windows
   const canEditTimeWindows = user?.role === 'super-admin';
 
-  const handleTimeChange = (role: Role, field: 'start' | 'end', value: string) => {
-    setTimeWindows(prev => ({
+  // Custom time controls for more granular time selection
+  const [customTimeControls, setCustomTimeControls] = useState<Record<Role, {
+    startDate: string;
+    startHour: string;
+    startMinute: string;
+    endDate: string;
+    endHour: string;
+    endMinute: string;
+  }>>(() => {
+    const result: Record<string, any> = {};
+    
+    Object.entries(timeWindows).forEach(([role, window]) => {
+      const startDate = new Date(window.start);
+      const endDate = new Date(window.end);
+      
+      result[role] = {
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        startHour: format(startDate, 'HH'),
+        startMinute: format(startDate, 'mm'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        endHour: format(endDate, 'HH'),
+        endMinute: format(endDate, 'mm'),
+      };
+    });
+    
+    return result;
+  });
+
+  // Generate options for hours and minutes
+  const hourOptions = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const minuteOptions = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+
+  const handleCustomTimeChange = (role: Role, field: string, value: string) => {
+    setCustomTimeControls(prev => ({
       ...prev,
       [role]: {
         ...prev[role],
         [field]: value
+      }
+    }));
+    
+    // Update the actual timeWindows based on the custom controls
+    const controls = {
+      ...customTimeControls[role],
+      [field]: value
+    };
+    
+    const newStartDate = new Date(`${controls.startDate}T${controls.startHour}:${controls.startMinute}`);
+    const newEndDate = new Date(`${controls.endDate}T${controls.endHour}:${controls.endMinute}`);
+    
+    setTimeWindows(prev => ({
+      ...prev,
+      [role]: {
+        start: newStartDate.toISOString().substring(0, 16),
+        end: newEndDate.toISOString().substring(0, 16)
       }
     }));
   };
@@ -114,26 +171,110 @@ const TimeSettings: React.FC<TimeSettingsProps> = ({ className, isMobile = false
       {(Object.keys(timeWindows) as Role[]).map((role) => (
         <div key={role} className="space-y-2">
           <h3 className="font-medium capitalize">{role.replace(/-/g, ' ')}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor={`${role}-start`}>Start Time</Label>
-              <Input
-                id={`${role}-start`}
-                type="datetime-local"
-                value={timeWindows[role].start}
-                onChange={(e) => handleTimeChange(role, 'start', e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor={`${role}-end`}>End Time</Label>
-              <Input
-                id={`${role}-end`}
-                type="datetime-local"
-                value={timeWindows[role].end}
-                onChange={(e) => handleTimeChange(role, 'end', e.target.value)}
-              />
+          
+          {/* Start Time Controls */}
+          <div className="space-y-2">
+            <Label>Start Time</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor={`${role}-start-date`} className="text-xs text-muted-foreground">Date</Label>
+                <Input
+                  id={`${role}-start-date`}
+                  type="date"
+                  value={customTimeControls[role].startDate}
+                  onChange={(e) => handleCustomTimeChange(role, 'startDate', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor={`${role}-start-hour`} className="text-xs text-muted-foreground">Hour</Label>
+                  <Select 
+                    value={customTimeControls[role].startHour}
+                    onValueChange={(value) => handleCustomTimeChange(role, 'startHour', value)}
+                  >
+                    <SelectTrigger id={`${role}-start-hour`} className="mt-1">
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hourOptions.map(hour => (
+                        <SelectItem key={`start-hour-${hour}`} value={hour}>{hour}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor={`${role}-start-minute`} className="text-xs text-muted-foreground">Minute</Label>
+                  <Select 
+                    value={customTimeControls[role].startMinute}
+                    onValueChange={(value) => handleCustomTimeChange(role, 'startMinute', value)}
+                  >
+                    <SelectTrigger id={`${role}-start-minute`} className="mt-1">
+                      <SelectValue placeholder="Minute" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {minuteOptions.map(minute => (
+                        <SelectItem key={`start-minute-${minute}`} value={minute}>{minute}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
+          
+          {/* End Time Controls */}
+          <div className="space-y-2">
+            <Label>End Time</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor={`${role}-end-date`} className="text-xs text-muted-foreground">Date</Label>
+                <Input
+                  id={`${role}-end-date`}
+                  type="date"
+                  value={customTimeControls[role].endDate}
+                  onChange={(e) => handleCustomTimeChange(role, 'endDate', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor={`${role}-end-hour`} className="text-xs text-muted-foreground">Hour</Label>
+                  <Select 
+                    value={customTimeControls[role].endHour}
+                    onValueChange={(value) => handleCustomTimeChange(role, 'endHour', value)}
+                  >
+                    <SelectTrigger id={`${role}-end-hour`} className="mt-1">
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hourOptions.map(hour => (
+                        <SelectItem key={`end-hour-${hour}`} value={hour}>{hour}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor={`${role}-end-minute`} className="text-xs text-muted-foreground">Minute</Label>
+                  <Select 
+                    value={customTimeControls[role].endMinute}
+                    onValueChange={(value) => handleCustomTimeChange(role, 'endMinute', value)}
+                  >
+                    <SelectTrigger id={`${role}-end-minute`} className="mt-1">
+                      <SelectValue placeholder="Minute" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {minuteOptions.map(minute => (
+                        <SelectItem key={`end-minute-${minute}`} value={minute}>{minute}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="h-px bg-border mt-4"></div>
         </div>
       ))}
     </div>
