@@ -61,6 +61,7 @@ export interface StudentFilters {
   attendanceStage?: AttendanceStage;
   page?: number;
   pageSize?: number;
+  assignedClassesOnly?: boolean; // Added this property to fix the TypeScript error
 }
 
 export interface DeviceLog {
