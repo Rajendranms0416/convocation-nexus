@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Student, FilterOption, AttendanceStage, StudentFilters, PaginatedData, Role } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -66,6 +67,10 @@ const MOCK_STUDENTS: Student[] = Array(50).fill(null).map((_, index) => {
     school = 'Law';
   }
   
+  // Randomly assign gold medalist or rank holder status to some students
+  const isGoldMedalist = Math.random() > 0.9; // 10% chance to be gold medalist
+  const isRankHolder = !isGoldMedalist && Math.random() > 0.85; // 15% chance to be rank holder if not gold medalist
+  
   return {
     id: `student-${index + 1}`,
     name: `Student ${index + 1}`,
@@ -81,24 +86,10 @@ const MOCK_STUDENTS: Student[] = Array(50).fill(null).map((_, index) => {
     attendance: Math.random() > 0.3,
     robeSlot1: Math.random() > 0.5,
     robeSlot2: Math.random() > 0.5,
+    isGoldMedalist: isGoldMedalist,
+    isRankHolder: isRankHolder,
   };
 });
-
-// Define the time windows for each role's operations
-const TIME_WINDOWS = {
-  'robe-in-charge': {
-    start: new Date('2023-06-01T08:00:00'),
-    end: new Date('2023-06-02T17:00:00')
-  },
-  'folder-in-charge': {
-    start: new Date('2023-06-03T08:00:00'),
-    end: new Date('2023-06-04T17:00:00')
-  },
-  'presenter': {
-    start: new Date('2023-06-05T08:00:00'),
-    end: new Date('2023-06-06T17:00:00')
-  }
-};
 
 export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Students state now includes pagination data
@@ -236,7 +227,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     initializeData();
-  }, [toast, fetchFilterOptions]);
+  }, [toast, fetchFilterOptions, currentFilters]);
 
   // Fetch students when filters change
   useEffect(() => {
@@ -245,7 +236,15 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       setIsLoading(true);
       try {
-        const result = await studentApi.getStudents(currentFilters);
+        // If user is not super-admin, filter by assigned classes
+        let filtersToUse = { ...currentFilters };
+        
+        if (user && user.role !== 'super-admin' && user.assignedClasses && user.assignedClasses.length > 0) {
+          // In a real app this would be done server-side, but for demo we'll simulate it
+          filtersToUse.assignedClassesOnly = true;
+        }
+        
+        const result = await studentApi.getStudents(filtersToUse);
         setStudentsData(result);
       } catch (error) {
         console.error("Error fetching students:", error);
@@ -255,7 +254,7 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     
     fetchStudents();
-  }, [currentFilters]);
+  }, [currentFilters, user]);
 
   // Sync data with "server" (in this demo, we're just simulating a network request)
   const syncData = useCallback(async () => {
@@ -426,8 +425,8 @@ export const StudentProvider: React.FC<{ children: React.ReactNode }> = ({ child
         hasTakenFolder: 'Folder collection',
         hasBeenPresented: 'Presentation',
         attendance: 'Attendance',
-        robeSlot1: 'Robe Slot 1',
-        robeSlot2: 'Robe Slot 2',
+        robeSlot1: 'Robe Attendance',
+        robeSlot2: 'Parade Attendance',
       };
       
       const student = studentsData.data.find(s => s.id === studentId);

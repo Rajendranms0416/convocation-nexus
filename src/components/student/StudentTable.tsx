@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Check, X, Search, ChevronDown, AlertTriangle, Loader2, Clock } from 'lucide-react';
+import { Check, X, Search, ChevronDown, AlertTriangle, Loader2, Clock, Award, UserX } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -135,6 +136,31 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Sort students based on role needs
+  const sortedStudents = [...students].sort((a, b) => {
+    // For folder-in-charge: Show absentees first
+    if (role === 'folder-in-charge') {
+      // First prioritize by absence in robe slot 1
+      if (!a.robeSlot1 && b.robeSlot1) return -1;
+      if (a.robeSlot1 && !b.robeSlot1) return 1;
+      
+      // Then by absence in robe slot 2
+      if (!a.robeSlot2 && b.robeSlot2) return -1;
+      if (a.robeSlot2 && !b.robeSlot2) return 1;
+    }
+    
+    // For presenter: Show rank holders and gold medalists first
+    if (role === 'presenter') {
+      if (a.isGoldMedalist && !b.isGoldMedalist) return -1;
+      if (!a.isGoldMedalist && b.isGoldMedalist) return 1;
+      if (a.isRankHolder && !b.isRankHolder) return -1;
+      if (!a.isRankHolder && b.isRankHolder) return 1;
+    }
+    
+    // Default sort by name
+    return a.name.localeCompare(b.name);
+  });
+
   // Loading state for the table
   if (isLoading) {
     return (
@@ -210,17 +236,6 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
         </div>
       </div>
       
-      {/* Sync status warning when offline changes exist */}
-      {needsSync && (
-        <div className="bg-amber-50 border border-amber-200 rounded-md p-4 flex items-center gap-3 text-amber-800 mb-4">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
-          <div className="flex-1">
-            <h4 className="font-medium">Unsynchronized changes</h4>
-            <p className="text-sm">Some changes haven't been synchronized with the server yet. They will sync automatically when your internet connection is restored.</p>
-          </div>
-        </div>
-      )}
-      
       {/* Time window restriction message */}
       {role !== 'super-admin' && !isWithinTimeWindow(role) && (
         <div className="bg-convocation-error/10 border border-convocation-error/20 rounded-md p-4 flex items-center gap-3 text-convocation-error mb-4">
@@ -242,14 +257,14 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
             onClick={() => setActiveRobeTab('slot1')}
             className="transition-normal"
           >
-            Robe Slot 1
+            Robe Attendance
           </Button>
           <Button 
             variant={activeRobeTab === 'slot2' ? 'default' : 'outline'} 
             onClick={() => setActiveRobeTab('slot2')}
             className="transition-normal"
           >
-            Robe Slot 2
+            Parade Attendance
           </Button>
         </div>
       )}
@@ -257,19 +272,19 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
       {/* Display information about filtered students */}
       <div className="bg-convocation-50 p-4 rounded-md border border-convocation-100 mb-4">
         <h3 className="font-medium mb-2">
-          {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "First Robe Attendance"}
-          {role === 'robe-in-charge' && activeRobeTab === 'slot2' && "Second Robe Attendance (Students who completed Slot 1)"}
-          {role === 'folder-in-charge' && "Folder Distribution (Students who completed both robe slots)"}
+          {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "Robe Attendance"}
+          {role === 'robe-in-charge' && activeRobeTab === 'slot2' && "Parade Attendance (Students who attended Robe)"}
+          {role === 'folder-in-charge' && "Folder Distribution (Students who completed both attendances)"}
           {role === 'presenter' && "Presentation (Students who completed all previous steps)"}
           {role === 'super-admin' && "All Students"}
         </h3>
         <p className="text-sm text-convocation-400">
           {role === 'robe-in-charge' && activeRobeTab === 'slot1' && 
-            "Mark students who are present to collect their robes in Slot 1."}
+            "Mark students who are present to collect their robes."}
           {role === 'robe-in-charge' && activeRobeTab === 'slot2' && 
-            `Showing students who completed Slot 1. Mark their attendance for Slot 2.`}
+            `Showing students who completed Robe attendance. Mark their attendance for Parade.`}
           {role === 'folder-in-charge' && 
-            `Showing students who completed both robe slots. Mark students who have collected their folders.`}
+            `Showing students who completed both attendances. Mark students who have collected their folders.`}
           {role === 'presenter' && 
             `Showing students who have completed all previous steps. Mark students who have been presented.`}
           {role === 'super-admin' && 
@@ -290,16 +305,16 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                 <TableHead>Section</TableHead>
                 <TableHead>Attendance</TableHead>
                 {role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
-                  <TableHead>Robe Slot 1</TableHead>
+                  <TableHead>Robe Attendance</TableHead>
                 )}
                 {role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
-                  <TableHead>Robe Slot 2</TableHead>
+                  <TableHead>Parade Attendance</TableHead>
                 )}
                 {role === 'super-admin' && (
                   <>
                     <TableHead>Robe</TableHead>
-                    <TableHead>Slot 1</TableHead>
-                    <TableHead>Slot 2</TableHead>
+                    <TableHead>Robe Attendance</TableHead>
+                    <TableHead>Parade Attendance</TableHead>
                   </>
                 )}
                 {role === 'folder-in-charge' && <TableHead>Folder</TableHead>}
@@ -307,99 +322,134 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.length > 0 ? (
-                students.map((student, index) => (
-                  <TableRow key={student.id} className="hover:bg-convocation-50 transition-normal">
-                    <TableCell className="font-medium">{(currentPage - 1) * pageSize + index + 1}</TableCell>
-                    <TableCell>{student.name}</TableCell>
-                    <TableCell>
-                      <code className="px-1 py-0.5 rounded bg-convocation-100 text-xs">
-                        {student.registrationNumber}
-                      </code>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="whitespace-nowrap">
-                        {student.school}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[150px] truncate" title={student.department}>
-                      {student.department}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="whitespace-nowrap">
-                        Section {student.section}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <StatusButton
-                        status={student.attendance}
-                        onClick={() => handleStatusUpdate(student.id, 'attendance', student.attendance)}
-                        disabled={user?.role !== 'super-admin'}
-                      />
-                    </TableCell>
-                    {role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
+              {sortedStudents.length > 0 ? (
+                sortedStudents.map((student, index) => {
+                  // Highlight classes based on student status
+                  const isAbsentee = !student.robeSlot1 || !student.robeSlot2;
+                  const isSpecial = student.isGoldMedalist || student.isRankHolder;
+                  
+                  return (
+                    <TableRow 
+                      key={student.id} 
+                      className={`hover:bg-convocation-50 transition-normal ${
+                        isAbsentee && role === 'folder-in-charge' ? 'bg-red-50' : ''
+                      } ${
+                        isSpecial && role === 'presenter' ? 'bg-amber-50' : ''
+                      }`}
+                    >
+                      <TableCell className="font-medium">{(currentPage - 1) * pageSize + index + 1}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {student.name}
+                          {student.isGoldMedalist && (
+                            <Badge className="ml-1 bg-amber-500">
+                              <Award className="h-3 w-3 mr-1" />
+                              Gold Medalist
+                            </Badge>
+                          )}
+                          {student.isRankHolder && !student.isGoldMedalist && (
+                            <Badge className="ml-1 bg-blue-500">
+                              <Award className="h-3 w-3 mr-1" />
+                              Rank Holder
+                            </Badge>
+                          )}
+                          {isAbsentee && role === 'folder-in-charge' && (
+                            <Badge variant="destructive" className="ml-1">
+                              <UserX className="h-3 w-3 mr-1" />
+                              Absentee
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <code className="px-1 py-0.5 rounded bg-convocation-100 text-xs">
+                          {student.registrationNumber}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="whitespace-nowrap">
+                          {student.school}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[150px] truncate" title={student.department}>
+                        {student.department}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="whitespace-nowrap">
+                          Section {student.section}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <StatusButton
-                          status={student.robeSlot1}
-                          onClick={() => handleStatusUpdate(student.id, 'robeSlot1', student.robeSlot1)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge')}
+                          status={student.attendance}
+                          onClick={() => handleStatusUpdate(student.id, 'attendance', student.attendance)}
+                          disabled={user?.role !== 'super-admin'}
                         />
                       </TableCell>
-                    )}
-                    {role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
-                      <TableCell>
-                        <StatusButton
-                          status={student.robeSlot2}
-                          onClick={() => handleStatusUpdate(student.id, 'robeSlot2', student.robeSlot2)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge')}
-                        />
-                      </TableCell>
-                    )}
-                    {role === 'super-admin' && (
-                      <>
-                        <TableCell>
-                          <StatusButton
-                            status={student.hasTakenRobe}
-                            onClick={() => handleStatusUpdate(student.id, 'hasTakenRobe', student.hasTakenRobe)}
-                            disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
-                          />
-                        </TableCell>
+                      {role === 'robe-in-charge' && activeRobeTab === 'slot1' && (
                         <TableCell>
                           <StatusButton
                             status={student.robeSlot1}
                             onClick={() => handleStatusUpdate(student.id, 'robeSlot1', student.robeSlot1)}
-                            disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                            disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge')}
                           />
                         </TableCell>
+                      )}
+                      {role === 'robe-in-charge' && activeRobeTab === 'slot2' && (
                         <TableCell>
                           <StatusButton
                             status={student.robeSlot2}
                             onClick={() => handleStatusUpdate(student.id, 'robeSlot2', student.robeSlot2)}
-                            disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                            disabled={(user?.role !== 'super-admin' && user?.role !== 'robe-in-charge')}
                           />
                         </TableCell>
-                      </>
-                    )}
-                    {role === 'folder-in-charge' && (
-                      <TableCell>
-                        <StatusButton
-                          status={student.hasTakenFolder}
-                          onClick={() => handleStatusUpdate(student.id, 'hasTakenFolder', student.hasTakenFolder)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'folder-in-charge')}
-                        />
-                      </TableCell>
-                    )}
-                    {role === 'presenter' && (
-                      <TableCell>
-                        <StatusButton
-                          status={student.hasBeenPresented}
-                          onClick={() => handleStatusUpdate(student.id, 'hasBeenPresented', student.hasBeenPresented)}
-                          disabled={(user?.role !== 'super-admin' && user?.role !== 'presenter')}
-                        />
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
+                      )}
+                      {role === 'super-admin' && (
+                        <>
+                          <TableCell>
+                            <StatusButton
+                              status={student.hasTakenRobe}
+                              onClick={() => handleStatusUpdate(student.id, 'hasTakenRobe', student.hasTakenRobe)}
+                              disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <StatusButton
+                              status={student.robeSlot1}
+                              onClick={() => handleStatusUpdate(student.id, 'robeSlot1', student.robeSlot1)}
+                              disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <StatusButton
+                              status={student.robeSlot2}
+                              onClick={() => handleStatusUpdate(student.id, 'robeSlot2', student.robeSlot2)}
+                              disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                            />
+                          </TableCell>
+                        </>
+                      )}
+                      {role === 'folder-in-charge' && (
+                        <TableCell>
+                          <StatusButton
+                            status={student.hasTakenFolder}
+                            onClick={() => handleStatusUpdate(student.id, 'hasTakenFolder', student.hasTakenFolder)}
+                            disabled={(user?.role !== 'super-admin' && user?.role !== 'folder-in-charge')}
+                          />
+                        </TableCell>
+                      )}
+                      {role === 'presenter' && (
+                        <TableCell>
+                          <StatusButton
+                            status={student.hasBeenPresented}
+                            onClick={() => handleStatusUpdate(student.id, 'hasBeenPresented', student.hasBeenPresented)}
+                            disabled={(user?.role !== 'super-admin' && user?.role !== 'presenter')}
+                          />
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell colSpan={12} className="h-24 text-center">

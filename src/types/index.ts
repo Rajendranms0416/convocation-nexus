@@ -7,6 +7,7 @@ export interface User {
   email: string;
   role: Role;
   avatar?: string;
+  assignedClasses?: string[]; // Added for feature 5: Super Admin can assign classes
 }
 
 export interface Student {
@@ -24,6 +25,8 @@ export interface Student {
   attendance: boolean;
   robeSlot1: boolean;
   robeSlot2: boolean;
+  isGoldMedalist?: boolean; // Added for feature highlighting
+  isRankHolder?: boolean; // Added for feature highlighting
 }
 
 export type FilterOption = {

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle, Activity } from 'lucide-react';
+import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle, Award, UserX } from 'lucide-react';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import Pagination from '@/components/common/Pagination';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface MobileStudentTableProps {
   role: 'robe-in-charge' | 'folder-in-charge' | 'presenter' | 'super-admin';
@@ -203,6 +204,31 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
     return 'attendance';
   };
 
+  // Sort students based on role needs
+  const sortedStudents = [...students].sort((a, b) => {
+    // For folder-in-charge: Show absentees first
+    if (role === 'folder-in-charge') {
+      // First prioritize by absence in robe slot 1
+      if (!a.robeSlot1 && b.robeSlot1) return -1;
+      if (a.robeSlot1 && !b.robeSlot1) return 1;
+      
+      // Then by absence in robe slot 2
+      if (!a.robeSlot2 && b.robeSlot2) return -1;
+      if (a.robeSlot2 && !b.robeSlot2) return 1;
+    }
+    
+    // For presenter: Show rank holders and gold medalists first
+    if (role === 'presenter') {
+      if (a.isGoldMedalist && !b.isGoldMedalist) return -1;
+      if (!a.isGoldMedalist && b.isGoldMedalist) return 1;
+      if (a.isRankHolder && !b.isRankHolder) return -1;
+      if (!a.isRankHolder && b.isRankHolder) return 1;
+    }
+    
+    // Default sort by name
+    return a.name.localeCompare(b.name);
+  });
+
   const renderSuperAdminTabs = () => {
     return (
       <Tabs 
@@ -212,8 +238,8 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         onValueChange={setActiveTab}
       >
         <TabsList className="grid grid-cols-5 w-full mb-4">
-          <TabsTrigger value="robeSlot1">Robe 1</TabsTrigger>
-          <TabsTrigger value="robeSlot2">Robe 2</TabsTrigger>
+          <TabsTrigger value="robeSlot1">Robe</TabsTrigger>
+          <TabsTrigger value="robeSlot2">Parade</TabsTrigger>
           <TabsTrigger value="folder">Folder</TabsTrigger>
           <TabsTrigger value="presenter">Present</TabsTrigger>
           <TabsTrigger value="all">All</TabsTrigger>
@@ -221,7 +247,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         
         <TabsContent value="robeSlot1" className="mt-0">
           <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
-            <h3 className="font-medium text-sm">Robe Slot 1 Attendance</h3>
+            <h3 className="font-medium text-sm">Robe Attendance</h3>
             <p className="text-xs text-convocation-400 mt-1">
               {students.length} students found
               {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
@@ -231,7 +257,7 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         
         <TabsContent value="robeSlot2" className="mt-0">
           <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
-            <h3 className="font-medium text-sm">Robe Slot 2 Attendance</h3>
+            <h3 className="font-medium text-sm">Parade Attendance</h3>
             <p className="text-xs text-convocation-400 mt-1">
               {students.length} students found
               {(locationFilter || schoolFilter || departmentFilter || sectionFilter) && " with applied filters"}
@@ -323,21 +349,21 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
             <div className="space-y-4 py-4">
               {role === 'robe-in-charge' && (
                 <div className="space-y-2">
-                  <Label>Robe Slot</Label>
+                  <Label>Attendance Type</Label>
                   <div className="flex gap-2">
                     <Button 
                       variant={activeRobeTab === 'slot1' ? 'default' : 'outline'} 
                       onClick={() => setActiveRobeTab('slot1')}
                       className="flex-1"
                     >
-                      Slot 1
+                      Robe
                     </Button>
                     <Button 
                       variant={activeRobeTab === 'slot2' ? 'default' : 'outline'} 
                       onClick={() => setActiveRobeTab('slot2')}
                       className="flex-1"
                     >
-                      Slot 2
+                      Parade
                     </Button>
                   </div>
                 </div>
@@ -432,13 +458,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
         </Sheet>
       </div>
       
-      {needsSync && (
-        <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-center gap-2 text-amber-800">
-          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-          <p className="text-xs">Changes will sync when your internet connection is restored.</p>
-        </div>
-      )}
-      
       {role !== 'super-admin' && !isWithinTimeWindow(role) && (
         <div className="bg-convocation-error/10 border border-convocation-error/20 rounded-md p-3 flex items-center gap-2 text-convocation-error">
           <Clock className="h-4 w-4 flex-shrink-0" />
@@ -451,8 +470,8 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
       ) : (
         <div className="bg-convocation-50 p-3 rounded-md border border-convocation-100">
           <h3 className="font-medium text-sm">
-            {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "First Robe Attendance"}
-            {role === 'robe-in-charge' && activeRobeTab === 'slot2' && "Second Robe Attendance"}
+            {role === 'robe-in-charge' && activeRobeTab === 'slot1' && "Robe Attendance"}
+            {role === 'robe-in-charge' && activeRobeTab === 'slot2' && "Parade Attendance"}
             {role === 'folder-in-charge' && "Folder Distribution"}
             {role === 'presenter' && "Presentation"}
           </h3>
@@ -464,8 +483,8 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
       )}
 
       <div className="space-y-2">
-        {students.length > 0 ? (
-          students.map((student) => (
+        {sortedStudents.length > 0 ? (
+          sortedStudents.map((student) => (
             <StudentCard 
               key={student.id} 
               student={student} 
@@ -533,12 +552,42 @@ const StudentCard: React.FC<StudentCardProps> = ({
   
   const statusValue = getStatusValue();
   
+  // Determine if student has special status
+  const isAbsentee = !student.robeSlot1 || !student.robeSlot2;
+  const isSpecial = student.isGoldMedalist || student.isRankHolder;
+  
+  // Customize card background based on student status
+  const cardBg = 
+    (isAbsentee && role === 'folder-in-charge') ? 'bg-red-50 border-red-200' :
+    (isSpecial && role === 'presenter') ? 'bg-amber-50 border-amber-200' :
+    '';
+  
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden ${cardBg}`}>
       <CardContent className="p-3">
         <div className="flex justify-between items-center">
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium truncate">{student.name}</h3>
+            <div className="flex flex-wrap items-center gap-1">
+              <h3 className="font-medium truncate">{student.name}</h3>
+              {student.isGoldMedalist && (
+                <Badge className="bg-amber-500">
+                  <Award className="h-3 w-3 mr-1" />
+                  Gold
+                </Badge>
+              )}
+              {student.isRankHolder && !student.isGoldMedalist && (
+                <Badge className="bg-blue-500">
+                  <Award className="h-3 w-3 mr-1" />
+                  Rank
+                </Badge>
+              )}
+              {isAbsentee && role === 'folder-in-charge' && (
+                <Badge variant="destructive">
+                  <UserX className="h-3 w-3 mr-1" />
+                  Absent
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center mt-1">
               <code className="px-1 py-0.5 rounded bg-convocation-100 text-xs mr-2">
                 {student.registrationNumber}

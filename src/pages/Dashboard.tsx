@@ -7,10 +7,47 @@ import StudentTable from '@/components/student/StudentTable';
 import StatsCards from '@/components/dashboard/StatsCards';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TimeDisplay from '@/components/settings/TimeDisplay';
+import { Wifi, WifiOff, RefreshCw, Clock } from 'lucide-react';
+import { useStudents } from '@/contexts/StudentContext';
+import { useToast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const Dashboard: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { lastSyncTime, syncData, isSyncing, needsSync, isWithinTimeWindow } = useStudents();
+  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
+  const { toast } = useToast();
+
+  // Monitor online/offline status
+  React.useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast({
+        title: "You're back online",
+        description: "Syncing your data...",
+      });
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({
+        variant: "destructive",
+        title: "You're offline",
+        description: "Changes will be saved locally until connection is restored.",
+      });
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [toast]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -29,29 +66,78 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  const canEditRecords = isWithinTimeWindow(user.role);
+
   return (
     <div className="min-h-screen bg-convocation-50 flex flex-col">
       <Header />
+      
+      {/* Network Status Bar - Top */}
+      <div className="bg-background border-b border-convocation-100 p-2 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className={cn(
+            "flex items-center gap-1 py-1 px-2 rounded-md text-xs", 
+            isOnline ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+          )}>
+            {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+            <span className="font-medium">{isOnline ? 'Online' : 'Offline'}</span>
+          </div>
+          
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span>
+              {lastSyncTime 
+                ? `Last sync: ${formatDistanceToNow(lastSyncTime, { addSuffix: true })}` 
+                : 'Never synced'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={syncData}
+            disabled={isSyncing || !isOnline}
+            size="sm"
+            variant="outline"
+            className="text-xs h-8"
+          >
+            {isSyncing ? (
+              <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <RefreshCw className="h-3 w-3 mr-1" />
+            )}
+            Sync
+          </Button>
+          
+          <TimeDisplay className="hidden md:flex" />
+        </div>
+      </div>
+      
       <main className="flex-1 container mx-auto px-4 py-6 md:py-8 animate-fade-in">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
             <p className="text-muted-foreground">Welcome back, {user.name}</p>
+            {!canEditRecords && user.role !== 'super-admin' && (
+              <p className="text-sm text-amber-600 mt-1">
+                <Clock className="h-3 w-3 inline mr-1" />
+                You are outside your operating hours. View only mode enabled.
+              </p>
+            )}
           </div>
-          <TimeDisplay className="hidden md:flex" />
         </div>
         
         <div className="space-y-6">
-          <StatsCards />
+          {user.role === 'super-admin' && <StatsCards />}
           
           <div className="glass-card rounded-lg p-4 border border-convocation-100">
             {user.role === 'super-admin' ? (
               <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="robes">Robes</TabsTrigger>
+                  <TabsTrigger value="robes">Robe Attendance</TabsTrigger>
                   <TabsTrigger value="folders">Folders</TabsTrigger>
-                  <TabsTrigger value="presenter">Presenter</TabsTrigger>
+                  <TabsTrigger value="presenter">Parade</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="mt-4">
                   <StudentTable role="super-admin" />
