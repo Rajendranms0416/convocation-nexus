@@ -6,7 +6,6 @@ import Header from '@/components/layout/Header';
 import StudentTable from '@/components/student/StudentTable';
 import StatsCards from '@/components/dashboard/StatsCards';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import TimeDisplay from '@/components/settings/TimeDisplay';
 import { Wifi, WifiOff, RefreshCw, Clock } from 'lucide-react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useToast } from '@/hooks/use-toast';
@@ -73,18 +72,18 @@ const Dashboard: React.FC = () => {
       <Header />
       
       {/* Network Status Bar - Top */}
-      <div className="bg-background border-b border-convocation-100 p-2 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2">
+      <div className="bg-background border-b border-convocation-100 p-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
           <div className={cn(
-            "flex items-center gap-1 py-1 px-2 rounded-md text-xs", 
+            "flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium", 
             isOnline ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
           )}>
-            {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-            <span className="font-medium">{isOnline ? 'Online' : 'Offline'}</span>
+            {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+            <span>{isOnline ? 'Online' : 'Offline'}</span>
           </div>
           
-          <div className="text-xs text-muted-foreground flex items-center gap-1">
-            <Clock className="h-3 w-3" />
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <Clock className="h-4 w-4" />
             <span>
               {lastSyncTime 
                 ? `Last sync: ${formatDistanceToNow(lastSyncTime, { addSuffix: true })}` 
@@ -93,24 +92,20 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={syncData}
-            disabled={isSyncing || !isOnline}
-            size="sm"
-            variant="outline"
-            className="text-xs h-8"
-          >
-            {isSyncing ? (
-              <RefreshCw className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <RefreshCw className="h-3 w-3 mr-1" />
-            )}
-            Sync
-          </Button>
-          
-          <TimeDisplay className="hidden md:flex" />
-        </div>
+        <Button 
+          onClick={syncData}
+          disabled={isSyncing || !isOnline}
+          size="default"
+          variant="outline"
+          className="text-sm"
+        >
+          {isSyncing ? (
+            <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          Sync Now
+        </Button>
       </div>
       
       <main className="flex-1 container mx-auto px-4 py-6 md:py-8 animate-fade-in">

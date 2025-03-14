@@ -48,24 +48,24 @@ const NetworkStatusBar: React.FC = () => {
   }, [isOnline, needsSync, isSyncing, syncData]);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-convocation-100 p-2 flex items-center justify-between z-50 shadow-md">
-      <div className="flex items-center gap-2">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-convocation-100 p-3 flex items-center justify-between z-50 shadow-md">
+      <div className="flex items-center gap-3">
         <div className={cn(
-          "flex items-center gap-1 py-1 px-2 rounded-md text-xs", 
+          "flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium", 
           isOnline ? "bg-convocation-success/10 text-convocation-success" : "bg-convocation-error/10 text-convocation-error"
         )}>
           {isOnline ? (
-            <Wifi className="h-3 w-3" />
+            <Wifi className="h-4 w-4" />
           ) : (
-            <WifiOff className="h-3 w-3" />
+            <WifiOff className="h-4 w-4" />
           )}
-          <span className="font-medium">
+          <span>
             {isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
         
-        <div className="text-xs text-muted-foreground flex items-center gap-1">
-          <Clock className="h-3 w-3" />
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          <Clock className="h-4 w-4" />
           <span>
             {lastSyncTime 
               ? `Last sync: ${formatDistanceToNow(lastSyncTime, { addSuffix: true })}` 
@@ -73,7 +73,7 @@ const NetworkStatusBar: React.FC = () => {
           </span>
           
           {needsSync && !isSyncing && (
-            <AlertTriangle className="h-3 w-3 text-convocation-error ml-1" />
+            <AlertTriangle className="h-4 w-4 text-convocation-error ml-1" />
           )}
         </div>
       </div>
@@ -81,14 +81,14 @@ const NetworkStatusBar: React.FC = () => {
       <Button 
         onClick={syncData}
         disabled={isSyncing || !isOnline}
-        size="sm"
+        size="default"
         variant="outline"
-        className="text-xs h-8"
+        className="text-sm"
       >
         {isSyncing ? (
-          <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+          <RefreshCw className="h-4 w-4 animate-spin mr-2" />
         ) : (
-          <RefreshCw className="h-3 w-3 mr-1" />
+          <RefreshCw className="h-4 w-4 mr-2" />
         )}
         Sync Now
       </Button>
