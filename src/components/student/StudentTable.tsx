@@ -18,16 +18,17 @@ import { useToast } from '@/hooks/use-toast';
 
 interface StudentTableProps {
   role: 'robe-in-charge' | 'folder-in-charge' | 'presenter' | 'super-admin';
+  robeTab?: 'slot1' | 'slot2';
 }
 
-const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
+const StudentTable: React.FC<StudentTableProps> = ({ role, robeTab }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [schoolFilter, setSchoolFilter] = useState<string>('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
   const [sectionFilter, setSectionFilter] = useState<string>('');
   const [attendanceStage, setAttendanceStage] = useState<AttendanceStage>('all');
-  const [activeRobeTab, setActiveRobeTab] = useState<'slot1' | 'slot2'>('slot1');
+  const [activeRobeTab, setActiveRobeTab] = useState<'slot1' | 'slot2'>(robeTab || 'slot1');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20); // Fixed page size
   
@@ -72,7 +73,7 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     applyFilters
   ]);
 
-  // Set the appropriate attendance stage based on the role
+  // Set the appropriate attendance stage based on the role and robeTab
   useEffect(() => {
     if (role === 'robe-in-charge') {
       setAttendanceStage(activeRobeTab === 'slot1' ? 'robeSlot1' : 'robeSlot1Completed');
@@ -87,6 +88,13 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
     // Reset to first page when filters change
     setCurrentPage(1);
   }, [role, activeRobeTab]);
+
+  // Update activeRobeTab when robeTab prop changes
+  useEffect(() => {
+    if (robeTab) {
+      setActiveRobeTab(robeTab);
+    }
+  }, [robeTab]);
 
   const locationOptions = filterOptions?.location || [];
   const schoolOptions = filterOptions?.school || [];
@@ -248,8 +256,8 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
         </div>
       )}
       
-      {/* Robe stage tabs for robe-in-charge */}
-      {role === 'robe-in-charge' && (
+      {/* Robe stage tabs for robe-in-charge, only when not used in Dashboard with robeTab prop */}
+      {role === 'robe-in-charge' && !robeTab && (
         <div className="flex gap-2 mb-4">
           <Button 
             variant={activeRobeTab === 'slot1' ? 'default' : 'outline'} 

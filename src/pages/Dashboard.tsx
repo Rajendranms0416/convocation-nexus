@@ -133,17 +133,21 @@ const Dashboard: React.FC = () => {
           <div className="glass-card rounded-lg p-4 border border-convocation-100">
             {user.role === 'super-admin' ? (
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="robes">Robe Attendance</TabsTrigger>
+                  <TabsTrigger value="parade">Parade Attendance</TabsTrigger>
                   <TabsTrigger value="folders">Folders</TabsTrigger>
-                  <TabsTrigger value="presenter">Parade</TabsTrigger>
+                  <TabsTrigger value="presenter">Presented</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="mt-4">
                   <StudentTable role="super-admin" />
                 </TabsContent>
                 <TabsContent value="robes" className="mt-4">
                   <StudentTable role="robe-in-charge" />
+                </TabsContent>
+                <TabsContent value="parade" className="mt-4">
+                  <StudentTable role="robe-in-charge" robeTab="slot2" />
                 </TabsContent>
                 <TabsContent value="folders" className="mt-4">
                   <StudentTable role="folder-in-charge" />
