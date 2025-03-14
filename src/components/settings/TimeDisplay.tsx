@@ -60,7 +60,7 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className, isMobile = false }
     return now >= windowStart && now <= windowEnd;
   };
 
-  // Format time windows for display
+  // Format time window for display
   const formatTimeWindow = (role: Role): string => {
     if (!timeWindows[role]) return 'Not set';
     
@@ -111,8 +111,8 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className, isMobile = false }
     }
   };
 
-  // If no time windows are set, don't show anything
-  if (Object.keys(timeWindows).length === 0) return null;
+  // If no time windows are set or no active role, don't show anything
+  if (Object.keys(timeWindows).length === 0 || !activeRole) return null;
 
   return (
     <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className, isMobile = false }
         <HoverCardTrigger asChild>
           <Button variant="outline" size="sm" className={`${className} gap-2`}>
             <Timer className="h-4 w-4" />
-            <span className="hidden md:inline">Time Windows</span>
+            <span className="hidden md:inline">Time Window</span>
             {activeRole && isWithinTimeWindow(activeRole) && (
               <Badge variant="outline" className="ml-2 h-5 px-1 bg-green-100 text-green-800 border-green-200">
                 {getRemainingTime()}
@@ -129,32 +129,45 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className, isMobile = false }
           </Button>
         </HoverCardTrigger>
         <HoverCardContent className="w-80 p-4">
-          <h3 className="font-medium text-lg mb-2">Convocation Time Windows</h3>
+          <h3 className="font-medium text-lg mb-2">Your Time Window</h3>
           <div className="space-y-3">
-            {(Object.keys(timeWindows) as Role[]).map((role) => (
-              <div key={role} className="flex items-center justify-between">
+            {activeRole && (
+              <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium capitalize">{role.replace(/-/g, ' ')}</p>
-                  <p className="text-xs text-muted-foreground">{formatTimeWindow(role)}</p>
+                  <p className="font-medium capitalize">{activeRole.replace(/-/g, ' ')}</p>
+                  <p className="text-xs text-muted-foreground">{formatTimeWindow(activeRole)}</p>
                 </div>
-                {getStatusBadge(role)}
+                {getStatusBadge(activeRole)}
               </div>
-            ))}
+            )}
           </div>
-          {activeRole && (
-            <div className="mt-4 pt-3 border-t">
-              <p className="text-sm">
-                <span className="font-medium">Your role:</span> {activeRole.replace(/-/g, ' ')}
+          <div className="mt-4 pt-3 border-t">
+            {isWithinTimeWindow(activeRole) ? (
+              <p className="text-sm text-green-600 font-medium">
+                You can currently edit student records
               </p>
-              {isWithinTimeWindow(activeRole) ? (
-                <p className="text-sm text-green-600 font-medium">
-                  You can currently edit student records
-                </p>
-              ) : (
-                <p className="text-sm text-convocation-error font-medium">
-                  You can only view records at this time
-                </p>
-              )}
+            ) : (
+              <p className="text-sm text-convocation-error font-medium">
+                You can only view records at this time
+              </p>
+            )}
+          </div>
+          
+          {/* Show all time windows for admin */}
+          {isAdmin && Object.keys(timeWindows).length > 0 && (
+            <div className="mt-4 pt-3 border-t">
+              <h4 className="font-medium mb-2">All Time Windows (Admin View)</h4>
+              <div className="space-y-2">
+                {(Object.keys(timeWindows) as Role[]).map((role) => (
+                  <div key={role} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium capitalize">{role.replace(/-/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground">{formatTimeWindow(role)}</p>
+                    </div>
+                    {getStatusBadge(role)}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </HoverCardContent>

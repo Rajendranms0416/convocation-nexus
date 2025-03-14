@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check, X, Search, ChevronDown, AlertTriangle, Loader2, Clock, Award, UserX } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -312,9 +311,10 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                 )}
                 {role === 'super-admin' && (
                   <>
-                    <TableHead>Robe</TableHead>
                     <TableHead>Robe Attendance</TableHead>
                     <TableHead>Parade Attendance</TableHead>
+                    <TableHead>Folder Given</TableHead>
+                    <TableHead>Presented</TableHead>
                   </>
                 )}
                 {role === 'folder-in-charge' && <TableHead>Folder</TableHead>}
@@ -408,13 +408,6 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                         <>
                           <TableCell>
                             <StatusButton
-                              status={student.hasTakenRobe}
-                              onClick={() => handleStatusUpdate(student.id, 'hasTakenRobe', student.hasTakenRobe)}
-                              disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <StatusButton
                               status={student.robeSlot1}
                               onClick={() => handleStatusUpdate(student.id, 'robeSlot1', student.robeSlot1)}
                               disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
@@ -425,6 +418,20 @@ const StudentTable: React.FC<StudentTableProps> = ({ role }) => {
                               status={student.robeSlot2}
                               onClick={() => handleStatusUpdate(student.id, 'robeSlot2', student.robeSlot2)}
                               disabled={user?.role !== 'super-admin' && user?.role !== 'robe-in-charge'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <StatusButton
+                              status={student.hasTakenFolder}
+                              onClick={() => handleStatusUpdate(student.id, 'hasTakenFolder', student.hasTakenFolder)}
+                              disabled={user?.role !== 'super-admin' && user?.role !== 'folder-in-charge'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <StatusButton
+                              status={student.hasBeenPresented}
+                              onClick={() => handleStatusUpdate(student.id, 'hasBeenPresented', student.hasBeenPresented)}
+                              disabled={user?.role !== 'super-admin' && user?.role !== 'presenter'}
                             />
                           </TableCell>
                         </>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, CheckSquare, FileText, Award } from 'lucide-react';
+import { Users, CheckSquare, FileText, Award, UserCheck } from 'lucide-react';
 import { useStudents } from '@/contexts/StudentContext';
 
 const StatsCards: React.FC = () => {
@@ -30,7 +30,8 @@ const StatsCards: React.FC = () => {
 
   const totalStudents = students.length;
   const presentStudents = students.filter(s => s.attendance).length;
-  const robesTaken = students.filter(s => s.hasTakenRobe).length;
+  const robeAttendance = students.filter(s => s.robeSlot1).length;
+  const paradeAttendance = students.filter(s => s.robeSlot2).length;
   const foldersTaken = students.filter(s => s.hasTakenFolder).length;
   const presented = students.filter(s => s.hasBeenPresented).length;
 
@@ -43,30 +44,37 @@ const StatsCards: React.FC = () => {
       color: "bg-convocation-accent text-white",
     },
     {
-      title: "Robes Collected",
-      value: robesTaken,
-      icon: <Award className="h-4 w-4" />,
-      subtitle: `${Math.round((robesTaken / totalStudents) * 100)}% of total students`,
+      title: "Robe Attendance",
+      value: robeAttendance,
+      icon: <UserCheck className="h-4 w-4" />,
+      subtitle: `${Math.round((robeAttendance / totalStudents) * 100)}% of total students`,
       color: "bg-convocation-success text-white",
     },
     {
-      title: "Folders Collected",
+      title: "Parade Attendance",
+      value: paradeAttendance,
+      icon: <UserCheck className="h-4 w-4" />,
+      subtitle: `${Math.round((paradeAttendance / totalStudents) * 100)}% of total students`,
+      color: "bg-convocation-warning text-white",
+    },
+    {
+      title: "Folders Given",
       value: foldersTaken,
       icon: <FileText className="h-4 w-4" />,
       subtitle: `${Math.round((foldersTaken / totalStudents) * 100)}% of total students`,
-      color: "bg-convocation-warning text-white",
+      color: "bg-convocation-error text-white",
     },
     {
       title: "Students Presented",
       value: presented,
       icon: <CheckSquare className="h-4 w-4" />,
       subtitle: `${Math.round((presented / totalStudents) * 100)}% of total students`,
-      color: "bg-convocation-error text-white",
+      color: "bg-purple-600 text-white",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
       {stats.map((stat, index) => (
         <Card key={index} className="overflow-hidden hover-scale border-convocation-100">
           <CardHeader className={`flex flex-row items-center justify-between pb-2 ${stat.color}`}>
