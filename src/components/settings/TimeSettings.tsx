@@ -321,8 +321,8 @@ const TimeSettings: React.FC<TimeSettingsProps> = ({ className, isMobile = false
           Time Settings
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[450px]" align="center">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[450px] mx-auto">
+        <DialogHeader className="text-center">
           <DialogTitle>Time Window Settings</DialogTitle>
           <DialogDescription>
             Set the time windows for each role.
