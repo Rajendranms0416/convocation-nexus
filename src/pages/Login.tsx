@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
 import MobileLoginForm from '@/components/auth/MobileLoginForm';
-import DeviceSelectionPrompt from '@/components/common/DeviceSelectionPrompt';
 import { logDeviceUsage } from '@/utils/deviceLogger';
 
 const Login: React.FC = () => {
@@ -17,20 +16,22 @@ const Login: React.FC = () => {
   console.log('Login rendering, device param:', deviceParam);
 
   useEffect(() => {
-    // If device is in URL params, use it and save to localStorage
+    // If device is in URL params, use it
     if (deviceParam === 'desktop' || deviceParam === 'mobile') {
       console.log('Setting device from URL params:', deviceParam);
       setDeviceType(deviceParam);
-      localStorage.setItem('devicePreference', deviceParam);
     } else {
-      // Otherwise check localStorage
+      // Check localStorage if not in URL
       const storedPreference = localStorage.getItem('devicePreference') as 'desktop' | 'mobile' | null;
       if (storedPreference) {
         console.log('Using stored device preference:', storedPreference);
         setDeviceType(storedPreference);
+      } else {
+        // If no device preference is set, redirect to device selection
+        navigate('/', { replace: true });
       }
     }
-  }, [deviceParam]);
+  }, [deviceParam, navigate]);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading && deviceType && user) {
@@ -60,15 +61,14 @@ const Login: React.FC = () => {
     );
   }
 
-  // If no device type is set, show the device selection prompt
+  // If no device type is set, show loading until redirect happens
   if (!deviceType) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
-        <DeviceSelectionPrompt onSelect={(type) => {
-          console.log('Device selected:', type);
-          setDeviceType(type);
-          localStorage.setItem('devicePreference', type);
-        }} />
+      <div className="flex h-screen flex-col items-center justify-center">
+        <div className="animate-pulse space-y-4 flex flex-col items-center">
+          <div className="h-12 w-12 rounded-full bg-convocation-100"></div>
+          <div className="h-4 w-48 rounded bg-convocation-100"></div>
+        </div>
       </div>
     );
   }

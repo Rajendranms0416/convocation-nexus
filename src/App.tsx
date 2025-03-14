@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { StudentProvider } from "@/contexts/StudentContext";
+import DeviceSelectionPrompt from "@/components/common/DeviceSelectionPrompt";
 
 // Lazy load route components
 const Login = lazy(() => import("./pages/Login"));
@@ -34,6 +35,14 @@ const queryClient = new QueryClient({
   },
 });
 
+const DeviceSelection = () => {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
+      <DeviceSelectionPrompt />
+    </div>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -44,7 +53,7 @@ const App = () => (
           <BrowserRouter>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/" element={<DeviceSelection />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/mobile-dashboard" element={<MobileDashboard />} />

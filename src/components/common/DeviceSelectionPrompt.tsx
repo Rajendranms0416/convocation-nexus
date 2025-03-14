@@ -42,41 +42,39 @@ const DeviceSelectionPrompt: React.FC<DeviceSelectionPromptProps> = ({ onSelect 
   if (hasSelected) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md mx-auto animate-fade-in">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome to Convocation Nexus</CardTitle>
-          <CardDescription className="text-center">
-            Choose your preferred interface
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4 pt-6">
-          <Button 
-            variant="outline" 
-            className="h-32 flex flex-col items-center justify-center gap-3 hover:border-convocation-accent hover:bg-convocation-50"
-            onClick={() => handleDeviceSelection('desktop')}
-          >
-            <Laptop className="h-10 w-10" />
-            <span className="font-medium">Desktop View</span>
-            <span className="text-xs text-muted-foreground">Full interface with all features</span>
-          </Button>
-          <Button 
-            variant="outline"
-            className="h-32 flex flex-col items-center justify-center gap-3 hover:border-convocation-accent hover:bg-convocation-50"
-            onClick={() => handleDeviceSelection('mobile')}
-          >
-            <Smartphone className="h-10 w-10" />
-            <span className="font-medium">Mobile View</span>
-            <span className="text-xs text-muted-foreground">Optimized for attendance tracking</span>
-          </Button>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <p className="text-xs text-center text-muted-foreground">
-            You can change this preference later in settings
-          </p>
-        </CardFooter>
-      </Card>
-    </div>
+    <Card className="w-full max-w-md mx-auto animate-fade-in">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">Welcome to Convocation Nexus</CardTitle>
+        <CardDescription className="text-center">
+          Choose your preferred interface
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid grid-cols-2 gap-4 pt-6">
+        <Button 
+          variant="outline" 
+          className="h-32 flex flex-col items-center justify-center gap-3 hover:border-convocation-accent hover:bg-convocation-50"
+          onClick={() => handleDeviceSelection('desktop')}
+        >
+          <Laptop className="h-10 w-10" />
+          <span className="font-medium">Desktop View</span>
+          <span className="text-xs text-muted-foreground">Full interface with all features</span>
+        </Button>
+        <Button 
+          variant="outline"
+          className="h-32 flex flex-col items-center justify-center gap-3 hover:border-convocation-accent hover:bg-convocation-50"
+          onClick={() => handleDeviceSelection('mobile')}
+        >
+          <Smartphone className="h-10 w-10" />
+          <span className="font-medium">Mobile View</span>
+          <span className="text-xs text-muted-foreground">Optimized for attendance tracking</span>
+        </Button>
+      </CardContent>
+      <CardFooter className="flex flex-col space-y-2">
+        <p className="text-xs text-center text-muted-foreground">
+          You can change this preference later in settings
+        </p>
+      </CardFooter>
+    </Card>
   );
 };
 
