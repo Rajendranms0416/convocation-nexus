@@ -35,7 +35,9 @@ const Header = () => {
             />
             <div>
               <h1 className="text-xl font-bold">Convocation Nexus</h1>
-              <TimeDisplay className="text-xs" />
+              <div className="flex justify-center">
+                <TimeDisplay className="text-xs" />
+              </div>
             </div>
           </div>
 

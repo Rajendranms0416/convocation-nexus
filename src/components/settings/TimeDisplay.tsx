@@ -115,7 +115,7 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className, isMobile = false }
   if (Object.keys(timeWindows).length === 0 || !activeRole) return null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center justify-center gap-2">
       <HoverCard>
         <HoverCardTrigger asChild>
           <Button variant="outline" size="sm" className={`${className} gap-2`}>
@@ -128,7 +128,7 @@ const TimeDisplay: React.FC<TimeDisplayProps> = ({ className, isMobile = false }
             )}
           </Button>
         </HoverCardTrigger>
-        <HoverCardContent className="w-80 p-4">
+        <HoverCardContent className="w-80 p-4" align="center">
           <h3 className="font-medium text-lg mb-2">Your Time Window</h3>
           <div className="space-y-3">
             {activeRole && (
