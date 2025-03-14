@@ -25,8 +25,8 @@ export interface Student {
   attendance: boolean;
   robeSlot1: boolean;
   robeSlot2: boolean;
-  isGoldMedalist?: boolean; // Added for feature highlighting
-  isRankHolder?: boolean; // Added for feature highlighting
+  isGoldMedalist?: boolean; // Gold medalist flag for highlighting
+  isRankHolder?: boolean; // Rank holder flag for highlighting (silver)
 }
 
 export type FilterOption = {

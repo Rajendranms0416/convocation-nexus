@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check, X, Search, ChevronDown, AlertTriangle, Loader2, Clock, Award, UserX } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -332,18 +333,26 @@ const StudentTable: React.FC<StudentTableProps> = ({ role, robeTab }) => {
             <TableBody>
               {sortedStudents.length > 0 ? (
                 sortedStudents.map((student, index) => {
-                  // Highlight classes based on student status
+                  // Determine row highlight class based on student status
                   const isAbsentee = !student.robeSlot1 || !student.robeSlot2;
-                  const isSpecial = student.isGoldMedalist || student.isRankHolder;
+                  const isGoldMedalist = student.isGoldMedalist;
+                  const isRankHolder = student.isRankHolder && !student.isGoldMedalist;
+                  
+                  let rowClass = 'hover:bg-convocation-50 transition-normal';
+                  
+                  // Apply highlight classes
+                  if (isAbsentee && (role === 'folder-in-charge' || role === 'super-admin')) {
+                    rowClass = 'bg-red-50 hover:bg-red-100 transition-normal';
+                  } else if (isGoldMedalist) {
+                    rowClass = 'bg-amber-50 hover:bg-amber-100 transition-normal';
+                  } else if (isRankHolder) {
+                    rowClass = 'bg-gray-100 hover:bg-gray-200 transition-normal';
+                  }
                   
                   return (
                     <TableRow 
                       key={student.id} 
-                      className={`hover:bg-convocation-50 transition-normal ${
-                        isAbsentee && role === 'folder-in-charge' ? 'bg-red-50' : ''
-                      } ${
-                        isSpecial && role === 'presenter' ? 'bg-amber-50' : ''
-                      }`}
+                      className={rowClass}
                     >
                       <TableCell className="font-medium">{(currentPage - 1) * pageSize + index + 1}</TableCell>
                       <TableCell>
@@ -361,7 +370,7 @@ const StudentTable: React.FC<StudentTableProps> = ({ role, robeTab }) => {
                               Rank Holder
                             </Badge>
                           )}
-                          {isAbsentee && role === 'folder-in-charge' && (
+                          {isAbsentee && (role === 'folder-in-charge' || role === 'super-admin') && (
                             <Badge variant="destructive" className="ml-1">
                               <UserX className="h-3 w-3 mr-1" />
                               Absentee

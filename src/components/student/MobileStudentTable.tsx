@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check, X, Search, Loader2, Filter, Clock, AlertTriangle, Award, UserX } from 'lucide-react';
 import { Student, FilterOption, AttendanceStage, StudentFilters } from '@/types';
@@ -91,7 +90,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
 
   useEffect(() => {
     if (role === 'super-admin') {
-      // For super admin, we set the attendance stage based on the active tab
       switch (activeTab) {
         case 'robeSlot1':
           setAttendanceStage('robeSlot1');
@@ -181,7 +179,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
   
   const getStatusTypeByRole = () => {
     if (role === 'super-admin') {
-      // For super admin, the status type depends on the active tab
       switch (activeTab) {
         case 'robeSlot1':
           return 'robeSlot1';
@@ -204,20 +201,15 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
     return 'attendance';
   };
 
-  // Sort students based on role needs
   const sortedStudents = [...students].sort((a, b) => {
-    // For folder-in-charge: Show absentees first
     if (role === 'folder-in-charge') {
-      // First prioritize by absence in robe slot 1
       if (!a.robeSlot1 && b.robeSlot1) return -1;
       if (a.robeSlot1 && !b.robeSlot1) return 1;
       
-      // Then by absence in robe slot 2
       if (!a.robeSlot2 && b.robeSlot2) return -1;
       if (a.robeSlot2 && !b.robeSlot2) return 1;
     }
     
-    // For presenter: Show rank holders and gold medalists first
     if (role === 'presenter') {
       if (a.isGoldMedalist && !b.isGoldMedalist) return -1;
       if (!a.isGoldMedalist && b.isGoldMedalist) return 1;
@@ -225,7 +217,6 @@ const MobileStudentTable: React.FC<MobileStudentTableProps> = ({ role }) => {
       if (!a.isRankHolder && b.isRankHolder) return 1;
     }
     
-    // Default sort by name
     return a.name.localeCompare(b.name);
   });
 
@@ -552,15 +543,19 @@ const StudentCard: React.FC<StudentCardProps> = ({
   
   const statusValue = getStatusValue();
   
-  // Determine if student has special status
   const isAbsentee = !student.robeSlot1 || !student.robeSlot2;
-  const isSpecial = student.isGoldMedalist || student.isRankHolder;
+  const isGoldMedalist = student.isGoldMedalist;
+  const isRankHolder = student.isRankHolder && !student.isGoldMedalist;
   
-  // Customize card background based on student status
-  const cardBg = 
-    (isAbsentee && role === 'folder-in-charge') ? 'bg-red-50 border-red-200' :
-    (isSpecial && role === 'presenter') ? 'bg-amber-50 border-amber-200' :
-    '';
+  let cardBg = '';
+  
+  if (isAbsentee && (role === 'folder-in-charge' || role === 'super-admin')) {
+    cardBg = 'bg-red-50 border-red-200';
+  } else if (isGoldMedalist) {
+    cardBg = 'bg-amber-50 border-amber-200';
+  } else if (isRankHolder) {
+    cardBg = 'bg-gray-100 border-gray-200';
+  }
   
   return (
     <Card className={`overflow-hidden ${cardBg}`}>
@@ -581,7 +576,7 @@ const StudentCard: React.FC<StudentCardProps> = ({
                   Rank
                 </Badge>
               )}
-              {isAbsentee && role === 'folder-in-charge' && (
+              {isAbsentee && (role === 'folder-in-charge' || role === 'super-admin') && (
                 <Badge variant="destructive">
                   <UserX className="h-3 w-3 mr-1" />
                   Absent
