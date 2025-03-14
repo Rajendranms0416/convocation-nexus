@@ -1,0 +1,56 @@
+
+<svg width="300" height="75" viewBox="0 0 300 75" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(0, 4)">
+    <!-- Circle and emblem -->
+    <circle cx="32" cy="32" r="30" stroke="#C8A658" stroke-width="1.5" fill="none"/>
+    
+    <!-- Cross -->
+    <line x1="32" y1="2" x2="32" y2="62" stroke="#C8A658" stroke-width="1"/>
+    <line x1="2" y1="32" x2="62" y2="32" stroke="#C8A658" stroke-width="1"/>
+    
+    <!-- Sun rays -->
+    <circle cx="32" cy="32" r="15" stroke="#C8A658" stroke-width="0.75" fill="none"/>
+    
+    <!-- Candle flame -->
+    <path d="M32,25 Q34,20 32,17 Q30,20 32,25" fill="#C8A658"/>
+    
+    <!-- Book at bottom -->
+    <rect x="26" y="42" width="12" height="5" fill="#C8A658"/>
+    
+    <!-- Text around circle - approximation -->
+    <path d="M8,12 A30,30 0 0,1 32,2" stroke="none" fill="none" id="topTextPath"/>
+    <text font-size="4" fill="#C8A658" font-family="serif">
+      <textPath href="#topTextPath">CHRIST</textPath>
+    </text>
+    
+    <path d="M56,12 A30,30 0 0,0 32,2" stroke="none" fill="none" id="topRightTextPath"/>
+    <text font-size="4" fill="#C8A658" font-family="serif">
+      <textPath href="#topRightTextPath">ಕ್ರೈಸ್ಟ್</textPath>
+    </text>
+    
+    <path d="M8,52 A30,30 0 0,0 32,62" stroke="none" fill="none" id="bottomTextPath"/>
+    <text font-size="4" fill="#C8A658" font-family="serif">
+      <textPath href="#bottomTextPath">EXCELLENCE</textPath>
+    </text>
+    
+    <path d="M56,52 A30,30 0 0,1 32,62" stroke="none" fill="none" id="bottomRightTextPath"/>
+    <text font-size="4" fill="#C8A658" font-family="serif">
+      <textPath href="#bottomRightTextPath">AND SERVICE</textPath>
+    </text>
+  </g>
+  
+  <!-- University name -->
+  <g transform="translate(70, 0)">
+    <!-- CHRIST -->
+    <text x="0" y="35" font-size="35" font-weight="bold" fill="#352C7E" font-family="serif">CHRIST</text>
+    
+    <!-- Horizontal line -->
+    <line x1="0" y1="45" x2="170" y2="45" stroke="#C8A658" stroke-width="1.5"/>
+    
+    <!-- (DEEMED TO BE UNIVERSITY) -->
+    <text x="85" y="58" font-size="12" fill="#C8A658" font-family="serif" text-anchor="middle">(DEEMED TO BE UNIVERSITY)</text>
+    
+    <!-- BANGALORE • INDIA -->
+    <text x="85" y="72" font-size="12" fill="#352C7E" font-family="serif" letter-spacing="2" text-anchor="middle">BANGALORE • INDIA</text>
+  </g>
+</svg>

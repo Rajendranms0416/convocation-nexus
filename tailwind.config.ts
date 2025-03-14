@@ -74,17 +74,17 @@ export default {
 				},
 				convocation: {
 					DEFAULT: '#f5f5f7',
-					50: '#f5f5f7',
-					100: '#e1e1e6',
-					200: '#c7c7cf',
-					300: '#a9a9b6',
-					400: '#8e8e9e',
-					500: '#75758a',
-					600: '#5d5d6e',
-					700: '#4a4a57',
-					800: '#313136',
-					900: '#1d1d21',
-					accent: '#007aff',
+					50: '#F7F7FA',
+					100: '#E9E9F0',
+					200: '#D1D1E3',
+					300: '#B6B6D1',
+					400: '#9494BA',
+					500: '#7171A2',
+					600: '#575783',
+					700: '#352C7E', // Christ University Purple
+					800: '#2A2254',
+					900: '#1C1838',
+					accent: '#C8A658', // Christ University Gold
 					success: '#34c759',
 					warning: '#ff9500',
 					error: '#ff3b30',
@@ -92,7 +92,7 @@ export default {
 			},
 			fontFamily: {
 				sans: ['Inter', 'sans-serif'],
-				display: ['SF Pro Display', 'Inter', 'sans-serif'],
+				display: ['SF Pro Display', 'Inter', 'serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

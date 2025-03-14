@@ -7,7 +7,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { StudentProvider } from "@/contexts/StudentContext";
-import NetworkStatusBar from "@/components/layout/NetworkStatusBar";
 
 // Lazy load route components
 const Login = lazy(() => import("./pages/Login"));
@@ -54,7 +53,6 @@ const App = () => (
               </Routes>
             </Suspense>
           </BrowserRouter>
-          <NetworkStatusBar />
         </StudentProvider>
       </AuthProvider>
     </TooltipProvider>

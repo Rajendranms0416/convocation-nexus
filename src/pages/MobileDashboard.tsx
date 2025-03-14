@@ -62,15 +62,15 @@ const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
           <div className="flex items-center">
             <div className="mr-2">
               <img 
-                src="/convocation-logo.svg" 
-                alt="Logo" 
-                className="h-6 w-auto"
+                src="/christ-logo.svg" 
+                alt="Christ University" 
+                className="h-8 w-auto"
               />
             </div>
             <div>
               <h1 className="text-lg font-bold text-convocation-700">Convocation</h1>
               <div className="flex items-center flex-wrap">
-                <span className="text-xs px-1.5 py-0.5 rounded-full bg-convocation-100 text-convocation-600">
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-convocation-100 text-convocation-700">
                   {user.role.replace(/-/g, ' ')}
                 </span>
                 <TimeDisplay className="ml-2 text-xs" isMobile={true} />
