@@ -1,4 +1,3 @@
-
 import React, { useEffect, useCallback, memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,7 +18,6 @@ import {
 } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
 
-// Memoized header component to prevent unnecessary re-renders
 const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
   user: any;
   onLogout: () => void;
@@ -29,14 +27,12 @@ const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    // Get time windows from localStorage
     const storedTimeWindows = localStorage.getItem('convocation_time_windows');
     
     if (storedTimeWindows) {
       setTimeWindows(JSON.parse(storedTimeWindows));
     }
     
-    // Update current time every minute
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 60000);
@@ -44,7 +40,6 @@ const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
     return () => clearInterval(timer);
   }, []);
 
-  // Check if the current time is within the time window for a role
   const isWithinTimeWindow = (role: string): boolean => {
     if (!timeWindows[role]) return false;
     
@@ -105,7 +100,6 @@ const DashboardHeader = memo(({ user, onLogout, onSwitchView }: {
 
 DashboardHeader.displayName = 'DashboardHeader';
 
-// Mock device logs component for mobile view
 const MobileDeviceLogs = () => {
   return (
     <div className="space-y-4">
@@ -155,11 +149,9 @@ const MobileDashboard: React.FC = () => {
   }, [isAuthenticated, isLoading, navigate]);
 
   useEffect(() => {
-    // Initialize time windows if they don't exist in localStorage
     const storedTimeWindows = localStorage.getItem('convocation_time_windows');
     
     if (!storedTimeWindows) {
-      // Set default time windows for the demo
       const defaultTimeWindows = {
         'robe-in-charge': {
           start: '2023-06-01T08:00',
@@ -189,9 +181,9 @@ const MobileDashboard: React.FC = () => {
   }, [logout, navigate]);
 
   const handleSwitchView = useCallback(() => {
-    localStorage.removeItem('devicePreference');
-    window.location.href = '/';
-  }, []);
+    localStorage.setItem('devicePreference', 'desktop');
+    navigate('/dashboard');
+  }, [navigate]);
 
   if (isLoading || !user) {
     return (

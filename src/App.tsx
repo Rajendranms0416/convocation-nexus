@@ -1,4 +1,3 @@
-
 import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -8,15 +7,14 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { StudentProvider } from "@/contexts/StudentContext";
 import DeviceSelectionPrompt from "@/components/common/DeviceSelectionPrompt";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-// Lazy load route components
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MobileDashboard = lazy(() => import("./pages/MobileDashboard"));
 const DeviceLogs = lazy(() => import("./pages/DeviceLogs"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Loading fallback
 const PageLoader = () => (
   <div className="flex h-screen items-center justify-center">
     <div className="animate-pulse space-y-4 flex flex-col items-center">
@@ -43,6 +41,25 @@ const DeviceSelection = () => {
   );
 };
 
+const DeviceRouteGuard = ({ children }: { children: React.ReactNode }) => {
+  const isMobile = useIsMobile();
+  const devicePreference = localStorage.getItem('devicePreference');
+  
+  if (!devicePreference) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (devicePreference === 'mobile' && window.location.pathname === '/dashboard') {
+    return <Navigate to="/mobile-dashboard" replace />;
+  }
+  
+  if (devicePreference === 'desktop' && window.location.pathname === '/mobile-dashboard') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -55,8 +72,22 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<DeviceSelection />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/mobile-dashboard" element={<MobileDashboard />} />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <DeviceRouteGuard>
+                      <Dashboard />
+                    </DeviceRouteGuard>
+                  } 
+                />
+                <Route 
+                  path="/mobile-dashboard" 
+                  element={
+                    <DeviceRouteGuard>
+                      <MobileDashboard />
+                    </DeviceRouteGuard>
+                  } 
+                />
                 <Route path="/device-logs" element={<DeviceLogs />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

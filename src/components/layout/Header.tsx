@@ -20,7 +20,8 @@ const Header = () => {
 
   const handleSwitchToMobile = () => {
     localStorage.setItem('devicePreference', 'mobile');
-    window.location.href = '/mobile-dashboard';
+    // Navigate to the mobile dashboard instead of changing window.location directly
+    navigate('/mobile-dashboard');
   };
 
   return (
