@@ -62,7 +62,7 @@ const ExcelUpload: React.FC = () => {
         toast({
           title: "Warning",
           description: "All rows have the same program name. This might indicate duplicate data.",
-          variant: "warning"
+          variant: "default" // Changed from "warning" to "default"
         });
       }
       
@@ -76,7 +76,7 @@ const ExcelUpload: React.FC = () => {
         toast({
           title: "Missing teacher names",
           description: `${missingTeacherNames.length} entries are missing teacher names`,
-          variant: "warning"
+          variant: "default" // Changed from "warning" to "default"
         });
       }
       
