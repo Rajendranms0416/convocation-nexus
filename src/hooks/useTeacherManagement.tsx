@@ -2,10 +2,17 @@
 import { useTeacherState } from './teacher/useTeacherState';
 import { useTeacherOperations } from './teacher/useTeacherOperations';
 import { useClassAssignment } from './teacher/useClassAssignment';
+import { useTeacherActions } from './teacher/useTeacherActions';
 
+/**
+ * Main hook for teacher management functionality
+ * Provides a unified API for all teacher operations
+ */
 export const useTeacherManagement = () => {
+  // Get the base state
   const teacherState = useTeacherState();
   
+  // Extract state properties
   const {
     teachers,
     setTeachers,
@@ -29,6 +36,7 @@ export const useTeacherManagement = () => {
     loadTeacherData
   } = teacherState;
 
+  // Get base operations
   const { 
     handleAddTeacher,
     handleUpdateTeacher,
@@ -48,34 +56,30 @@ export const useTeacherManagement = () => {
     setIsClassAssignDialogOpen
   );
 
-  // Wrapper functions to simplify the API
-  const handleEditTeacher = (teacher: any) => {
-    setCurrentTeacher(teacher);
-    setNewTeacherName(teacher.name);
-    setNewTeacherEmail(teacher.email);
-    setNewTeacherRole(teacher.role);
-    setEmailType(teacher.role === 'robe-in-charge' ? 'robe' : 'folder');
-    setSelectedClasses(teacher.assignedClasses || []);
-    setIsEditDialogOpen(true);
-  };
-
-  const wrappedHandleUpdateTeacher = () => {
-    handleUpdateTeacher(
-      currentTeacher,
-      newTeacherName,
-      newTeacherEmail,
-      newTeacherRole,
-      selectedClasses
-    );
-  };
-
-  const wrappedHandleAssignClasses = (teacher: any) => {
-    baseHandleAssignClasses(teacher, setCurrentTeacher, setSelectedClasses);
-  };
-
-  const wrappedSaveClassAssignments = () => {
-    baseSaveClassAssignments(currentTeacher, selectedClasses);
-  };
+  // Get high-level actions that coordinate state and operations
+  const {
+    handleEditTeacher,
+    wrappedHandleUpdateTeacher,
+    wrappedHandleAssignClasses,
+    wrappedSaveClassAssignments
+  } = useTeacherActions({
+    currentTeacher,
+    setCurrentTeacher,
+    newTeacherName,
+    setNewTeacherName,
+    newTeacherEmail,
+    setNewTeacherEmail,
+    newTeacherRole,
+    setNewTeacherRole,
+    emailType,
+    setEmailType,
+    selectedClasses,
+    setSelectedClasses,
+    setIsEditDialogOpen,
+    handleUpdateTeacher,
+    baseHandleAssignClasses,
+    baseSaveClassAssignments
+  });
 
   return {
     // State
