@@ -17,7 +17,9 @@ export const useAuthOperations = () => {
       setIsLoading(true);
       console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
       
+      // Handle super admin login
       if (email === SUPER_ADMIN_EMAIL) {
+        console.log('Attempting super admin login');
         if (password !== SUPER_ADMIN_PASSWORD) {
           throw new Error('Invalid admin credentials');
         }
@@ -60,7 +62,13 @@ export const useAuthOperations = () => {
         return;
       }
       
-      const { teacherData, teacherError } = await findTeacherByEmail(email);
+      // Check if email is in Teacher's List - Fix: properly format the SQL query
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('Teacher\'s List')
+        .select('*')
+        .or(`"Robe Email ID".eq."${email}","Folder Email ID".eq."${email}"`);
+      
+      console.log('Teacher check result:', { teacherData, teacherError });
         
       if (teacherError) {
         console.error('Error checking teacher list:', teacherError);
@@ -74,6 +82,7 @@ export const useAuthOperations = () => {
       
       console.log('Teacher found in database:', teacherData[0]);
       
+      // Check if user exists and try login
       const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -93,6 +102,7 @@ export const useAuthOperations = () => {
         });
         
         if (signUpError) {
+          console.error('Signup error:', signUpError);
           throw signUpError;
         }
         
@@ -101,6 +111,7 @@ export const useAuthOperations = () => {
           description: 'You have been signed up and logged in automatically.',
         });
       } else if (checkError) {
+        console.error('Login error:', checkError);
         throw checkError;
       }
       

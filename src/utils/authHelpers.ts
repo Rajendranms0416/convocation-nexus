@@ -34,7 +34,7 @@ export const handleSession = async (session: Session): Promise<User | null> => {
     const { data: teacherData, error: teacherError } = await supabase
       .from('Teacher\'s List')
       .select('*')
-      .or(`"Robe Email ID".eq.${authUser.email},"Folder Email ID".eq.${authUser.email}`);
+      .or(`"Robe Email ID".eq."${authUser.email}","Folder Email ID".eq."${authUser.email}"`);
       
     if (teacherError) {
       console.error('Error checking teacher list:', teacherError);
@@ -89,7 +89,7 @@ export const findTeacherByEmail = async (email: string) => {
   const { data: teacherData, error: teacherError } = await supabase
     .from('Teacher\'s List')
     .select('*')
-    .or(`"Robe Email ID".eq.${email},"Folder Email ID".eq.${email}`);
+    .or(`"Robe Email ID".eq."${email}","Folder Email ID".eq."${email}"`);
     
   return { teacherData, teacherError };
 };

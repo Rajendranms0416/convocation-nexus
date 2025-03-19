@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, InfoIcon, Users } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 
 const LoginForm: React.FC = () => {
@@ -24,27 +24,8 @@ const LoginForm: React.FC = () => {
     
     try {
       console.log('Submitting login with email:', email);
-      
-      // Verify if the email is in the Teacher's List table first
-      const { data: teacherData, error: teacherError } = await supabase
-        .from('Teacher\'s List')
-        .select('*')
-        .or(`"Robe Email ID".eq.${email},"Folder Email ID".eq.${email}`);
-      
-      if (teacherError) {
-        console.error('Error checking teacher list:', teacherError);
-        throw new Error('Error verifying teacher credentials. Please try again.');
-      }
-      
-      // If email is found in the teacher list, proceed with login
-      if (teacherData && teacherData.length > 0) {
-        console.log('Teacher found in database:', teacherData[0]);
-        // Pass 'desktop' as the third argument for device type
-        await login(email, password, 'desktop');
-      } else {
-        console.error('Email not found in teacher list');
-        throw new Error('Email not recognized. Please check if you are using the correct email address.');
-      }
+      // Pass 'desktop' as the third argument for device type
+      await login(email, password, 'desktop');
     } catch (error) {
       console.error('Login failed', error);
       setError(error instanceof Error ? error.message : 'Login failed. Please try again.');
