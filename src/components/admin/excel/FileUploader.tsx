@@ -64,7 +64,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       // Save the data
       const savedData = excelService.saveTeacherData(parsedData);
       
-      onDataLoaded(savedData.slice(0, 5)); // Show first 5 rows as preview
+      // Send all data to the parent component, not just 5 rows
+      onDataLoaded(savedData);
       
       toast({
         title: 'CSV file uploaded successfully',
