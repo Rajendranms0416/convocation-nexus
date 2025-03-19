@@ -72,16 +72,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Auth user from session:', authUser);
       
+      // Check if this email exists in the Teacher's List table to determine role
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('Teacher\'s List')
+        .select('*')
+        .or(`"Robe Email ID".eq.${authUser.email},"Folder Email ID".eq.${authUser.email}`);
+        
+      if (teacherError) {
+        console.error('Error checking teacher list:', teacherError);
+      }
+      
+      // Determine role based on email match in Teacher's List
+      let userRole: Role = 'presenter'; // Default role
+      
+      if (teacherData && teacherData.length > 0) {
+        const teacher = teacherData[0];
+        if (teacher["Robe Email ID"] === authUser.email) {
+          userRole = 'robe-in-charge';
+        } else if (teacher["Folder Email ID"] === authUser.email) {
+          userRole = 'folder-in-charge';
+        }
+      }
+      
       // Create user object from auth data
       const userWithRole: User = {
         id: authUser.id,
         name: authUser.user_metadata.name || authUser.email?.split('@')[0] || 'User',
         email: authUser.email || '',
-        role: (authUser.user_metadata.role || 'presenter') as Role,
+        role: userRole,
         avatar: authUser.user_metadata.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata.name || authUser.email?.split('@')[0] || 'User')}&background=random&color=fff`,
       };
       
-      console.log('Setting user:', userWithRole);
+      console.log('Setting user with role:', userWithRole);
       setUser(userWithRole);
       localStorage.setItem('convocation_user', JSON.stringify(userWithRole));
       
@@ -95,6 +117,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setIsLoading(true);
       console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
+      
+      // Check if this email exists in the Teacher's List table to determine role
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('Teacher\'s List')
+        .select('*')
+        .or(`"Robe Email ID".eq.${email},"Folder Email ID".eq.${email}`);
+        
+      if (teacherError) {
+        console.error('Error checking teacher list:', teacherError);
+        throw new Error('Error verifying teacher credentials');
+      }
+      
+      if (!teacherData || teacherData.length === 0) {
+        console.error('Email not found in teacher list:', email);
+        throw new Error('Email not found in authorized teachers list');
+      }
+      
+      console.log('Teacher found in database:', teacherData[0]);
       
       // For the first login, we automatically create the user if they don't exist
       const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
@@ -110,7 +150,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password,
           options: {
             data: {
-              role: 'presenter',
               name: email.split('@')[0].replace(/\./g, ' '),
               avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
             }
@@ -129,32 +168,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw checkError;
       }
       
-      // Check if this email exists in the Teacher's List table to determine role
-      const { data: teacherData, error: teacherError } = await supabase
-        .from('Teacher\'s List')
-        .select('*')
-        .or(`"Robe Email ID".eq.${email},"Folder Email ID".eq.${email}`);
-        
-      if (teacherError) {
-        console.error('Error checking teacher list:', teacherError);
+      // Determine user role based on email match
+      let userRole: Role = 'presenter'; // Default role
+      
+      if (teacherData && teacherData.length > 0) {
+        const teacher = teacherData[0];
+        if (teacher["Robe Email ID"] === email) {
+          userRole = 'robe-in-charge';
+        } else if (teacher["Folder Email ID"] === email) {
+          userRole = 'folder-in-charge';
+        }
       }
 
       // If user was found or created, we should have a valid session now
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (sessionData && sessionData.session) {
-        // If teacher data was found, determine role
-        let userRole: Role = 'presenter'; // Default role
-        
-        if (teacherData && teacherData.length > 0) {
-          const teacher = teacherData[0];
-          if (teacher["Robe Email ID"] === email) {
-            userRole = 'robe-in-charge';
-          } else if (teacher["Folder Email ID"] === email) {
-            userRole = 'folder-in-charge';
-          }
-        }
-        
         // Update user metadata with role
         await supabase.auth.updateUser({
           data: {
