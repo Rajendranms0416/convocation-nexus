@@ -9,7 +9,8 @@ import {
   createAdminUser, 
   determineUserRole, 
   verifyTeacherEmail,
-  getTeacherByEmail 
+  getTeacherByEmail,
+  loadTeachersFromStorage 
 } from '@/utils/authHelpers';
 import { SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD } from '@/types/auth';
 
@@ -17,6 +18,9 @@ export const useAuthOperations = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+
+  // Make sure we load any teachers data from storage when the hook is initialized
+  loadTeachersFromStorage();
 
   const login = async (email: string, password: string, deviceType: 'mobile' | 'desktop' = 'desktop') => {
     try {

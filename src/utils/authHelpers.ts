@@ -4,8 +4,8 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { SUPER_ADMIN_EMAIL } from '@/types/auth';
 
-// Mock data to replace the database queries - this would be your Excel sheet data
-const TEACHERS_LIST = [
+// Initialize with mock data, but allow it to be updated
+let TEACHERS_LIST = [
   {
     "Programme Name": "BCA",
     "Robe Email ID": "john.doe@convocation.edu",
@@ -18,6 +18,32 @@ const TEACHERS_LIST = [
   },
   // Add more teacher entries as needed
 ];
+
+// Function to update the teachers list with new data
+export const updateTeachersList = (newData: any[]) => {
+  TEACHERS_LIST = newData;
+  // Store in localStorage for persistence across page refreshes
+  localStorage.setItem('convocation_teachers', JSON.stringify(newData));
+  console.log('Updated teachers list:', TEACHERS_LIST);
+  return TEACHERS_LIST;
+};
+
+// Load teachers from localStorage if available
+export const loadTeachersFromStorage = () => {
+  const storedTeachers = localStorage.getItem('convocation_teachers');
+  if (storedTeachers) {
+    try {
+      TEACHERS_LIST = JSON.parse(storedTeachers);
+      console.log('Loaded teachers from storage:', TEACHERS_LIST);
+    } catch (error) {
+      console.error('Error parsing stored teachers:', error);
+    }
+  }
+  return TEACHERS_LIST;
+};
+
+// Load stored teachers on module initialization
+loadTeachersFromStorage();
 
 export const handleSession = async (session: Session): Promise<User | null> => {
   try {
@@ -131,4 +157,9 @@ export const getTeacherByEmail = (email: string): any => {
   return TEACHERS_LIST.find(teacher => 
     teacher["Robe Email ID"] === email || teacher["Folder Email ID"] === email
   );
+};
+
+// Get all teachers data
+export const getAllTeachers = (): any[] => {
+  return [...TEACHERS_LIST];
 };

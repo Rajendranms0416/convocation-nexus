@@ -34,8 +34,9 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { CheckIcon, PencilIcon, Trash2Icon, PlusCircleIcon, UserPlusIcon } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { User, Role } from '@/types';
+import ExcelUpload from '@/components/admin/ExcelUpload';
+import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
 
 const RoleAssignment: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -51,6 +52,7 @@ const RoleAssignment: React.FC = () => {
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [newTeacherRole, setNewTeacherRole] = useState<Role>('presenter');
+  const [emailType, setEmailType] = useState<'robe' | 'folder'>('robe');
   
   // Class assignment states
   const [availableClasses, setAvailableClasses] = useState([
@@ -77,45 +79,26 @@ const RoleAssignment: React.FC = () => {
     }
   }, [isLoading, isAuthenticated, user, navigate, toast]);
 
-  // Load teacher data
+  // Load teacher data from the local storage
   useEffect(() => {
-    const fetchTeachers = async () => {
-      try {
-        // Fetch data from the Teacher's List table
-        const { data, error } = await supabase
-          .from('Teacher\'s List')
-          .select('*');
-        
-        if (error) throw error;
-        
-        if (data) {
-          // Transform the data to a more usable format
-          const formattedTeachers = data.map(teacher => ({
-            id: teacher['Sl. No'].toString(),
-            name: teacher['Accompanying Teacher'] || teacher['Folder in Charge'] || 'Unknown',
-            email: teacher['Robe Email ID'] || teacher['Folder Email ID'] || '',
-            role: teacher['Robe Email ID'] ? 'robe-in-charge' : 'folder-in-charge',
-            program: teacher['Programme Name'] || '',
-            section: teacher['Class Wise/\nSection Wise'] || '',
-            assignedClasses: [teacher['Programme Name'] || '']
-          }));
-          
-          setTeachers(formattedTeachers);
-        }
-      } catch (error) {
-        console.error('Error fetching teachers:', error);
-        toast({
-          title: "Failed to load data",
-          description: error instanceof Error ? error.message : "Unknown error occurred",
-          variant: "destructive"
-        });
-      }
-    };
-    
     if (isAuthenticated && user?.role === 'super-admin') {
-      fetchTeachers();
+      const loadedTeachers = getAllTeachers();
+      
+      // Transform to the format needed for the table
+      const formattedTeachers = loadedTeachers.map((teacher, index) => ({
+        id: (index + 1).toString(),
+        name: teacher['Accompanying Teacher'] || teacher['Folder in Charge'] || 'Unknown',
+        email: teacher['Robe Email ID'] || teacher['Folder Email ID'] || '',
+        role: teacher['Robe Email ID'] ? 'robe-in-charge' : 'folder-in-charge',
+        program: teacher['Programme Name'] || '',
+        section: teacher['Class Wise/\nSection Wise'] || '',
+        assignedClasses: [teacher['Programme Name'] || ''],
+        rawData: teacher // Keep the original data for reference
+      }));
+      
+      setTeachers(formattedTeachers);
     }
-  }, [isAuthenticated, user, toast]);
+  }, [isAuthenticated, user]);
 
   const handleAddTeacher = async () => {
     if (!newTeacherName || !newTeacherEmail || !newTeacherRole) {
@@ -127,16 +110,34 @@ const RoleAssignment: React.FC = () => {
       return;
     }
     
-    const newTeacher = {
+    // Create a new teacher entry in the Excel-compatible format
+    const newTeacherRaw: Record<string, string> = {
+      "Programme Name": selectedClasses[0] || '',
+      "Robe Email ID": emailType === 'robe' ? newTeacherEmail : '',
+      "Folder Email ID": emailType === 'folder' ? newTeacherEmail : '',
+      "Accompanying Teacher": emailType === 'robe' ? newTeacherName : '',
+      "Folder in Charge": emailType === 'folder' ? newTeacherName : '',
+    };
+    
+    // Get the current teachers list and add the new teacher
+    const currentTeachers = getAllTeachers();
+    const updatedTeachers = [...currentTeachers, newTeacherRaw];
+    
+    // Update the teachers list in storage
+    updateTeachersList(updatedTeachers);
+    
+    // Format for the UI table
+    const newTeacherFormatted = {
       id: (teachers.length + 1).toString(),
       name: newTeacherName,
       email: newTeacherEmail,
       role: newTeacherRole,
-      assignedClasses: []
+      program: selectedClasses[0] || '',
+      assignedClasses: selectedClasses,
+      rawData: newTeacherRaw
     };
     
-    // In a real app, we would save to the database
-    setTeachers([...teachers, newTeacher]);
+    setTeachers([...teachers, newTeacherFormatted]);
     
     toast({
       title: "Teacher Added",
@@ -147,6 +148,7 @@ const RoleAssignment: React.FC = () => {
     setNewTeacherName('');
     setNewTeacherEmail('');
     setNewTeacherRole('presenter');
+    setEmailType('robe');
     setIsAddDialogOpen(false);
   };
 
@@ -155,24 +157,45 @@ const RoleAssignment: React.FC = () => {
     setNewTeacherName(teacher.name);
     setNewTeacherEmail(teacher.email);
     setNewTeacherRole(teacher.role);
+    setEmailType(teacher.role === 'robe-in-charge' ? 'robe' : 'folder');
+    setSelectedClasses(teacher.assignedClasses || []);
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateTeacher = () => {
     if (!currentTeacher) return;
     
+    // Update in the UI first
     const updatedTeachers = teachers.map(teacher => 
       teacher.id === currentTeacher.id 
         ? { 
             ...teacher, 
             name: newTeacherName, 
             email: newTeacherEmail, 
-            role: newTeacherRole 
+            role: newTeacherRole,
+            assignedClasses: selectedClasses
           } 
         : teacher
     );
     
     setTeachers(updatedTeachers);
+    
+    // Update in the storage
+    const allTeachers = getAllTeachers();
+    const index = parseInt(currentTeacher.id) - 1;
+    
+    if (index >= 0 && index < allTeachers.length) {
+      allTeachers[index] = {
+        ...allTeachers[index],
+        "Programme Name": selectedClasses[0] || allTeachers[index]["Programme Name"],
+        "Robe Email ID": newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
+        "Folder Email ID": newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
+        "Accompanying Teacher": newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
+        "Folder in Charge": newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
+      };
+      
+      updateTeachersList(allTeachers);
+    }
     
     toast({
       title: "Teacher Updated",
@@ -183,13 +206,29 @@ const RoleAssignment: React.FC = () => {
   };
 
   const handleDeleteTeacher = (id: string) => {
-    const updatedTeachers = teachers.filter(teacher => teacher.id !== id);
-    setTeachers(updatedTeachers);
+    // Find the teacher to delete
+    const teacherIndex = teachers.findIndex(t => t.id === id);
     
-    toast({
-      title: "Teacher Removed",
-      description: "The teacher has been removed from the system",
-    });
+    if (teacherIndex !== -1) {
+      // Remove from the UI
+      const updatedTeachers = teachers.filter(teacher => teacher.id !== id);
+      setTeachers(updatedTeachers);
+      
+      // Remove from storage
+      const allTeachers = getAllTeachers();
+      const storageIndex = parseInt(id) - 1;
+      
+      if (storageIndex >= 0 && storageIndex < allTeachers.length) {
+        const newTeachersList = [...allTeachers];
+        newTeachersList.splice(storageIndex, 1);
+        updateTeachersList(newTeachersList);
+      }
+      
+      toast({
+        title: "Teacher Removed",
+        description: "The teacher has been removed from the system",
+      });
+    }
   };
 
   const handleAssignClasses = (teacher: any) => {
@@ -209,6 +248,7 @@ const RoleAssignment: React.FC = () => {
   const saveClassAssignments = () => {
     if (!currentTeacher) return;
     
+    // Update in the UI
     const updatedTeachers = teachers.map(teacher => 
       teacher.id === currentTeacher.id 
         ? { ...teacher, assignedClasses: selectedClasses } 
@@ -216,6 +256,19 @@ const RoleAssignment: React.FC = () => {
     );
     
     setTeachers(updatedTeachers);
+    
+    // Update in storage
+    const allTeachers = getAllTeachers();
+    const index = parseInt(currentTeacher.id) - 1;
+    
+    if (index >= 0 && index < allTeachers.length && selectedClasses.length > 0) {
+      allTeachers[index] = {
+        ...allTeachers[index],
+        "Programme Name": selectedClasses[0] // Use first selected class as programme name
+      };
+      
+      updateTeachersList(allTeachers);
+    }
     
     toast({
       title: "Classes Assigned",
@@ -252,7 +305,10 @@ const RoleAssignment: React.FC = () => {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          {/* Excel Upload Component */}
+          <ExcelUpload />
+          
           <div className="flex justify-between mb-6">
             <h3 className="text-lg font-medium">
               Manage Teachers ({teachers.length})
@@ -296,20 +352,42 @@ const RoleAssignment: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="teacherRole">Role</Label>
+                    <Label htmlFor="emailType">Email Type</Label>
                     <Select 
-                      value={newTeacherRole} 
-                      onValueChange={(value) => setNewTeacherRole(value as Role)}
+                      value={emailType} 
+                      onValueChange={(value) => {
+                        setEmailType(value as 'robe' | 'folder');
+                        setNewTeacherRole(value === 'robe' ? 'robe-in-charge' : 'folder-in-charge');
+                      }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
+                        <SelectValue placeholder="Select email type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="robe-in-charge">Robe In-charge</SelectItem>
-                        <SelectItem value="folder-in-charge">Folder In-charge</SelectItem>
-                        <SelectItem value="presenter">Presenter</SelectItem>
+                        <SelectItem value="robe">Robe Email (Robe In-charge)</SelectItem>
+                        <SelectItem value="folder">Folder Email (Folder In-charge)</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Assigned Class</Label>
+                    <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+                      {availableClasses.map((cls) => (
+                        <div 
+                          key={cls}
+                          className={`flex items-center justify-between p-2 rounded-md border cursor-pointer ${
+                            selectedClasses.includes(cls) ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-secondary/10'
+                          }`}
+                          onClick={() => toggleClassSelection(cls)}
+                        >
+                          <span>{cls}</span>
+                          {selectedClasses.includes(cls) && (
+                            <CheckIcon className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 
@@ -435,20 +513,42 @@ const RoleAssignment: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="editTeacherRole">Role</Label>
+              <Label htmlFor="emailType">Email Type</Label>
               <Select 
-                value={newTeacherRole} 
-                onValueChange={(value) => setNewTeacherRole(value as Role)}
+                value={emailType} 
+                onValueChange={(value) => {
+                  setEmailType(value as 'robe' | 'folder');
+                  setNewTeacherRole(value === 'robe' ? 'robe-in-charge' : 'folder-in-charge');
+                }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
+                  <SelectValue placeholder="Select email type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="robe-in-charge">Robe In-charge</SelectItem>
-                  <SelectItem value="folder-in-charge">Folder In-charge</SelectItem>
-                  <SelectItem value="presenter">Presenter</SelectItem>
+                  <SelectItem value="robe">Robe Email (Robe In-charge)</SelectItem>
+                  <SelectItem value="folder">Folder Email (Folder In-charge)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Assigned Classes</Label>
+              <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+                {availableClasses.map((cls) => (
+                  <div 
+                    key={cls}
+                    className={`flex items-center justify-between p-2 rounded-md border cursor-pointer ${
+                      selectedClasses.includes(cls) ? 'bg-primary/10 border-primary' : 'bg-card hover:bg-secondary/10'
+                    }`}
+                    onClick={() => toggleClassSelection(cls)}
+                  >
+                    <span>{cls}</span>
+                    {selectedClasses.includes(cls) && (
+                      <CheckIcon className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           
