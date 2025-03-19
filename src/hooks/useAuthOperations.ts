@@ -4,7 +4,13 @@ import { User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logDeviceUsage } from '@/utils/deviceLogger';
-import { handleSession, createAdminUser, determineUserRole } from '@/utils/authHelpers';
+import { 
+  handleSession, 
+  createAdminUser, 
+  determineUserRole, 
+  verifyTeacherEmail,
+  getTeacherByEmail 
+} from '@/utils/authHelpers';
 import { SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD } from '@/types/auth';
 
 export const useAuthOperations = () => {
@@ -74,24 +80,15 @@ export const useAuthOperations = () => {
       }
       
       // First check if the email exists in teacher list before signup/login
-      const { data: teacherData, error: teacherError } = await supabase
-        .from('Teacher\'s List')
-        .select('*')
-        .or(`"Robe Email ID".eq."${cleanEmail}","Folder Email ID".eq."${cleanEmail}"`);
+      const isTeacher = verifyTeacherEmail(cleanEmail);
       
-      console.log('Teacher check result:', { teacherData, teacherError });
-        
-      if (teacherError) {
-        console.error('Error checking teacher list:', teacherError);
-        throw new Error('Error verifying teacher credentials');
-      }
-      
-      if (!teacherData || teacherData.length === 0) {
+      if (!isTeacher) {
         console.error('Email not found in teacher list:', cleanEmail);
         throw new Error('Email not found in authorized teachers list');
       }
       
-      console.log('Teacher found in database:', teacherData[0]);
+      const teacher = getTeacherByEmail(cleanEmail);
+      console.log('Teacher found:', teacher);
       
       // Try login first
       let { data, error } = await supabase.auth.signInWithPassword({
@@ -138,8 +135,8 @@ export const useAuthOperations = () => {
         throw error;
       }
       
-      // Determine user role from teacher data
-      let userRole = determineUserRole(teacherData[0], cleanEmail);
+      // Determine user role from Excel data
+      let userRole = determineUserRole(teacher, cleanEmail);
       console.log('Determined role:', userRole);
 
       // Get current session and update user data
