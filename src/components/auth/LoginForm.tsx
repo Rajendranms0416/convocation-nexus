@@ -8,9 +8,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, InfoIcon, Users } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Link } from 'react-router-dom';
 
-const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  loginMode?: 'teacher' | 'admin';
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ loginMode = 'teacher' }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,7 +29,7 @@ const LoginForm: React.FC = () => {
       const trimmedEmail = email.trim();
       console.log('Submitting login with email:', trimmedEmail);
       
-      await login(trimmedEmail, password, 'desktop');
+      await login(trimmedEmail, password, 'desktop', loginMode);
     } catch (error) {
       console.error('Login failed', error);
       setError(error instanceof Error ? error.message : 'Login failed. Please try again.');
@@ -117,15 +120,6 @@ const LoginForm: React.FC = () => {
           Accompanying Teachers: <span className="font-medium">Robe In-charge</span> role
           <br />
           Folder in Charge: <span className="font-medium">Folder In-charge</span> role
-        </div>
-        
-        <div className="w-full pt-4 border-t">
-          <Link to="/role-assignment">
-            <Button variant="outline" size="sm" className="w-full">
-              <Users className="mr-2 h-4 w-4" />
-              Teacher Role Management
-            </Button>
-          </Link>
         </div>
       </CardFooter>
     </Card>

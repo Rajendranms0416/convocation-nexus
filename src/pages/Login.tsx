@@ -1,10 +1,13 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
 import MobileLoginForm from '@/components/auth/MobileLoginForm';
+import AdminLoginForm from '@/components/auth/AdminLoginForm';
 import { logDeviceUsage } from '@/utils/deviceLogger';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Login: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -13,6 +16,7 @@ const Login: React.FC = () => {
   const deviceParam = searchParams.get('device');
   const [deviceType, setDeviceType] = useState<'desktop' | 'mobile' | null>(null);
   const { toast } = useToast();
+  const [loginMode, setLoginMode] = useState<'teacher' | 'admin'>('teacher');
 
   // Debug logs
   console.log('Login rendering, device param:', deviceParam);
@@ -39,9 +43,15 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && !isLoading && deviceType && user) {
-      console.log('Authenticated, redirecting to dashboard for device type:', deviceType);
+      console.log('Authenticated, redirecting based on login mode:', loginMode);
       
-      // Log device usage and handle any errors more gracefully
+      // If admin login, redirect to role assignment page
+      if (user.role === 'super-admin' && loginMode === 'admin') {
+        navigate('/role-assignment', { replace: true });
+        return;
+      }
+      
+      // For teachers, log device usage and redirect to appropriate dashboard
       logDeviceUsage(user, deviceType)
         .then((logEntry) => {
           console.log('Device usage logged successfully:', logEntry);
@@ -70,7 +80,7 @@ const Login: React.FC = () => {
           }
         });
     }
-  }, [isAuthenticated, isLoading, navigate, deviceType, user, toast]);
+  }, [isAuthenticated, isLoading, navigate, deviceType, user, toast, loginMode]);
 
   // If still loading authentication state, show loading spinner
   if (isLoading) {
@@ -96,11 +106,34 @@ const Login: React.FC = () => {
     );
   }
 
-  // Otherwise, show the appropriate login form based on device type
+  // Desktop view with login mode tabs
+  if (deviceType === 'desktop') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
+        <Tabs 
+          defaultValue="teacher" 
+          className="w-full max-w-md"
+          onValueChange={(value) => setLoginMode(value as 'teacher' | 'admin')}
+        >
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="teacher">Convocation App</TabsTrigger>
+            <TabsTrigger value="admin">Role Management</TabsTrigger>
+          </TabsList>
+          <TabsContent value="teacher">
+            <LoginForm loginMode="teacher" />
+          </TabsContent>
+          <TabsContent value="admin">
+            <AdminLoginForm />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  // Mobile view - only show the mobile login form for teachers
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-convocation-50 px-4">
-      {deviceType === 'desktop' && <LoginForm />}
-      {deviceType === 'mobile' && <MobileLoginForm />}
+      <MobileLoginForm />
     </div>
   );
 };

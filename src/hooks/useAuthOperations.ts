@@ -22,16 +22,21 @@ export const useAuthOperations = () => {
   // Make sure we load any teachers data from storage when the hook is initialized
   loadTeachersFromStorage();
 
-  const login = async (email: string, password: string, deviceType: 'mobile' | 'desktop' = 'desktop') => {
+  const login = async (
+    email: string, 
+    password: string, 
+    deviceType: 'mobile' | 'desktop' = 'desktop', 
+    loginMode: 'teacher' | 'admin' = 'teacher'
+  ) => {
     try {
       setIsLoading(true);
       // Strip whitespace from email
       const cleanEmail = email.trim();
-      console.log(`Attempting login with email: ${cleanEmail}, device: ${deviceType}`);
+      console.log(`Attempting login with email: ${cleanEmail}, device: ${deviceType}, mode: ${loginMode}`);
       
       // Handle super admin login
-      if (cleanEmail === SUPER_ADMIN_EMAIL) {
-        console.log('Attempting super admin login');
+      if (cleanEmail === SUPER_ADMIN_EMAIL || loginMode === 'admin') {
+        console.log('Attempting admin login');
         if (password !== SUPER_ADMIN_PASSWORD) {
           throw new Error('Invalid admin credentials');
         }
@@ -70,7 +75,6 @@ export const useAuthOperations = () => {
           
           if (adminUser) {
             setUser(adminUser);
-            await logDeviceUsage(adminUser, deviceType);
             
             toast({
               title: 'Admin Login successful',
@@ -83,6 +87,7 @@ export const useAuthOperations = () => {
         return;
       }
       
+      // If not admin login, proceed with teacher login flow
       // First check if the email exists in teacher list before signup/login
       const isTeacher = verifyTeacherEmail(cleanEmail);
       
