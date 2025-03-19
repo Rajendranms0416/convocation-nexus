@@ -18,17 +18,16 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
       ipAddress: '127.0.0.1' // In a real app, you'd get this from the server
     };
     
-    // Store in Supabase
+    // Store in Supabase - convert timestamp to ISO string format
     const { error } = await supabase
       .from('device_logs')
       .insert({
-        id: logEntry.id,
         user_id: logEntry.userId,
         user_name: logEntry.userName,
         user_role: logEntry.userRole,
         device_type: logEntry.deviceType,
         user_agent: logEntry.userAgent,
-        timestamp: logEntry.timestamp,
+        timestamp: logEntry.timestamp.toISOString(),
         ip_address: logEntry.ipAddress
       });
     
