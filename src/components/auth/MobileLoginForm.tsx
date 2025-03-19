@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Smartphone, InfoIcon } from 'lucide-react';
+import { Loader2, Smartphone, InfoIcon, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -13,17 +13,21 @@ const MobileLoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     
     try {
+      console.log('Submitting mobile login with email:', email);
       await login(email, password, 'mobile');
     } catch (error) {
       console.error('Login failed', error);
+      setError(error instanceof Error ? error.message : 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -48,8 +52,20 @@ const MobileLoginForm: React.FC = () => {
             Your email is your name (lowercase with dots): <span className="font-medium">firstname.lastname@convocation.edu</span>
             <br />
             Default password: <span className="font-medium">password123</span>
+            <br />
+            <span className="text-xs italic mt-1 block">
+              Note: First-time users will be automatically registered
+            </span>
           </AlertDescription>
         </Alert>
+        
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

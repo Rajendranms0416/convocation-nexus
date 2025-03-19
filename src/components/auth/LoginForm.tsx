@@ -13,17 +13,21 @@ const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     
     try {
+      console.log('Submitting login with email:', email);
       // Pass 'desktop' as the third argument for device type
       await login(email, password, 'desktop');
     } catch (error) {
       console.error('Login failed', error);
+      setError(error instanceof Error ? error.message : 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -45,8 +49,20 @@ const LoginForm: React.FC = () => {
             Your email is your name (lowercase with dots): <span className="font-medium">firstname.lastname@convocation.edu</span>
             <br />
             Default password: <span className="font-medium">password123</span>
+            <br />
+            <span className="text-xs italic mt-1 block">
+              Note: First-time users will be automatically registered
+            </span>
           </AlertDescription>
         </Alert>
+        
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -93,7 +109,7 @@ const LoginForm: React.FC = () => {
       </CardContent>
       <CardFooter className="flex flex-col space-y-4">
         <div className="text-sm text-muted-foreground text-center w-full">
-          If you're listed in the Teacher's List, an account has been created for you
+          First time? Don't worry, your account will be created automatically
         </div>
         <div className="text-xs text-center text-muted-foreground mt-2 w-full">
           Accompanying Teachers: <span className="font-medium">Robe In-charge</span> role

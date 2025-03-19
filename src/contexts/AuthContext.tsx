@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Initial session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('Initial session check:', session);
       if (session) {
         await handleSession(session);
       }
@@ -64,7 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user: authUser, 
       } = session;
       
-      if (!authUser) return;
+      if (!authUser) {
+        console.log('No auth user in session');
+        return;
+      }
+      
+      console.log('Auth user from session:', authUser);
       
       // Create user object from auth data
       const userWithRole: User = {
@@ -75,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar: authUser.user_metadata.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata.name || authUser.email?.split('@')[0] || 'User')}&background=random&color=fff`,
       };
       
+      console.log('Setting user:', userWithRole);
       setUser(userWithRole);
       localStorage.setItem('convocation_user', JSON.stringify(userWithRole));
       
@@ -89,6 +96,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
       
+      // For the first login, we automatically create the user if they don't exist
+      const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (checkError && checkError.message === 'Invalid login credentials') {
+        console.log('User not found, attempting to create account');
+        // If the user doesn't exist, create a new account
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              role: 'presenter',
+              name: email.split('@')[0].replace(/\./g, ' '),
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
+            }
+          }
+        });
+        
+        if (signUpError) {
+          throw signUpError;
+        }
+        
+        toast({
+          title: 'Account created',
+          description: 'You have been signed up and logged in automatically.',
+        });
+      } else if (checkError) {
+        throw checkError;
+      }
+      
       // Check if this email exists in the Teacher's List table to determine role
       const { data: teacherData, error: teacherError } = await supabase
         .from('Teacher\'s List')
@@ -98,18 +138,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (teacherError) {
         console.error('Error checking teacher list:', teacherError);
       }
-      
-      // Sign in using Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (error) {
-        throw error;
-      }
 
-      if (data.user) {
+      // If user was found or created, we should have a valid session now
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (sessionData && sessionData.session) {
         // If teacher data was found, determine role
         let userRole: Role = 'presenter'; // Default role
         
@@ -132,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       
         // Get user data from the session
-        await handleSession(data.session);
+        await handleSession(sessionData.session);
         
         // We need to get the user after handleSession sets it
         const currentUser = JSON.parse(localStorage.getItem('convocation_user') || 'null');
@@ -146,11 +179,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: 'Login successful',
             description: `Welcome back, ${currentUser.name}!`,
           });
+        } else {
+          console.error('User not found in localStorage after login');
         }
+      } else {
+        throw new Error('No session after login attempt');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Login error:', errorMessage);
+      console.error('Login error:', error);
       
       toast({
         title: 'Login failed',
