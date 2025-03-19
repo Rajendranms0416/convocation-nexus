@@ -17,39 +17,40 @@ export const useTeacherDataLoader = () => {
       // Try to load from database first
       const loadedTeachers = await excelService.getTeacherData();
       
+      // Array to hold our formatted teachers
+      const formattedTeachers: any[] = [];
+      
       // Transform to the format needed for the table
-      const formattedTeachers = loadedTeachers.map((teacher, index) => {
-        // Determine the role based on which email ID is available
-        let role: Role = 'presenter';
-        let name = 'Unknown';
-        let email = '';
-        
+      loadedTeachers.forEach((teacher, index) => {
+        // Process teacher with Robe Email ID
         if (teacher['Robe Email ID'] && teacher['Robe Email ID'].includes('@')) {
-          role = 'robe-in-charge';
-          name = teacher['Accompanying Teacher'] || 'Unknown';
-          email = teacher['Robe Email ID'];
-        } else if (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@')) {
-          role = 'folder-in-charge';
-          name = teacher['Folder in Charge'] || 'Unknown';
-          email = teacher['Folder Email ID'];
+          formattedTeachers.push({
+            id: `robe-${index + 1}`,
+            name: teacher['Accompanying Teacher'] || 'Unknown',
+            email: teacher['Robe Email ID'],
+            role: 'robe-in-charge' as Role,
+            program: teacher['Programme Name'] || '',
+            section: teacher['Class Wise/\nSection Wise'] || '',
+            assignedClasses: [teacher['Programme Name'] || ''],
+            rawData: teacher,
+            dbId: teacher.id || ''
+          });
         }
         
-        // For folder-in-charge teachers, ensure we're using the correct name
-        if (role === 'folder-in-charge' && teacher['Folder in Charge']) {
-          name = teacher['Folder in Charge'];
+        // Process teacher with Folder Email ID (as a separate teacher entry)
+        if (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@')) {
+          formattedTeachers.push({
+            id: `folder-${index + 1}`,
+            name: teacher['Folder in Charge'] || 'Unknown',
+            email: teacher['Folder Email ID'],
+            role: 'folder-in-charge' as Role,
+            program: teacher['Programme Name'] || '',
+            section: teacher['Class Wise/\nSection Wise'] || '',
+            assignedClasses: [teacher['Programme Name'] || ''],
+            rawData: teacher,
+            dbId: teacher.id || ''
+          });
         }
-        
-        return {
-          id: (index + 1).toString(),
-          name: name,
-          email: email,
-          role: role,
-          program: teacher['Programme Name'] || '',
-          section: teacher['Class Wise/\nSection Wise'] || '',
-          assignedClasses: [teacher['Programme Name'] || ''],
-          rawData: teacher, // Keep the original data for reference
-          dbId: teacher.id || '' // Store the database ID if available
-        };
       });
       
       console.log('Loaded and formatted teachers:', formattedTeachers);
@@ -60,48 +61,38 @@ export const useTeacherDataLoader = () => {
       // Fallback to localStorage
       const loadedTeachers = getAllTeachers();
       
-      const formattedTeachers = loadedTeachers.map((teacher, index) => {
-        // Determine the role based on which email ID is available
-        let role: Role = 'presenter';
-        let name = 'Unknown';
-        let email = '';
-        
+      // Array to hold our formatted teachers
+      const formattedTeachers: any[] = [];
+      
+      // Transform to the format needed for the table
+      loadedTeachers.forEach((teacher, index) => {
+        // Process teacher with Robe Email ID
         if (teacher['Robe Email ID'] && teacher['Robe Email ID'].includes('@')) {
-          role = 'robe-in-charge';
-          name = teacher['Accompanying Teacher'] || 'Unknown';
-          email = teacher['Robe Email ID'];
-        } else if (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@')) {
-          role = 'folder-in-charge';
-          name = teacher['Folder in Charge'] || 'Unknown';
-          email = teacher['Folder Email ID'];
-        }
-        
-        // Create two entries if both roles are present in the same row
-        if (teacher['Robe Email ID'] && teacher['Folder Email ID'] && 
-            teacher['Accompanying Teacher'] && teacher['Folder in Charge']) {
-          // Just add one for now - the correct one based on role
-          return {
-            id: (index + 1).toString(),
-            name: name,
-            email: email,
-            role: role,
+          formattedTeachers.push({
+            id: `robe-${index + 1}`,
+            name: teacher['Accompanying Teacher'] || 'Unknown',
+            email: teacher['Robe Email ID'],
+            role: 'robe-in-charge' as Role,
             program: teacher['Programme Name'] || '',
             section: teacher['Class Wise/\nSection Wise'] || '',
             assignedClasses: [teacher['Programme Name'] || ''],
-            rawData: teacher,
-          };
+            rawData: teacher
+          });
         }
         
-        return {
-          id: (index + 1).toString(),
-          name: name,
-          email: email,
-          role: role,
-          program: teacher['Programme Name'] || '',
-          section: teacher['Class Wise/\nSection Wise'] || '',
-          assignedClasses: [teacher['Programme Name'] || ''],
-          rawData: teacher,
-        };
+        // Process teacher with Folder Email ID (as a separate teacher entry)
+        if (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@')) {
+          formattedTeachers.push({
+            id: `folder-${index + 1}`,
+            name: teacher['Folder in Charge'] || 'Unknown',
+            email: teacher['Folder Email ID'],
+            role: 'folder-in-charge' as Role,
+            program: teacher['Programme Name'] || '',
+            section: teacher['Class Wise/\nSection Wise'] || '',
+            assignedClasses: [teacher['Programme Name'] || ''],
+            rawData: teacher
+          });
+        }
       });
       
       setTeachers(formattedTeachers);

@@ -35,6 +35,10 @@ const TeachersList: React.FC<TeachersListProps> = ({
     );
   });
 
+  // Count the number of teachers by role before applying the tab filter
+  const robeTeachersCount = filteredTeachers.filter(t => t.role === 'robe-in-charge').length;
+  const folderTeachersCount = filteredTeachers.filter(t => t.role === 'folder-in-charge').length;
+
   // Filter teachers based on active tab
   const tabFilteredTeachers = filteredTeachers.filter(teacher => {
     if (activeTab === 'all') return true;
@@ -48,8 +52,8 @@ const TeachersList: React.FC<TeachersListProps> = ({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full grid grid-cols-3">
           <TabsTrigger value="all">All Teachers ({filteredTeachers.length})</TabsTrigger>
-          <TabsTrigger value="robe">Robe In-Charge ({filteredTeachers.filter(t => t.role === 'robe-in-charge').length})</TabsTrigger>
-          <TabsTrigger value="folder">Folder In-Charge ({filteredTeachers.filter(t => t.role === 'folder-in-charge').length})</TabsTrigger>
+          <TabsTrigger value="robe">Robe In-Charge ({robeTeachersCount})</TabsTrigger>
+          <TabsTrigger value="folder">Folder In-Charge ({folderTeachersCount})</TabsTrigger>
         </TabsList>
         
         <TeacherTabContent
