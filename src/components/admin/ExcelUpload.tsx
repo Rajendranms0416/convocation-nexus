@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileSpreadsheet, Upload, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import FileUploader from './excel/FileUploader';
 import FormatHelp from './excel/FormatHelp';
 import DataPreview from './excel/DataPreview';
@@ -24,20 +24,7 @@ const ExcelUpload: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [hasErrors, setHasErrors] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
   const { toast } = useToast();
-
-  // Filter data based on active tab
-  const filteredData = useMemo(() => {
-    if (activeTab === 'all') {
-      return previewData;
-    } else if (activeTab === 'robe') {
-      return previewData.filter(row => row['Robe Email ID'] && row['Accompanying Teacher']);
-    } else if (activeTab === 'folder') {
-      return previewData.filter(row => row['Folder Email ID'] && row['Folder in Charge']);
-    }
-    return previewData;
-  }, [activeTab, previewData]);
 
   const handleDataLoaded = (data: any[]) => {
     // Check if there's any data
@@ -75,7 +62,7 @@ const ExcelUpload: React.FC = () => {
         toast({
           title: "Warning",
           description: "All rows have the same program name. This might indicate duplicate data.",
-          variant: "default" // Changed from "warning" to "default"
+          variant: "default"
         });
       }
       
@@ -89,7 +76,7 @@ const ExcelUpload: React.FC = () => {
         toast({
           title: "Missing teacher names",
           description: `${missingTeacherNames.length} entries are missing teacher names`,
-          variant: "default" // Changed from "warning" to "default"
+          variant: "default"
         });
       }
       
@@ -135,25 +122,12 @@ const ExcelUpload: React.FC = () => {
           requiredColumns={requiredColumns} 
         />
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="all">All Teachers ({previewData.length})</TabsTrigger>
-            <TabsTrigger value="robe">Robe In-Charge ({previewData.filter(row => row['Robe Email ID'] && row['Accompanying Teacher']).length})</TabsTrigger>
-            <TabsTrigger value="folder">Folder In-Charge ({previewData.filter(row => row['Folder Email ID'] && row['Folder in Charge']).length})</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all" className="mt-4">
-            <DataPreview previewData={filteredData} />
-          </TabsContent>
-          
-          <TabsContent value="robe" className="mt-4">
-            <DataPreview previewData={filteredData} />
-          </TabsContent>
-          
-          <TabsContent value="folder" className="mt-4">
-            <DataPreview previewData={filteredData} />
-          </TabsContent>
-        </Tabs>
+        {previewData.length > 0 && (
+          <div>
+            <h3 className="text-md font-medium mb-2">Data Preview</h3>
+            <DataPreview previewData={previewData} />
+          </div>
+        )}
         
         {previewData.length > 0 && (
           <Button 
