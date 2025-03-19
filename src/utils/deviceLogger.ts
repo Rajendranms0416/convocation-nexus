@@ -20,7 +20,7 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
     
     console.log(`Logging device usage for ${user.name}, device type: ${deviceType}`);
     
-    // Store in Supabase
+    // Store in Supabase - Convert types to match what Supabase expects
     const { error } = await supabase
       .from('device_logs')
       .insert({
@@ -30,7 +30,7 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
         user_role: logEntry.userRole,
         device_type: logEntry.deviceType,
         user_agent: logEntry.userAgent,
-        timestamp: logEntry.timestamp,
+        timestamp: logEntry.timestamp.toISOString(), // Convert Date to ISO string format
         ip_address: logEntry.ipAddress
       });
     
