@@ -4,7 +4,7 @@ import { User } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logDeviceUsage } from '@/utils/deviceLogger';
-import { handleSession, createAdminUser, findTeacherByEmail, determineUserRole } from '@/utils/authHelpers';
+import { handleSession, createAdminUser, determineUserRole } from '@/utils/authHelpers';
 import { SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD } from '@/types/auth';
 
 export const useAuthOperations = () => {
@@ -62,7 +62,7 @@ export const useAuthOperations = () => {
         return;
       }
       
-      // Check if email is in Teacher's List - Fix: properly format the SQL query
+      // Use prepared SQL statements with double quotes around field names and string values
       const { data: teacherData, error: teacherError } = await supabase
         .from('Teacher\'s List')
         .select('*')

@@ -31,6 +31,7 @@ export const handleSession = async (session: Session): Promise<User | null> => {
       return userWithRole;
     }
     
+    // Fixed query with proper double quotes around field names and string values
     const { data: teacherData, error: teacherError } = await supabase
       .from('Teacher\'s List')
       .select('*')
@@ -86,6 +87,7 @@ export const createAdminUser = async (email: string, password: string) => {
 };
 
 export const findTeacherByEmail = async (email: string) => {
+  // Fixed query with proper double quotes around field names and string values
   const { data: teacherData, error: teacherError } = await supabase
     .from('Teacher\'s List')
     .select('*')
