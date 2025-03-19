@@ -24,8 +24,9 @@ const LoginForm: React.FC = () => {
     
     try {
       console.log('Submitting login with email:', email);
-      // Pass 'desktop' as the third argument for device type
-      await login(email, password, 'desktop');
+      // Strip whitespace from email to prevent accidental spaces
+      const trimmedEmail = email.trim();
+      await login(trimmedEmail, password, 'desktop');
     } catch (error) {
       console.error('Login failed', error);
       setError(error instanceof Error ? error.message : 'Login failed. Please try again.');

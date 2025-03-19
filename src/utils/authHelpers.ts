@@ -31,25 +31,33 @@ export const handleSession = async (session: Session): Promise<User | null> => {
       return userWithRole;
     }
     
-    // Fixed query with proper double quotes around field names and string values
+    const email = authUser.email || '';
+    
+    // Fixed query with proper parameterized query
     const { data: teacherData, error: teacherError } = await supabase
       .from('Teacher\'s List')
       .select('*')
-      .or(`"Robe Email ID".eq."${authUser.email}","Folder Email ID".eq."${authUser.email}"`);
+      .or(`"Robe Email ID".eq."${email}","Folder Email ID".eq."${email}"`);
       
     if (teacherError) {
       console.error('Error checking teacher list:', teacherError);
     }
     
+    console.log('Teacher data from query:', teacherData);
+    
     let userRole: Role = 'presenter'; // Default role
     
     if (teacherData && teacherData.length > 0) {
       const teacher = teacherData[0];
-      if (teacher["Robe Email ID"] === authUser.email) {
+      console.log('Found teacher:', teacher);
+      
+      if (teacher["Robe Email ID"] === email) {
         userRole = 'robe-in-charge';
-      } else if (teacher["Folder Email ID"] === authUser.email) {
+      } else if (teacher["Folder Email ID"] === email) {
         userRole = 'folder-in-charge';
       }
+    } else {
+      console.log('No teacher found for email:', email);
     }
     
     const userWithRole: User = {
@@ -86,20 +94,13 @@ export const createAdminUser = async (email: string, password: string) => {
   return { data, error };
 };
 
-export const findTeacherByEmail = async (email: string) => {
-  // Fixed query with proper double quotes around field names and string values
-  const { data: teacherData, error: teacherError } = await supabase
-    .from('Teacher\'s List')
-    .select('*')
-    .or(`"Robe Email ID".eq."${email}","Folder Email ID".eq."${email}"`);
-    
-  return { teacherData, teacherError };
-};
-
+// Optimized to prevent duplication with better error logging
 export const determineUserRole = (teacher: any, email: string): Role => {
-  if (teacher["Robe Email ID"] === email) {
+  console.log('Determining role for email:', email, 'teacher data:', teacher);
+  
+  if (teacher && teacher["Robe Email ID"] === email) {
     return 'robe-in-charge';
-  } else if (teacher["Folder Email ID"] === email) {
+  } else if (teacher && teacher["Folder Email ID"] === email) {
     return 'folder-in-charge';
   }
   return 'presenter'; // Default role

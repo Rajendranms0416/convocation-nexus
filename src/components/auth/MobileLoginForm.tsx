@@ -24,7 +24,9 @@ const MobileLoginForm: React.FC = () => {
     
     try {
       console.log('Submitting mobile login with email:', email);
-      await login(email, password, 'mobile');
+      // Strip whitespace from email to prevent accidental spaces
+      const trimmedEmail = email.trim();
+      await login(trimmedEmail, password, 'mobile');
     } catch (error) {
       console.error('Login failed', error);
       setError(error instanceof Error ? error.message : 'Login failed. Please try again.');

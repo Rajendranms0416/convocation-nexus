@@ -30,6 +30,7 @@ export const useAuthOperations = () => {
         });
         
         if (error && error.message === 'Invalid login credentials') {
+          console.log('Admin user not found, creating account');
           const { data: signUpData, error: signUpError } = await createAdminUser(email, password);
           
           if (signUpError) throw signUpError;
@@ -38,6 +39,14 @@ export const useAuthOperations = () => {
             title: 'Admin account created',
             description: 'You have been signed up as an administrator',
           });
+          
+          // Try logging in again after signup
+          const { error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (loginError) throw loginError;
         } else if (error) {
           throw error;
         }
@@ -62,7 +71,7 @@ export const useAuthOperations = () => {
         return;
       }
       
-      // Use prepared SQL statements with double quotes around field names and string values
+      // First check if the email exists in teacher list before signup/login
       const { data: teacherData, error: teacherError } = await supabase
         .from('Teacher\'s List')
         .select('*')
@@ -82,15 +91,16 @@ export const useAuthOperations = () => {
       
       console.log('Teacher found in database:', teacherData[0]);
       
-      // Check if user exists and try login
-      const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
+      // Try login first
+      let { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (checkError && checkError.message === 'Invalid login credentials') {
+      // If login fails due to non-existent user, sign up
+      if (error && error.message.includes('Invalid login credentials')) {
         console.log('User not found, attempting to create account');
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -106,17 +116,31 @@ export const useAuthOperations = () => {
           throw signUpError;
         }
         
+        // Try login again after signup
+        const { error: loginAgainError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (loginAgainError) {
+          console.error('Error logging in after signup:', loginAgainError);
+          throw loginAgainError;
+        }
+        
         toast({
           title: 'Account created',
           description: 'You have been signed up and logged in automatically.',
         });
-      } else if (checkError) {
-        console.error('Login error:', checkError);
-        throw checkError;
+      } else if (error) {
+        console.error('Login error:', error);
+        throw error;
       }
       
+      // Determine user role from teacher data
       let userRole = determineUserRole(teacherData[0], email);
+      console.log('Determined role:', userRole);
 
+      // Get current session and update user data
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (sessionData && sessionData.session) {
