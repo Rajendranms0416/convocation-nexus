@@ -1,3 +1,4 @@
+
 /**
  * Excel Service - Data manipulation functionality
  */
@@ -149,7 +150,7 @@ export const enhanceTeacherData = (data: Record<string, string>[], additionalEma
         /class\s*wise/i.test(enhancedRow['Folder in Charge'])) {
       // Try to find any key that might contain a folder in charge name
       const folderTeacherKey = Object.keys(row).find(key => 
-        key.toLowerCase().includes('folder') && key.toLowerCase().includes('charge') ||
+        (key.toLowerCase().includes('folder') && key.toLowerCase().includes('charge')) ||
         key.toLowerCase().includes('coordinator name')
       );
       
@@ -209,6 +210,10 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
     }
     
     console.log('Saved to database successfully');
+    
+    // Notify any listeners that data has been updated
+    window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
+    
     return enhancedData;
   } catch (error) {
     console.error('Error in saveTeacherData:', error);
@@ -231,8 +236,11 @@ export const getTeacherData = async (): Promise<Record<string, string>[]> => {
     }
     
     if (data && data.length > 0) {
+      console.log('Retrieved data from database:', data);
+      
       // Map database fields back to the expected format
       return data.map(record => ({
+        id: record.id, // Include the database ID
         'Programme Name': record.program_name || '',
         'Robe Email ID': record.robe_email || '',
         'Folder Email ID': record.folder_email || '',

@@ -11,6 +11,7 @@ import AddTeacherDialog from '@/components/admin/teachers/AddTeacherDialog';
 import EditTeacherDialog from '@/components/admin/teachers/EditTeacherDialog';
 import ClassAssignmentDialog from '@/components/admin/teachers/ClassAssignmentDialog';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
+import { RefreshCw } from 'lucide-react';
 
 const RoleAssignment: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -39,7 +40,8 @@ const RoleAssignment: React.FC = () => {
     handleUpdateTeacher,
     handleDeleteTeacher,
     handleAssignClasses,
-    saveClassAssignments
+    saveClassAssignments,
+    loadTeacherData
   } = useTeacherManagement();
 
   // Check if user is super admin, otherwise redirect
@@ -57,6 +59,19 @@ const RoleAssignment: React.FC = () => {
       navigate('/login');
     }
   }, [isLoading, isAuthenticated, user, navigate, toast]);
+
+  // Set up listener for teacher data updates
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      loadTeacherData();
+    };
+    
+    window.addEventListener('teacherDataUpdated', handleDataUpdate);
+    
+    return () => {
+      window.removeEventListener('teacherDataUpdated', handleDataUpdate);
+    };
+  }, [loadTeacherData]);
 
   if (isLoading) {
     return (
@@ -80,9 +95,19 @@ const RoleAssignment: React.FC = () => {
                 Assign roles and classes to teachers for the convocation
               </CardDescription>
             </div>
-            <Button onClick={() => navigate(-1)} variant="outline">
-              Back
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={loadTeacherData} 
+                className="flex items-center"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
+              <Button onClick={() => navigate(-1)} variant="outline">
+                Back
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">

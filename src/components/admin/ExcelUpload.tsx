@@ -26,7 +26,7 @@ const ExcelUpload: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const { toast } = useToast();
 
-  const handleDataLoaded = (data: any[]) => {
+  const handleDataLoaded = async (data: any[]) => {
     // Check if there's any data
     if (!data || data.length === 0) {
       setHasErrors(true);
@@ -80,15 +80,31 @@ const ExcelUpload: React.FC = () => {
         });
       }
       
-      setPreviewData(data);
+      // Enhance the data to ensure all required fields are present
+      const enhancedData = excelService.enhanceTeacherData(data);
+      setPreviewData(enhancedData);
       
       // If data is valid, save it
-      if (!hasErrors && data.length > 0) {
-        excelService.saveTeacherData(data);
-        toast({
-          title: "Data imported",
-          description: `Successfully imported ${data.length} teacher assignments`,
-        });
+      if (!hasErrors && enhancedData.length > 0) {
+        try {
+          // This will save to both database and local storage
+          await excelService.saveTeacherData(enhancedData);
+          
+          toast({
+            title: "Data imported",
+            description: `Successfully imported ${enhancedData.length} teacher assignments`,
+          });
+          
+          // Force refresh the teacher display by triggering a window event
+          window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
+        } catch (error) {
+          console.error("Error saving data:", error);
+          toast({
+            title: "Error saving data",
+            description: error instanceof Error ? error.message : "An unknown error occurred",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
       console.error("Error processing data:", error);
@@ -132,12 +148,23 @@ const ExcelUpload: React.FC = () => {
         {previewData.length > 0 && (
           <Button 
             className="w-full mt-4" 
-            onClick={() => {
-              excelService.saveTeacherData(previewData);
-              toast({
-                title: "Data saved",
-                description: `${previewData.length} teacher assignments saved`
-              });
+            onClick={async () => {
+              try {
+                await excelService.saveTeacherData(previewData);
+                // Force refresh the teacher display
+                window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
+                toast({
+                  title: "Data saved",
+                  description: `${previewData.length} teacher assignments saved`
+                });
+              } catch (error) {
+                console.error("Error saving data:", error);
+                toast({
+                  title: "Error saving data",
+                  description: error instanceof Error ? error.message : "An unknown error occurred",
+                  variant: "destructive"
+                });
+              }
             }}
           >
             <Upload className="h-4 w-4 mr-2" />

@@ -25,7 +25,8 @@ export const useTeacherManagement = () => {
     setEmailType,
     availableClasses,
     selectedClasses,
-    setSelectedClasses
+    setSelectedClasses,
+    loadTeacherData
   } = teacherState;
 
   const { 
@@ -102,6 +103,7 @@ export const useTeacherManagement = () => {
     handleUpdateTeacher: wrappedHandleUpdateTeacher,
     handleDeleteTeacher,
     handleAssignClasses: wrappedHandleAssignClasses,
-    saveClassAssignments: wrappedSaveClassAssignments
+    saveClassAssignments: wrappedSaveClassAssignments,
+    loadTeacherData,
   };
 };
