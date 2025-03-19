@@ -1,9 +1,8 @@
 
 import React, { createContext, useContext, useEffect } from 'react';
 import { AuthContextType } from '@/types/auth';
-import { supabase } from '@/integrations/supabase/client';
-import { handleSession } from '@/utils/authHelpers';
 import { useAuthOperations } from '@/hooks/useAuthOperations';
+import { User } from '@/types';
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -24,33 +23,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   } = useAuthOperations();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session);
-        
-        if (session) {
-          const userWithRole = await handleSession(session);
-          setUser(userWithRole);
-        } else {
-          setUser(null);
-        }
-        
-        setIsLoading(false);
+    // Check for stored user in localStorage
+    const storedUser = localStorage.getItem('convocation_user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser) as User;
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('convocation_user');
       }
-    );
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('Initial session check:', session);
-      if (session) {
-        const userWithRole = await handleSession(session);
-        setUser(userWithRole);
-      }
-      setIsLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    }
+    
+    setIsLoading(false);
   }, [setUser, setIsLoading]);
 
   return (

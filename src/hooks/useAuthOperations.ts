@@ -37,51 +37,31 @@ export const useAuthOperations = () => {
       // Handle super admin login
       if (cleanEmail === SUPER_ADMIN_EMAIL || loginMode === 'admin') {
         console.log('Attempting admin login');
-        if (password !== SUPER_ADMIN_PASSWORD) {
+        
+        // For admin login, just check the hardcoded password
+        if (cleanEmail === SUPER_ADMIN_EMAIL && password !== SUPER_ADMIN_PASSWORD) {
           throw new Error('Invalid admin credentials');
         }
         
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
+        // Create admin user object without actually signing up in Supabase
+        const adminUser: User = {
+          id: 'admin-user-id', // Using a placeholder ID for admin
+          name: 'Super Admin',
+          email: SUPER_ADMIN_EMAIL,
+          role: 'super-admin',
+          avatar: `https://ui-avatars.com/api/?name=Super+Admin&background=random&color=fff`,
+        };
+        
+        // Set the admin user in state
+        setUser(adminUser);
+        
+        // Store admin user in localStorage for persistence
+        localStorage.setItem('convocation_user', JSON.stringify(adminUser));
+        
+        toast({
+          title: 'Admin Login successful',
+          description: 'Welcome, Super Admin!',
         });
-        
-        if (error && error.message === 'Invalid login credentials') {
-          console.log('Admin user not found, creating account');
-          const { data: signUpData, error: signUpError } = await createAdminUser(cleanEmail, password);
-          
-          if (signUpError) throw signUpError;
-          
-          toast({
-            title: 'Admin account created',
-            description: 'You have been signed up as an administrator',
-          });
-          
-          // Try logging in again after signup
-          const { error: loginError } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-          });
-          
-          if (loginError) throw loginError;
-        } else if (error) {
-          throw error;
-        }
-        
-        const { data: sessionData } = await supabase.auth.getSession();
-        
-        if (sessionData && sessionData.session) {
-          const adminUser = await handleSession(sessionData.session);
-          
-          if (adminUser) {
-            setUser(adminUser);
-            
-            toast({
-              title: 'Admin Login successful',
-              description: 'Welcome, Super Admin!',
-            });
-          }
-        }
         
         setIsLoading(false);
         return;
@@ -99,84 +79,39 @@ export const useAuthOperations = () => {
       const teacher = getTeacherByEmail(cleanEmail);
       console.log('Teacher found:', teacher);
       
-      // Try login first
-      let { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password,
-      });
-      
-      // If login fails due to non-existent user, sign up
-      if (error && error.message.includes('Invalid login credentials')) {
-        console.log('User not found, attempting to create account');
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: {
-              name: cleanEmail.split('@')[0].replace(/\./g, ' '),
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
-            }
-          }
-        });
-        
-        if (signUpError) {
-          console.error('Signup error:', signUpError);
-          throw signUpError;
-        }
-        
-        // Try login again after signup
-        const { error: loginAgainError } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-        });
-        
-        if (loginAgainError) {
-          console.error('Error logging in after signup:', loginAgainError);
-          throw loginAgainError;
-        }
-        
-        toast({
-          title: 'Account created',
-          description: 'You have been signed up and logged in automatically.',
-        });
-      } else if (error) {
-        console.error('Login error:', error);
-        throw error;
+      // For simplicity in this prototype, we'll skip the actual Supabase auth
+      // and create a user object directly
+      if (password !== 'password123') {
+        throw new Error('Invalid password. Default password is password123.');
       }
       
       // Determine user role from Excel data
       let userRole = determineUserRole(teacher, cleanEmail);
       console.log('Determined role:', userRole);
 
-      // Get current session and update user data
-      const { data: sessionData } = await supabase.auth.getSession();
+      // Create teacher user
+      const teacherUser: User = {
+        id: `teacher-${Date.now()}`, // Generate a temporary ID
+        name: cleanEmail.split('@')[0].replace(/\./g, ' '),
+        email: cleanEmail,
+        role: userRole,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
+      };
       
-      if (sessionData && sessionData.session) {
-        await supabase.auth.updateUser({
-          data: {
-            role: userRole,
-            name: cleanEmail.split('@')[0].replace(/\./g, ' '),
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
-          }
-        });
+      // Set the user
+      setUser(teacherUser);
       
-        const currentUser = await handleSession(sessionData.session);
-        
-        if (currentUser) {
-          setUser(currentUser);
-          await logDeviceUsage(currentUser, deviceType);
-          console.log(`Logged in successfully as ${currentUser.name} using ${deviceType} device`);
-          
-          toast({
-            title: 'Login successful',
-            description: `Welcome back, ${currentUser.name}!`,
-          });
-        } else {
-          throw new Error('User not found after login');
-        }
-      } else {
-        throw new Error('No session after login attempt');
-      }
+      // Store in localStorage
+      localStorage.setItem('convocation_user', JSON.stringify(teacherUser));
+      
+      // Log device usage
+      await logDeviceUsage(teacherUser, deviceType);
+      console.log(`Logged in successfully as ${teacherUser.name} using ${deviceType} device`);
+      
+      toast({
+        title: 'Login successful',
+        description: `Welcome back, ${teacherUser.name}!`,
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Login error:', error);
@@ -195,7 +130,7 @@ export const useAuthOperations = () => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      // No need to call Supabase signOut in this prototype
       setUser(null);
       localStorage.removeItem('convocation_user');
       toast({

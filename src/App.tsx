@@ -1,10 +1,11 @@
-import React, { Suspense, lazy } from "react";
+
+import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { StudentProvider } from "@/contexts/StudentContext";
 import DeviceSelectionPrompt from "@/components/common/DeviceSelectionPrompt";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -42,6 +43,33 @@ const DeviceSelection = () => {
   );
 };
 
+// Authentication guard component
+const AuthGuard = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
+      navigate('/login', { replace: true });
+    }
+    
+    // Redirect to appropriate dashboard based on role
+    if (!isLoading && isAuthenticated && user) {
+      if (user.role === 'super-admin' && location.pathname === '/login') {
+        navigate('/role-assignment', { replace: true });
+      }
+    }
+  }, [isAuthenticated, isLoading, navigate, location.pathname, user]);
+  
+  if (isLoading) {
+    return <PageLoader />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Device route guard
 const DeviceRouteGuard = ({ children }: { children: React.ReactNode }) => {
   const isMobile = useIsMobile();
   const devicePreference = localStorage.getItem('devicePreference');
@@ -61,6 +89,56 @@ const DeviceRouteGuard = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AppRoutes = () => {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<DeviceSelection />} />
+          <Route path="/login" element={<Login />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <AuthGuard>
+                <DeviceRouteGuard>
+                  <Dashboard />
+                </DeviceRouteGuard>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/mobile-dashboard" 
+            element={
+              <AuthGuard>
+                <DeviceRouteGuard>
+                  <MobileDashboard />
+                </DeviceRouteGuard>
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/device-logs" 
+            element={
+              <AuthGuard>
+                <DeviceLogs />
+              </AuthGuard>
+            } 
+          />
+          <Route 
+            path="/role-assignment" 
+            element={
+              <AuthGuard>
+                <RoleAssignment />
+              </AuthGuard>
+            } 
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -68,33 +146,7 @@ const App = () => (
         <StudentProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<DeviceSelection />} />
-                <Route path="/login" element={<Login />} />
-                <Route 
-                  path="/dashboard" 
-                  element={
-                    <DeviceRouteGuard>
-                      <Dashboard />
-                    </DeviceRouteGuard>
-                  } 
-                />
-                <Route 
-                  path="/mobile-dashboard" 
-                  element={
-                    <DeviceRouteGuard>
-                      <MobileDashboard />
-                    </DeviceRouteGuard>
-                  } 
-                />
-                <Route path="/device-logs" element={<DeviceLogs />} />
-                <Route path="/role-assignment" element={<RoleAssignment />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
+          <AppRoutes />
         </StudentProvider>
       </AuthProvider>
     </TooltipProvider>

@@ -54,7 +54,7 @@ const AdminLoginForm: React.FC = () => {
             This area is restricted to administrators who manage teacher roles and assignments.
             <br />
             <span className="text-xs italic mt-1 block">
-              Default admin credentials will be provided by your system administrator
+              Default admin password: <span className="font-medium">admin123</span>
             </span>
           </AlertDescription>
         </Alert>
