@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,12 +15,14 @@ const Login: React.FC = () => {
 
   // Debug logs
   console.log('Login rendering, device param:', deviceParam);
+  console.log('Auth state:', { isAuthenticated, isLoading, user });
 
   useEffect(() => {
     // If device is in URL params, use it
     if (deviceParam === 'desktop' || deviceParam === 'mobile') {
       console.log('Setting device from URL params:', deviceParam);
       setDeviceType(deviceParam);
+      localStorage.setItem('devicePreference', deviceParam);
     } else {
       // Check localStorage if not in URL
       const storedPreference = localStorage.getItem('devicePreference') as 'desktop' | 'mobile' | null;
@@ -38,14 +41,26 @@ const Login: React.FC = () => {
       console.log('Authenticated, redirecting to dashboard for device type:', deviceType);
       
       // Log device usage
-      logDeviceUsage(user, deviceType);
-      
-      // Redirect to appropriate dashboard based on device type
-      if (deviceType === 'mobile') {
-        navigate('/mobile-dashboard', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      logDeviceUsage(user, deviceType)
+        .then(() => {
+          console.log('Device usage logged, now redirecting to:', deviceType === 'mobile' ? '/mobile-dashboard' : '/dashboard');
+          
+          // Redirect to appropriate dashboard based on device type
+          if (deviceType === 'mobile') {
+            navigate('/mobile-dashboard', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        })
+        .catch(error => {
+          console.error('Error logging device usage:', error);
+          // Still redirect even if logging fails
+          if (deviceType === 'mobile') {
+            navigate('/mobile-dashboard', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        });
     }
   }, [isAuthenticated, isLoading, navigate, deviceType, user]);
 

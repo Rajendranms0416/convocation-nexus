@@ -18,6 +18,8 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
       ipAddress: '127.0.0.1' // In a real app, you'd get this from the server
     };
     
+    console.log(`Logging device usage for ${user.name}, device type: ${deviceType}`);
+    
     // Store in Supabase
     const { error } = await supabase
       .from('device_logs')
