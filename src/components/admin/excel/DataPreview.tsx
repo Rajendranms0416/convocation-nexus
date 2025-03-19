@@ -9,9 +9,12 @@ interface DataPreviewProps {
 const DataPreview: React.FC<DataPreviewProps> = ({ previewData }) => {
   if (previewData.length === 0) return null;
   
+  // Only show first 5 entries to avoid overwhelming the UI
+  const displayData = previewData.slice(0, 5);
+  
   return (
     <div className="mt-4">
-      <h3 className="text-sm font-medium mb-2">Preview (First 5 entries):</h3>
+      <h3 className="text-sm font-medium mb-2">Preview (First {displayData.length} entries):</h3>
       <div className="border rounded-md overflow-x-auto">
         <Table className="w-full text-sm">
           <TableHeader className="bg-muted">
@@ -24,7 +27,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({ previewData }) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {previewData.map((row, index) => (
+            {displayData.map((row, index) => (
               <TableRow key={index} className="border-t">
                 <TableCell className="p-2 text-xs">{row['Programme Name'] || '-'}</TableCell>
                 <TableCell className="p-2 text-xs">{row['Robe Email ID'] || '-'}</TableCell>
@@ -36,6 +39,9 @@ const DataPreview: React.FC<DataPreviewProps> = ({ previewData }) => {
           </TableBody>
         </Table>
       </div>
+      <p className="text-xs text-muted-foreground mt-2">
+        Total entries: {previewData.length}
+      </p>
     </div>
   );
 };

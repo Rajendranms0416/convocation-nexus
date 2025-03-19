@@ -219,6 +219,20 @@ export const excelService = {
         }
       }
       
+      // Filter out header rows and other invalid entries that might have been parsed as data
+      parsedData = parsedData.filter(row => {
+        // Skip rows that look like headers (containing words like "programme" in values)
+        const hasHeaderLikeValues = Object.values(row).some(value => 
+          typeof value === 'string' && 
+          /programme|email|folder|accompanying|charge/i.test(value.toLowerCase())
+        );
+        
+        // Skip rows with "Sl. No" as the Accompanying Teacher (this appears to be a common issue)
+        const hasSlNoAsTeacher = row['Accompanying Teacher'] === 'Sl. No';
+        
+        return !hasHeaderLikeValues && !hasSlNoAsTeacher;
+      });
+      
       // Ensure we have the required data
       const enhancedData = excelService.enhanceTeacherData(parsedData, allEmails, teacherNames);
       
@@ -442,7 +456,10 @@ export const excelService = {
               (key.toLowerCase().includes('teacher') || 
                key.toLowerCase().includes('name') || 
                key.toLowerCase().includes('faculty'))) {
-            allTeacherNames.push(value);
+            // Check if value doesn't look like "Sl. No" or other header-like values
+            if (!/sl\.?\s*no|programme|email/i.test(value)) {
+              allTeacherNames.push(value);
+            }
           }
         });
       });
@@ -450,12 +467,26 @@ export const excelService = {
     
     console.log('All teacher names found:', allTeacherNames);
     
+    // Get unique teacher names and emails (avoid duplicating the same teacher)
+    const uniqueTeacherNames = [...new Set(allTeacherNames)].filter(name => 
+      name && name.length > 2 && !/sl\.?\s*no|class wise/i.test(name)
+    );
+    const uniqueEmails = [...new Set(allEmails)].filter(email => email);
+    
+    console.log('Unique teacher names:', uniqueTeacherNames);
+    console.log('Unique emails:', uniqueEmails);
+    
+    // Get actual teacher names to use
+    const actualTeacherNames = uniqueTeacherNames.length > 0 ? 
+      uniqueTeacherNames : 
+      ['Unknown Teacher'];
+    
     // Now enhance each row
     return data.map((row, index) => {
       const enhancedRow = { ...row };
       
       // Ensure Programme Name
-      if (!enhancedRow['Programme Name']) {
+      if (!enhancedRow['Programme Name'] || enhancedRow['Programme Name'].includes('Programme')) {
         // Try to find any key that might contain a program name
         const programKey = Object.keys(row).find(key => 
           key.toLowerCase().includes('program') || 
@@ -463,15 +494,15 @@ export const excelService = {
           key.toLowerCase().includes('class')
         );
         
-        if (programKey && row[programKey]) {
+        if (programKey && row[programKey] && !row[programKey].toLowerCase().includes('programme')) {
           enhancedRow['Programme Name'] = row[programKey];
         } else {
-          enhancedRow['Programme Name'] = `Unknown Programme ${index + 1}`;
+          enhancedRow['Programme Name'] = `Class ${index + 1}`;
         }
       }
       
       // Ensure Robe Email ID
-      if (!enhancedRow['Robe Email ID']) {
+      if (!enhancedRow['Robe Email ID'] || !enhancedRow['Robe Email ID'].includes('@')) {
         // Try to find any key that might contain a robe email
         const robeKey = Object.keys(row).find(key => 
           key.toLowerCase().includes('robe') || 
@@ -481,16 +512,16 @@ export const excelService = {
         
         if (robeKey && row[robeKey] && row[robeKey].includes('@')) {
           enhancedRow['Robe Email ID'] = row[robeKey];
-        } else if (allEmails.length > 0) {
+        } else if (uniqueEmails.length > 0) {
           // Use the first available email
-          enhancedRow['Robe Email ID'] = allEmails[0];
+          enhancedRow['Robe Email ID'] = uniqueEmails[0];
         } else {
-          enhancedRow['Robe Email ID'] = '';
+          enhancedRow['Robe Email ID'] = 'teacher@example.com';
         }
       }
       
       // Ensure Folder Email ID
-      if (!enhancedRow['Folder Email ID']) {
+      if (!enhancedRow['Folder Email ID'] || !enhancedRow['Folder Email ID'].includes('@')) {
         // Try to find any key that might contain a folder email
         const folderKey = Object.keys(row).find(key => 
           key.toLowerCase().includes('folder') || 
@@ -500,19 +531,22 @@ export const excelService = {
         
         if (folderKey && row[folderKey] && row[folderKey].includes('@')) {
           enhancedRow['Folder Email ID'] = row[folderKey];
-        } else if (allEmails.length > 1) {
+        } else if (uniqueEmails.length > 1) {
           // Use the second available email
-          enhancedRow['Folder Email ID'] = allEmails[1];
-        } else if (allEmails.length === 1) {
+          enhancedRow['Folder Email ID'] = uniqueEmails[1];
+        } else if (uniqueEmails.length === 1) {
           // If only one email, use it for both roles
-          enhancedRow['Folder Email ID'] = allEmails[0];
+          enhancedRow['Folder Email ID'] = uniqueEmails[0];
         } else {
-          enhancedRow['Folder Email ID'] = '';
+          enhancedRow['Folder Email ID'] = 'folder@example.com';
         }
       }
       
       // Ensure Accompanying Teacher name
-      if (!enhancedRow['Accompanying Teacher'] || enhancedRow['Accompanying Teacher'].trim() === '') {
+      if (!enhancedRow['Accompanying Teacher'] || 
+          enhancedRow['Accompanying Teacher'].trim() === '' ||
+          enhancedRow['Accompanying Teacher'] === 'Sl. No' ||
+          /class\s*wise/i.test(enhancedRow['Accompanying Teacher'])) {
         // Try to find any key that might contain a teacher name
         const teacherKey = Object.keys(row).find(key => 
           key.toLowerCase().includes('teacher name') || 
@@ -520,30 +554,43 @@ export const excelService = {
           key.toLowerCase().includes('robe in charge')
         );
         
-        if (teacherKey && row[teacherKey] && !row[teacherKey].includes('@')) {
+        if (teacherKey && row[teacherKey] && 
+            !row[teacherKey].includes('@') && 
+            row[teacherKey] !== 'Sl. No' &&
+            !/class\s*wise/i.test(row[teacherKey])) {
           enhancedRow['Accompanying Teacher'] = row[teacherKey];
-        } else if (allTeacherNames.length > 0) {
+        } else if (actualTeacherNames.length > 0) {
           // Use the first available teacher name
-          enhancedRow['Accompanying Teacher'] = allTeacherNames[0];
+          enhancedRow['Accompanying Teacher'] = actualTeacherNames[0];
+        } else {
+          enhancedRow['Accompanying Teacher'] = 'Robe Teacher';
         }
       }
       
       // Ensure Folder in Charge name
-      if (!enhancedRow['Folder in Charge'] || enhancedRow['Folder in Charge'].trim() === '') {
+      if (!enhancedRow['Folder in Charge'] || 
+          enhancedRow['Folder in Charge'].trim() === '' || 
+          enhancedRow['Folder in Charge'] === '"Class Wise/' ||
+          /class\s*wise/i.test(enhancedRow['Folder in Charge'])) {
         // Try to find any key that might contain a folder in charge name
         const folderTeacherKey = Object.keys(row).find(key => 
           key.toLowerCase().includes('folder') && key.toLowerCase().includes('charge') ||
           key.toLowerCase().includes('coordinator name')
         );
         
-        if (folderTeacherKey && row[folderTeacherKey] && !row[folderTeacherKey].includes('@')) {
+        if (folderTeacherKey && row[folderTeacherKey] && 
+            !row[folderTeacherKey].includes('@') &&
+            row[folderTeacherKey] !== '"Class Wise/' &&
+            !/class\s*wise/i.test(row[folderTeacherKey])) {
           enhancedRow['Folder in Charge'] = row[folderTeacherKey];
-        } else if (allTeacherNames.length > 1) {
+        } else if (actualTeacherNames.length > 1) {
           // Use the second available teacher name
-          enhancedRow['Folder in Charge'] = allTeacherNames[1];
-        } else if (allTeacherNames.length === 1) {
+          enhancedRow['Folder in Charge'] = actualTeacherNames[1];
+        } else if (actualTeacherNames.length === 1) {
           // If only one teacher, use it for both roles
-          enhancedRow['Folder in Charge'] = allTeacherNames[0];
+          enhancedRow['Folder in Charge'] = actualTeacherNames[0];
+        } else {
+          enhancedRow['Folder in Charge'] = 'Folder Teacher';
         }
       }
       
