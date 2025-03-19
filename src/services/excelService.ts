@@ -1,4 +1,3 @@
-
 /**
  * Excel Service for handling operations related to Excel data imports/exports
  */
@@ -445,8 +444,6 @@ export const excelService = {
       });
     }
     
-    console.log('All emails found in data:', allEmails);
-    
     // Extract all potential teacher names if not provided
     const allTeacherNames: string[] = [...teacherNames];
     if (teacherNames.length === 0) {
@@ -465,16 +462,11 @@ export const excelService = {
       });
     }
     
-    console.log('All teacher names found:', allTeacherNames);
-    
     // Get unique teacher names and emails (avoid duplicating the same teacher)
     const uniqueTeacherNames = [...new Set(allTeacherNames)].filter(name => 
       name && name.length > 2 && !/sl\.?\s*no|class wise/i.test(name)
     );
     const uniqueEmails = [...new Set(allEmails)].filter(email => email);
-    
-    console.log('Unique teacher names:', uniqueTeacherNames);
-    console.log('Unique emails:', uniqueEmails);
     
     // Get actual teacher names to use
     const actualTeacherNames = uniqueTeacherNames.length > 0 ? 
@@ -520,7 +512,7 @@ export const excelService = {
         }
       }
       
-      // Ensure Folder Email ID
+      // Ensure Folder Email ID - Make sure this field is properly populated
       if (!enhancedRow['Folder Email ID'] || !enhancedRow['Folder Email ID'].includes('@')) {
         // Try to find any key that might contain a folder email
         const folderKey = Object.keys(row).find(key => 
@@ -567,7 +559,7 @@ export const excelService = {
         }
       }
       
-      // Ensure Folder in Charge name
+      // Ensure Folder in Charge name - Improve this section to better identify folder teachers
       if (!enhancedRow['Folder in Charge'] || 
           enhancedRow['Folder in Charge'].trim() === '' || 
           enhancedRow['Folder in Charge'] === '"Class Wise/' ||

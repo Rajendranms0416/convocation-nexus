@@ -9,21 +9,47 @@ let TEACHERS_LIST = [
   {
     "Programme Name": "BCA",
     "Robe Email ID": "john.doe@convocation.edu",
-    "Folder Email ID": "jane.smith@convocation.edu"
+    "Folder Email ID": "jane.smith@convocation.edu",
+    "Accompanying Teacher": "John Doe",
+    "Folder in Charge": "Jane Smith"
   },
   {
     "Programme Name": "MCA",
     "Robe Email ID": "alex.johnson@convocation.edu",
-    "Folder Email ID": "sara.williams@convocation.edu"
+    "Folder Email ID": "sara.williams@convocation.edu",
+    "Accompanying Teacher": "Alex Johnson",
+    "Folder in Charge": "Sara Williams"
   },
   // Add more teacher entries as needed
 ];
 
 // Function to update the teachers list with new data
 export const updateTeachersList = (newData: any[]) => {
-  TEACHERS_LIST = newData;
+  // Ensure each teacher has all required fields before saving
+  const completeData = newData.map(teacher => {
+    const enhancedTeacher = { ...teacher };
+    
+    // Ensure all required fields exist
+    if (!enhancedTeacher['Programme Name']) enhancedTeacher['Programme Name'] = '';
+    if (!enhancedTeacher['Robe Email ID']) enhancedTeacher['Robe Email ID'] = '';
+    if (!enhancedTeacher['Folder Email ID']) enhancedTeacher['Folder Email ID'] = '';
+    if (!enhancedTeacher['Accompanying Teacher']) enhancedTeacher['Accompanying Teacher'] = '';
+    if (!enhancedTeacher['Folder in Charge']) enhancedTeacher['Folder in Charge'] = '';
+    
+    return enhancedTeacher;
+  });
+  
+  // Filter out teachers that have neither robe nor folder email (likely invalid entries)
+  const validTeachers = completeData.filter(teacher => 
+    (teacher['Robe Email ID'] && teacher['Robe Email ID'].includes('@')) || 
+    (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@'))
+  );
+  
+  console.log('Saving teachers list with valid entries:', validTeachers.length);
+  
+  TEACHERS_LIST = validTeachers;
   // Store in localStorage for persistence across page refreshes
-  localStorage.setItem('convocation_teachers', JSON.stringify(newData));
+  localStorage.setItem('convocation_teachers', JSON.stringify(validTeachers));
   console.log('Updated teachers list:', TEACHERS_LIST);
   return TEACHERS_LIST;
 };
