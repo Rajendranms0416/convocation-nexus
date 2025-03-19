@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileSpreadsheet, Upload, AlertCircle } from 'lucide-react';
@@ -9,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import FileUploader from './excel/FileUploader';
 import FormatHelp from './excel/FormatHelp';
 import DataPreview from './excel/DataPreview';
-import excelService from '@/services/excelService';
+import { excelService } from '@/services/excel';
 
 // Define the expected column structure
 const requiredColumns = [

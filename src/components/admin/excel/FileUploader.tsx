@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +5,7 @@ import { Upload, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { excelService } from '@/services/excelService';
+import { excelService } from '@/services/excel';
 
 interface FileUploaderProps {
   onDataLoaded: (data: any[]) => void;
@@ -38,7 +37,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     setUploadError(null);
 
     try {
-      // Read the file content
       const fileContent = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -54,17 +52,13 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       
       console.log('File content preview:', fileContent.substring(0, 200) + '...');
       
-      // Parse the CSV data with debug mode enabled
       const parsedData = excelService.parseCSV(fileContent, true);
       console.log('Parsed data:', parsedData);
       
-      // Validate the data
       excelService.validateTeacherData(parsedData);
       
-      // Save the data
       const savedData = excelService.saveTeacherData(parsedData);
       
-      // Send all data to the parent component, not just 5 rows
       onDataLoaded(savedData);
       
       toast({
@@ -97,7 +91,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       return;
     }
 
-    // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
