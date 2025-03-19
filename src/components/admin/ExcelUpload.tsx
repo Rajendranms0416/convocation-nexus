@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,15 +61,11 @@ const ExcelUpload: React.FC = () => {
       const parsedData = excelService.parseCSV(fileContent);
       console.log('Parsed data:', parsedData);
       
-      // Normalize the data first (moved before validation)
-      const normalizedData = excelService.normalizeColumnNames(parsedData);
-      console.log('Normalized data:', normalizedData);
-      
       // Validate the data
-      excelService.validateTeacherData(normalizedData);
+      excelService.validateTeacherData(parsedData);
       
-      // Save the normalized data
-      const savedData = excelService.saveTeacherData(normalizedData);
+      // Save the data
+      const savedData = excelService.saveTeacherData(parsedData);
       
       setPreviewData(savedData.slice(0, 5)); // Show first 5 rows as preview
       
@@ -135,7 +130,7 @@ const ExcelUpload: React.FC = () => {
           <AlertTitle>Format Information</AlertTitle>
           <AlertDescription>
             Your CSV file should include columns for Programme Name, Robe Email ID, and Folder Email ID. 
-            The system will try to recognize these columns even if they have slightly different names.
+            The system will search through the entire sheet to find and recognize these data points, even if column names vary.
           </AlertDescription>
         </Alert>
         
@@ -197,7 +192,7 @@ const ExcelUpload: React.FC = () => {
         <div className="text-sm text-muted-foreground">
           <p className="flex items-center">
             <FileSpreadsheet className="h-4 w-4 mr-1" /> 
-            Required format: CSV with columns for Programme Name, Robe Email ID, and Folder Email ID
+            Required data: Programme Name, Robe Email ID, and Folder Email ID
           </p>
         </div>
         <Button variant="outline" onClick={exportCurrentData}>
