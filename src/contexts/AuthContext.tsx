@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Role } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -22,12 +21,14 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
 });
 
+const SUPER_ADMIN_EMAIL = 'admin@convocation.edu';
+const SUPER_ADMIN_PASSWORD = 'admin123';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  // Handle session changes (login, logout, token refresh)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -43,7 +44,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Initial session check
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log('Initial session check:', session);
       if (session) {
@@ -57,10 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Helper function to handle session and get user data
   const handleSession = async (session: Session) => {
     try {
-      // Get user metadata
       const { 
         user: authUser, 
       } = session;
@@ -72,7 +70,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Auth user from session:', authUser);
       
-      // Check if this email exists in the Teacher's List table to determine role
+      if (authUser.email === SUPER_ADMIN_EMAIL) {
+        const userWithRole: User = {
+          id: authUser.id,
+          name: 'Super Admin',
+          email: authUser.email,
+          role: 'super-admin',
+          avatar: `https://ui-avatars.com/api/?name=Super+Admin&background=random&color=fff`,
+        };
+        
+        console.log('Setting user as super admin:', userWithRole);
+        setUser(userWithRole);
+        localStorage.setItem('convocation_user', JSON.stringify(userWithRole));
+        return;
+      }
+      
       const { data: teacherData, error: teacherError } = await supabase
         .from('Teacher\'s List')
         .select('*')
@@ -82,7 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error checking teacher list:', teacherError);
       }
       
-      // Determine role based on email match in Teacher's List
       let userRole: Role = 'presenter'; // Default role
       
       if (teacherData && teacherData.length > 0) {
@@ -94,7 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Create user object from auth data
       const userWithRole: User = {
         id: authUser.id,
         name: authUser.user_metadata.name || authUser.email?.split('@')[0] || 'User',
@@ -118,7 +128,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
       
-      // Check if this email exists in the Teacher's List table to determine role
+      if (email === SUPER_ADMIN_EMAIL) {
+        if (password !== SUPER_ADMIN_PASSWORD) {
+          throw new Error('Invalid admin credentials');
+        }
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error && error.message === 'Invalid login credentials') {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name: 'Super Admin',
+                role: 'super-admin',
+                avatar: `https://ui-avatars.com/api/?name=Super+Admin&background=random&color=fff`
+              }
+            }
+          });
+          
+          if (signUpError) throw signUpError;
+          
+          toast({
+            title: 'Admin account created',
+            description: 'You have been signed up as an administrator',
+          });
+        } else if (error) {
+          throw error;
+        }
+        
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (sessionData && sessionData.session) {
+          await handleSession(sessionData.session);
+          
+          const adminUser: User = {
+            id: sessionData.session.user.id,
+            name: 'Super Admin',
+            email: SUPER_ADMIN_EMAIL,
+            role: 'super-admin',
+            avatar: `https://ui-avatars.com/api/?name=Super+Admin&background=random&color=fff`,
+          };
+          
+          await logDeviceUsage(adminUser, deviceType);
+          
+          toast({
+            title: 'Admin Login successful',
+            description: 'Welcome, Super Admin!',
+          });
+        }
+        
+        setIsLoading(false);
+        return;
+      }
+      
       const { data: teacherData, error: teacherError } = await supabase
         .from('Teacher\'s List')
         .select('*')
@@ -136,7 +203,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Teacher found in database:', teacherData[0]);
       
-      // For the first login, we automatically create the user if they don't exist
       const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -144,7 +210,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (checkError && checkError.message === 'Invalid login credentials') {
         console.log('User not found, attempting to create account');
-        // If the user doesn't exist, create a new account
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -168,7 +233,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw checkError;
       }
       
-      // Determine user role based on email match
       let userRole: Role = 'presenter'; // Default role
       
       if (teacherData && teacherData.length > 0) {
@@ -180,11 +244,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // If user was found or created, we should have a valid session now
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (sessionData && sessionData.session) {
-        // Update user metadata with role
         await supabase.auth.updateUser({
           data: {
             role: userRole,
@@ -193,14 +255,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
       
-        // Get user data from the session
         await handleSession(sessionData.session);
         
-        // We need to get the user after handleSession sets it
         const currentUser = JSON.parse(localStorage.getItem('convocation_user') || 'null');
         
         if (currentUser) {
-          // Log device usage
           await logDeviceUsage(currentUser, deviceType);
           console.log(`Logged in successfully as ${currentUser.name} using ${deviceType} device`);
           

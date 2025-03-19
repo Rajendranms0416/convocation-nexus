@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, InfoIcon } from 'lucide-react';
+import { Loader2, InfoIcon, Users } from 'lucide-react';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -135,6 +135,15 @@ const LoginForm: React.FC = () => {
           Accompanying Teachers: <span className="font-medium">Robe In-charge</span> role
           <br />
           Folder in Charge: <span className="font-medium">Folder In-charge</span> role
+        </div>
+        
+        <div className="w-full pt-4 border-t">
+          <Link to="/role-assignment">
+            <Button variant="outline" size="sm" className="w-full">
+              <Users className="mr-2 h-4 w-4" />
+              Teacher Role Management
+            </Button>
+          </Link>
         </div>
       </CardFooter>
     </Card>

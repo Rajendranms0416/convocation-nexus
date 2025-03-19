@@ -13,6 +13,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const MobileDashboard = lazy(() => import("./pages/MobileDashboard"));
 const DeviceLogs = lazy(() => import("./pages/DeviceLogs"));
+const RoleAssignment = lazy(() => import("./pages/RoleAssignment"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -89,6 +90,7 @@ const App = () => (
                   } 
                 />
                 <Route path="/device-logs" element={<DeviceLogs />} />
+                <Route path="/role-assignment" element={<RoleAssignment />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
