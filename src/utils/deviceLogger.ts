@@ -1,75 +1,45 @@
 
 import { User } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
-export interface DeviceLog {
-  id: string;
-  userId: string;
-  userName: string;
-  userRole: string;
-  deviceType: 'mobile' | 'desktop';
-  userAgent: string;
-  timestamp: Date;
-  ipAddress?: string;
-}
-
-// Use localStorage to store logs
-const DEVICE_LOGS_KEY = 'convocation_device_logs';
-
-export const logDeviceUsage = (user: User, deviceType: 'mobile' | 'desktop'): void => {
+export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop') => {
   try {
-    // Get existing logs
-    const existingLogsString = localStorage.getItem(DEVICE_LOGS_KEY);
-    const existingLogs: DeviceLog[] = existingLogsString ? JSON.parse(existingLogsString) : [];
+    // Log to console
+    console.log(`Device usage logged: ${user.name} (${user.role}) using ${deviceType} device`);
     
-    // Create new log entry
-    const newLog: DeviceLog = {
-      id: crypto.randomUUID(), // Generate a unique ID
+    // Save to Supabase
+    const { data, error } = await supabase
+      .from('device_logs')
+      .insert({
+        user_id: user.id,
+        user_name: user.name,
+        user_role: user.role,
+        device_type: deviceType,
+        user_agent: navigator.userAgent,
+        ip_address: '127.0.0.1' // In a real app, you'd get this from the server
+      });
+      
+    if (error) {
+      console.error('Error logging device usage to database:', error);
+    }
+    
+    // Also track in localStorage for local persistence
+    const storedLogs = localStorage.getItem('device_logs');
+    const logs = storedLogs ? JSON.parse(storedLogs) : [];
+    
+    logs.push({
       userId: user.id,
       userName: user.name,
       userRole: user.role,
       deviceType,
       userAgent: navigator.userAgent,
-      timestamp: new Date(),
-    };
+      timestamp: new Date().toISOString(),
+      ipAddress: '127.0.0.1'
+    });
     
-    console.log('Logging device usage:', newLog);
+    localStorage.setItem('device_logs', JSON.stringify(logs));
     
-    // Add new log to existing logs (limit to last 100 entries to prevent storage issues)
-    const updatedLogs = [newLog, ...existingLogs].slice(0, 100);
-    
-    // Save updated logs to localStorage
-    localStorage.setItem(DEVICE_LOGS_KEY, JSON.stringify(updatedLogs));
-    console.log('Device log saved, total logs:', updatedLogs.length);
   } catch (error) {
     console.error('Error logging device usage:', error);
   }
-};
-
-export const getDeviceLogs = (): DeviceLog[] => {
-  try {
-    const logsString = localStorage.getItem(DEVICE_LOGS_KEY);
-    
-    // Parse logs from localStorage
-    if (!logsString) {
-      console.log('No device logs found in localStorage');
-      return [];
-    }
-    
-    const logs = JSON.parse(logsString);
-    console.log('Retrieved device logs:', logs.length);
-    
-    // Ensure timestamps are converted back from strings to Date objects
-    return logs.map((log: any) => ({
-      ...log,
-      timestamp: new Date(log.timestamp)
-    }));
-  } catch (error) {
-    console.error('Error retrieving device logs:', error);
-    return [];
-  }
-};
-
-export const clearDeviceLogs = (): void => {
-  localStorage.removeItem(DEVICE_LOGS_KEY);
-  console.log('Device logs cleared');
 };

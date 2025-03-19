@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, InfoIcon } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -27,18 +29,6 @@ const LoginForm: React.FC = () => {
     }
   };
 
-  const demoAccounts = [
-    { role: 'Robe In-charge', email: 'robe@example.com' },
-    { role: 'Folder In-charge', email: 'folder@example.com' },
-    { role: 'Super Admin', email: 'admin@example.com' },
-    { role: 'Presenter', email: 'presenter@example.com' },
-  ];
-
-  const selectDemoAccount = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('password');
-  };
-
   return (
     <Card className="w-full max-w-md mx-auto shadow-lg glass-card animate-fade-in">
       <CardHeader className="space-y-1">
@@ -48,13 +38,23 @@ const LoginForm: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <Alert className="mb-4 bg-blue-50 border-blue-200">
+          <InfoIcon className="h-4 w-4 text-blue-500" />
+          <AlertTitle className="text-blue-700">Authentication Info</AlertTitle>
+          <AlertDescription className="text-blue-600 text-sm">
+            Your email is your name (lowercase with dots): <span className="font-medium">firstname.lastname@convocation.edu</span>
+            <br />
+            Default password: <span className="font-medium">password123</span>
+          </AlertDescription>
+        </Alert>
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input 
               id="email" 
               type="email" 
-              placeholder="your.email@example.com"
+              placeholder="firstname.lastname@convocation.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -93,23 +93,12 @@ const LoginForm: React.FC = () => {
       </CardContent>
       <CardFooter className="flex flex-col space-y-4">
         <div className="text-sm text-muted-foreground text-center w-full">
-          For demonstration, use one of the following accounts:
-        </div>
-        <div className="grid grid-cols-2 gap-2 w-full">
-          {demoAccounts.map((account) => (
-            <Button 
-              key={account.email} 
-              variant="outline" 
-              size="sm"
-              onClick={() => selectDemoAccount(account.email)}
-              className="text-xs transition-normal hover:bg-convocation-100"
-            >
-              {account.role}
-            </Button>
-          ))}
+          If you're listed in the Teacher's List, an account has been created for you
         </div>
         <div className="text-xs text-center text-muted-foreground mt-2 w-full">
-          All demo accounts use password: "password"
+          Accompanying Teachers: <span className="font-medium">Robe In-charge</span> role
+          <br />
+          Folder in Charge: <span className="font-medium">Folder In-charge</span> role
         </div>
       </CardFooter>
     </Card>

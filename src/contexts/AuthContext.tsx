@@ -1,8 +1,10 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Role, User } from '@/types';
+import { User, Role } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { logDeviceUsage } from '@/utils/deviceLogger';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -20,104 +22,143 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
 });
 
-// Mock users for demo
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Robe Manager',
-    email: 'robe@example.com',
-    role: 'robe-in-charge',
-    avatar: 'https://ui-avatars.com/api/?name=Robe+Manager&background=007aff&color=fff',
-  },
-  {
-    id: '2',
-    name: 'Folder Manager',
-    email: 'folder@example.com',
-    role: 'folder-in-charge',
-    avatar: 'https://ui-avatars.com/api/?name=Folder+Manager&background=34c759&color=fff',
-  },
-  {
-    id: '3',
-    name: 'Admin',
-    email: 'admin@example.com',
-    role: 'super-admin',
-    avatar: 'https://ui-avatars.com/api/?name=Admin&background=ff9500&color=fff',
-  },
-  {
-    id: '4',
-    name: 'Presenter',
-    email: 'presenter@example.com',
-    role: 'presenter',
-    avatar: 'https://ui-avatars.com/api/?name=Presenter&background=ff3b30&color=fff',
-  },
-];
-
-// All users have the password "password" for demo purposes
-const MOCK_PASSWORD = 'password';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  // Handle session changes (login, logout, token refresh)
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('convocation_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('convocation_user');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        
+        if (session) {
+          await handleSession(session);
+        } else {
+          setUser(null);
+        }
+        
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    );
+
+    // Initial session check
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        await handleSession(session);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string, deviceType: 'mobile' | 'desktop' = 'desktop') => {
-    setIsLoading(true);
-    console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
-    
-    // In a real app, this would be an API call
-    // This is just for demo purposes
-    return new Promise<void>((resolve, reject) => {
-      setTimeout(() => {
-        const foundUser = MOCK_USERS.find(u => u.email === email);
+  // Helper function to handle session and get user data
+  const handleSession = async (session: Session) => {
+    try {
+      // Get user metadata
+      const { 
+        user: authUser, 
+      } = session;
+      
+      if (!authUser) return;
+      
+      const userData = authUser.user_metadata;
+      
+      // Get profile data from profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+        
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', profileError);
+      }
+      
+      // Combine auth data with profile data
+      const userWithRole: User = {
+        id: authUser.id,
+        name: profileData?.name || userData.name || authUser.email?.split('@')[0] || 'User',
+        email: authUser.email || '',
+        role: (profileData?.role || userData.role || 'presenter') as Role,
+        avatar: profileData?.avatar || userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData?.name || userData.name || 'User')}&background=random&color=fff`,
+      };
+      
+      setUser(userWithRole);
+      localStorage.setItem('convocation_user', JSON.stringify(userWithRole));
+      
+    } catch (error) {
+      console.error('Error handling session:', error);
+      setUser(null);
+    }
+  };
 
-        if (foundUser && password === MOCK_PASSWORD) {
-          setUser(foundUser);
-          localStorage.setItem('convocation_user', JSON.stringify(foundUser));
-          
+  const login = async (email: string, password: string, deviceType: 'mobile' | 'desktop' = 'desktop') => {
+    try {
+      setIsLoading(true);
+      console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        // Get user data from the session
+        await handleSession(data.session);
+        
+        if (user) {
           // Log device usage
-          logDeviceUsage(foundUser, deviceType);
-          console.log(`Logged in successfully as ${foundUser.name} using ${deviceType} device`);
+          logDeviceUsage(user, deviceType);
+          console.log(`Logged in successfully as ${user.name} using ${deviceType} device`);
           
           toast({
             title: 'Login successful',
-            description: `Welcome back, ${foundUser.name}!`,
+            description: `Welcome back, ${user.name}!`,
           });
-          resolve();
-        } else {
-          toast({
-            title: 'Login failed',
-            description: 'Invalid email or password.',
-            variant: 'destructive',
-          });
-          console.error('Login failed: Invalid credentials');
-          reject(new Error('Invalid email or password'));
         }
-        setIsLoading(false);
-      }, 800);
-    });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Login error:', errorMessage);
+      
+      toast({
+        title: 'Login failed',
+        description: errorMessage || 'Invalid email or password.',
+        variant: 'destructive',
+      });
+      
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('convocation_user');
-    toast({
-      title: 'Logged out',
-      description: 'You have been logged out successfully.',
-    });
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      localStorage.removeItem('convocation_user');
+      toast({
+        title: 'Logged out',
+        description: 'You have been logged out successfully.',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: 'Logout failed',
+        description: 'There was an error logging out.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
