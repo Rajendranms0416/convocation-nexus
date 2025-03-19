@@ -15,23 +15,25 @@ export const useAuthOperations = () => {
   const login = async (email: string, password: string, deviceType: 'mobile' | 'desktop' = 'desktop') => {
     try {
       setIsLoading(true);
-      console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
+      // Strip whitespace from email
+      const cleanEmail = email.trim();
+      console.log(`Attempting login with email: ${cleanEmail}, device: ${deviceType}`);
       
       // Handle super admin login
-      if (email === SUPER_ADMIN_EMAIL) {
+      if (cleanEmail === SUPER_ADMIN_EMAIL) {
         console.log('Attempting super admin login');
         if (password !== SUPER_ADMIN_PASSWORD) {
           throw new Error('Invalid admin credentials');
         }
         
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+          email: cleanEmail,
           password,
         });
         
         if (error && error.message === 'Invalid login credentials') {
           console.log('Admin user not found, creating account');
-          const { data: signUpData, error: signUpError } = await createAdminUser(email, password);
+          const { data: signUpData, error: signUpError } = await createAdminUser(cleanEmail, password);
           
           if (signUpError) throw signUpError;
           
@@ -42,7 +44,7 @@ export const useAuthOperations = () => {
           
           // Try logging in again after signup
           const { error: loginError } = await supabase.auth.signInWithPassword({
-            email,
+            email: cleanEmail,
             password,
           });
           
@@ -75,7 +77,7 @@ export const useAuthOperations = () => {
       const { data: teacherData, error: teacherError } = await supabase
         .from('Teacher\'s List')
         .select('*')
-        .or(`"Robe Email ID".eq."${email}","Folder Email ID".eq."${email}"`);
+        .or(`"Robe Email ID".eq."${cleanEmail}","Folder Email ID".eq."${cleanEmail}"`);
       
       console.log('Teacher check result:', { teacherData, teacherError });
         
@@ -85,7 +87,7 @@ export const useAuthOperations = () => {
       }
       
       if (!teacherData || teacherData.length === 0) {
-        console.error('Email not found in teacher list:', email);
+        console.error('Email not found in teacher list:', cleanEmail);
         throw new Error('Email not found in authorized teachers list');
       }
       
@@ -93,7 +95,7 @@ export const useAuthOperations = () => {
       
       // Try login first
       let { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password,
       });
       
@@ -101,12 +103,12 @@ export const useAuthOperations = () => {
       if (error && error.message.includes('Invalid login credentials')) {
         console.log('User not found, attempting to create account');
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
+          email: cleanEmail,
           password,
           options: {
             data: {
-              name: email.split('@')[0].replace(/\./g, ' '),
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
+              name: cleanEmail.split('@')[0].replace(/\./g, ' '),
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
             }
           }
         });
@@ -118,7 +120,7 @@ export const useAuthOperations = () => {
         
         // Try login again after signup
         const { error: loginAgainError } = await supabase.auth.signInWithPassword({
-          email,
+          email: cleanEmail,
           password,
         });
         
@@ -137,7 +139,7 @@ export const useAuthOperations = () => {
       }
       
       // Determine user role from teacher data
-      let userRole = determineUserRole(teacherData[0], email);
+      let userRole = determineUserRole(teacherData[0], cleanEmail);
       console.log('Determined role:', userRole);
 
       // Get current session and update user data
@@ -147,8 +149,8 @@ export const useAuthOperations = () => {
         await supabase.auth.updateUser({
           data: {
             role: userRole,
-            name: email.split('@')[0].replace(/\./g, ' '),
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
+            name: cleanEmail.split('@')[0].replace(/\./g, ' '),
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
           }
         });
       

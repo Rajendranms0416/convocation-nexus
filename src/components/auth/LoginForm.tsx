@@ -23,9 +23,9 @@ const LoginForm: React.FC = () => {
     setError(null);
     
     try {
-      console.log('Submitting login with email:', email);
-      // Strip whitespace from email to prevent accidental spaces
       const trimmedEmail = email.trim();
+      console.log('Submitting login with email:', trimmedEmail);
+      
       await login(trimmedEmail, password, 'desktop');
     } catch (error) {
       console.error('Login failed', error);

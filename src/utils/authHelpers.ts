@@ -33,7 +33,7 @@ export const handleSession = async (session: Session): Promise<User | null> => {
     
     const email = authUser.email || '';
     
-    // Fixed query with proper parameterized query
+    // Properly parameterized query
     const { data: teacherData, error: teacherError } = await supabase
       .from('Teacher\'s List')
       .select('*')
