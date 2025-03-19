@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { excelService } from '@/services/excel';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FileUploaderProps {
   onDataLoaded: (data: any[]) => void;
@@ -21,6 +23,18 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
+      
+      // Validate file type
+      const validExtensions = ['.csv', '.xlsx', '.xls'];
+      const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
+      
+      if (!validExtensions.includes(fileExtension)) {
+        setUploadError(`Invalid file type. Please select a CSV or Excel file (${validExtensions.join(', ')})`);
+        setFile(null);
+        setFileInfo(null);
+        return;
+      }
+      
       setFile(selectedFile);
       setUploadError(null);
       setFileInfo(`Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`);
@@ -37,32 +51,42 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     setUploadError(null);
 
     try {
-      const fileContent = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (typeof e.target?.result === 'string') {
-            resolve(e.target.result);
-          } else {
-            reject(new Error('Failed to read file'));
-          }
-        };
-        reader.onerror = () => reject(new Error('Error reading file'));
-        reader.readAsText(file);
-      });
+      // Handle both CSV and Excel formats
+      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+      let parsedData;
       
-      console.log('File content preview:', fileContent.substring(0, 200) + '...');
+      if (fileExtension === '.csv') {
+        const fileContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (typeof e.target?.result === 'string') {
+              resolve(e.target.result);
+            } else {
+              reject(new Error('Failed to read file'));
+            }
+          };
+          reader.onerror = () => reject(new Error('Error reading file'));
+          reader.readAsText(file);
+        });
+        
+        parsedData = excelService.parseCSV(fileContent, true);
+      } else {
+        // For Excel files (.xlsx, .xls)
+        const fileBuffer = await file.arrayBuffer();
+        parsedData = await excelService.parseExcel(fileBuffer);
+      }
       
-      const parsedData = excelService.parseCSV(fileContent, true);
       console.log('Parsed data:', parsedData);
       
       excelService.validateTeacherData(parsedData);
       
-      const savedData = excelService.saveTeacherData(parsedData);
+      // Save to both local storage and Supabase
+      const savedData = await excelService.saveTeacherData(parsedData);
       
       onDataLoaded(savedData);
       
       toast({
-        title: 'CSV file uploaded successfully',
+        title: 'File uploaded successfully',
         description: `Loaded ${savedData.length} teacher records.`,
       });
     } catch (error) {
@@ -70,7 +94,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
       
       toast({
-        title: 'Failed to upload CSV file',
+        title: 'Failed to upload file',
         description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: 'destructive',
       });
@@ -79,32 +103,59 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     }
   };
 
-  const exportCurrentData = () => {
-    const csvContent = excelService.generateCSV();
-    
-    if (!csvContent) {
+  const exportCurrentData = async () => {
+    try {
+      // Fetch data from Supabase
+      const { data: teachersData, error } = await supabase
+        .from('teachers')
+        .select('*');
+        
+      if (error) throw error;
+      
+      // Map database fields to expected format
+      const formattedData = teachersData.map(teacher => ({
+        'Programme Name': teacher.program_name,
+        'Robe Email ID': teacher.robe_email,
+        'Folder Email ID': teacher.folder_email,
+        'Accompanying Teacher': teacher.accompanying_teacher,
+        'Folder in Charge': teacher.folder_in_charge,
+        'Class Wise/\nSection Wise': teacher.class_section
+      }));
+      
+      // Generate CSV
+      const csvContent = excelService.generateCSV(formattedData);
+      
+      if (!csvContent) {
+        toast({
+          title: 'No data to export',
+          description: 'There are no teacher records currently loaded.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'teachers_data.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
       toast({
-        title: 'No data to export',
-        description: 'There are no teacher records currently loaded.',
+        title: 'Data exported successfully',
+        description: `Exported teacher records.`,
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Failed to export data',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: 'destructive',
       });
-      return;
     }
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'teachers_data.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: 'Data exported successfully',
-      description: `Exported teacher records.`,
-    });
   };
 
   return (
@@ -112,7 +163,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <Input
           type="file"
-          accept=".csv"
+          accept=".csv,.xlsx,.xls"
           onChange={handleFileChange}
           className="flex-1"
         />

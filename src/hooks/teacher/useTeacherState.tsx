@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Role } from '@/types';
 import { getAllTeachers } from '@/utils/authHelpers';
+import { excelService } from '@/services/excel';
 
 /**
  * Hook to manage teacher state
@@ -12,6 +13,7 @@ export const useTeacherState = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isClassAssignDialogOpen, setIsClassAssignDialogOpen] = useState(false);
   const [currentTeacher, setCurrentTeacher] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Form states
   const [newTeacherName, setNewTeacherName] = useState('');
@@ -30,27 +32,56 @@ export const useTeacherState = () => {
 
   // Load teacher data
   useEffect(() => {
-    const loadedTeachers = getAllTeachers();
+    const loadTeacherData = async () => {
+      setIsLoading(true);
+      try {
+        // Try to load from database first
+        const loadedTeachers = await excelService.getTeacherData();
+        
+        // Transform to the format needed for the table
+        const formattedTeachers = loadedTeachers.map((teacher, index) => ({
+          id: (index + 1).toString(),
+          name: teacher['Accompanying Teacher'] || teacher['Folder in Charge'] || 'Unknown',
+          email: teacher['Robe Email ID'] || teacher['Folder Email ID'] || '',
+          role: teacher['Robe Email ID'] ? 'robe-in-charge' : 'folder-in-charge',
+          program: teacher['Programme Name'] || '',
+          section: teacher['Class Wise/\nSection Wise'] || '',
+          assignedClasses: [teacher['Programme Name'] || ''],
+          rawData: teacher // Keep the original data for reference
+        }));
+        
+        setTeachers(formattedTeachers);
+      } catch (error) {
+        console.error('Error loading teachers:', error);
+        
+        // Fallback to localStorage
+        const loadedTeachers = getAllTeachers();
+        
+        const formattedTeachers = loadedTeachers.map((teacher, index) => ({
+          id: (index + 1).toString(),
+          name: teacher['Accompanying Teacher'] || teacher['Folder in Charge'] || 'Unknown',
+          email: teacher['Robe Email ID'] || teacher['Folder Email ID'] || '',
+          role: teacher['Robe Email ID'] ? 'robe-in-charge' : 'folder-in-charge',
+          program: teacher['Programme Name'] || '',
+          section: teacher['Class Wise/\nSection Wise'] || '',
+          assignedClasses: [teacher['Programme Name'] || ''],
+          rawData: teacher
+        }));
+        
+        setTeachers(formattedTeachers);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    // Transform to the format needed for the table
-    const formattedTeachers = loadedTeachers.map((teacher, index) => ({
-      id: (index + 1).toString(),
-      name: teacher['Accompanying Teacher'] || teacher['Folder in Charge'] || 'Unknown',
-      email: teacher['Robe Email ID'] || teacher['Folder Email ID'] || '',
-      role: teacher['Robe Email ID'] ? 'robe-in-charge' : 'folder-in-charge',
-      program: teacher['Programme Name'] || '',
-      section: teacher['Class Wise/\nSection Wise'] || '',
-      assignedClasses: [teacher['Programme Name'] || ''],
-      rawData: teacher // Keep the original data for reference
-    }));
-    
-    setTeachers(formattedTeachers);
+    loadTeacherData();
   }, []);
 
   return {
     // Teacher state
     teachers,
     setTeachers,
+    isLoading,
     
     // Dialog states
     isAddDialogOpen,

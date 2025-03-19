@@ -84,12 +84,51 @@ export type Database = {
         }
         Relationships: []
       }
+      teachers: {
+        Row: {
+          accompanying_teacher: string | null
+          class_section: string | null
+          created_at: string
+          folder_email: string | null
+          folder_in_charge: string | null
+          id: string
+          program_name: string | null
+          robe_email: string | null
+          updated_at: string
+        }
+        Insert: {
+          accompanying_teacher?: string | null
+          class_section?: string | null
+          created_at?: string
+          folder_email?: string | null
+          folder_in_charge?: string | null
+          id?: string
+          program_name?: string | null
+          robe_email?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accompanying_teacher?: string | null
+          class_section?: string | null
+          created_at?: string
+          folder_email?: string | null
+          folder_in_charge?: string | null
+          id?: string
+          program_name?: string | null
+          robe_email?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_super_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
