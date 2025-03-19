@@ -38,8 +38,7 @@ export const excelService = {
       const firstRow = rows[0].toLowerCase();
       const isSimpleFormat = 
         firstRow.includes('programme') && 
-        firstRow.includes('robe') && 
-        firstRow.includes('folder');
+        (firstRow.includes('robe') || firstRow.includes('folder') || firstRow.includes('name'));
       
       if (debug) {
         console.log('Detected simple format:', isSimpleFormat);
@@ -50,8 +49,9 @@ export const excelService = {
       // Extract all potential emails from the dataset for later use
       const allEmails: string[] = [];
       const programNames: string[] = [];
+      const teacherNames: string[] = [];
       
-      // First pass: collect all emails and potential program names
+      // First pass: collect all emails, potential program names, and teacher names
       rows.forEach(row => {
         // Find emails
         const emailMatches = row.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
@@ -72,11 +72,25 @@ export const excelService = {
             }
           });
         }
+        
+        // Match potential teacher names
+        const parts = row.split(',');
+        parts.forEach(part => {
+          const trimmedPart = part.trim();
+          // Check if part is likely to be a name (no digits, not an email, etc.)
+          if (trimmedPart.length > 3 && 
+              !trimmedPart.includes('@') && 
+              !/\d/.test(trimmedPart) &&
+              !/programme|email|folder|robe/i.test(trimmedPart)) {
+            teacherNames.push(trimmedPart);
+          }
+        });
       });
       
       if (debug && !isSimpleFormat) {
         console.log('All found emails:', allEmails);
         console.log('Potential program names:', programNames);
+        console.log('Potential teacher names:', teacherNames);
       }
       
       if (isSimpleFormat) {
@@ -117,7 +131,8 @@ export const excelService = {
               lowercaseRow.includes('program') || 
               lowercaseRow.includes('email') ||
               lowercaseRow.includes('robe') ||
-              lowercaseRow.includes('folder')) {
+              lowercaseRow.includes('folder') ||
+              lowercaseRow.includes('name')) {
             headerRowIndex = i;
             headerCandidate = rows[i];
             break;
@@ -132,7 +147,7 @@ export const excelService = {
           }
         } else {
           // If no header row found, create default headers
-          headers = ['Programme Name', 'Robe Email ID', 'Folder Email ID'];
+          headers = ['Programme Name', 'Robe Email ID', 'Folder Email ID', 'Accompanying Teacher', 'Folder in Charge'];
           headerRowIndex = -1; // Indicates we're using default headers
           if (debug) {
             console.log('No header row found, using default headers');
@@ -172,7 +187,9 @@ export const excelService = {
             let rowData: Record<string, string> = {
               'Programme Name': '',
               'Robe Email ID': '',
-              'Folder Email ID': ''
+              'Folder Email ID': '',
+              'Accompanying Teacher': '',
+              'Folder in Charge': ''
             };
             
             // Try to intelligently assign values
@@ -189,6 +206,10 @@ export const excelService = {
                 // This could be a program code or name
                 if (!rowData['Programme Name']) {
                   rowData['Programme Name'] = value;
+                } else if (!rowData['Accompanying Teacher'] && !value.includes('programme') && !value.toLowerCase().includes('name')) {
+                  rowData['Accompanying Teacher'] = value;
+                } else if (!rowData['Folder in Charge'] && !value.includes('programme') && !value.toLowerCase().includes('name')) {
+                  rowData['Folder in Charge'] = value;
                 }
               }
             });
@@ -199,7 +220,7 @@ export const excelService = {
       }
       
       // Ensure we have the required data
-      const enhancedData = excelService.enhanceTeacherData(parsedData, allEmails);
+      const enhancedData = excelService.enhanceTeacherData(parsedData, allEmails, teacherNames);
       
       if (debug) {
         console.log('Final parsed data:', enhancedData);
@@ -263,6 +284,20 @@ export const excelService = {
     } else if (lowerHeader.includes('folder') && lowerHeader.includes('email') ||
                lowerHeader.includes('charge') && lowerHeader.includes('email')) {
       return 'Folder Email ID';
+    } else if (lowerHeader.includes('name') && 
+              (lowerHeader.includes('teacher') || 
+               lowerHeader.includes('robe') || 
+               lowerHeader.includes('accompanying'))) {
+      return 'Accompanying Teacher';
+    } else if (lowerHeader.includes('name') && 
+              (lowerHeader.includes('folder') || 
+               lowerHeader.includes('charge'))) {
+      return 'Folder in Charge';
+    } else if (lowerHeader.includes('teacher') && !lowerHeader.includes('email')) {
+      return 'Accompanying Teacher';
+    } else if (lowerHeader.includes('name') && !lowerHeader.includes('program')) {
+      // If it's just a generic "name" column, assume it's a teacher name
+      return 'Accompanying Teacher';
     }
     
     // Return original if no mapping found
@@ -377,9 +412,10 @@ export const excelService = {
    * Enhance teacher data by searching sheet-wide for needed information
    * @param data Initial teacher data
    * @param additionalEmails Optional list of all emails found in the sheet
+   * @param teacherNames Optional list of all potential teacher names found in the sheet
    * @returns Enhanced data with required columns filled
    */
-  enhanceTeacherData: (data: Record<string, string>[], additionalEmails: string[] = []): Record<string, string>[] => {
+  enhanceTeacherData: (data: Record<string, string>[], additionalEmails: string[] = [], teacherNames: string[] = []): Record<string, string>[] => {
     if (!data || data.length === 0) return data;
     
     // Extract all potential emails from the entire dataset if not provided
@@ -397,18 +433,20 @@ export const excelService = {
     
     console.log('All emails found in data:', allEmails);
     
-    // Extract all potential teacher names
-    const allTeacherNames: string[] = [];
-    data.forEach(row => {
-      Object.entries(row).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.length > 2 && 
-            (key.toLowerCase().includes('teacher') || 
-             key.toLowerCase().includes('name') || 
-             key.toLowerCase().includes('faculty'))) {
-          allTeacherNames.push(value);
-        }
+    // Extract all potential teacher names if not provided
+    const allTeacherNames: string[] = [...teacherNames];
+    if (teacherNames.length === 0) {
+      data.forEach(row => {
+        Object.entries(row).forEach(([key, value]) => {
+          if (typeof value === 'string' && value.length > 2 && 
+              (key.toLowerCase().includes('teacher') || 
+               key.toLowerCase().includes('name') || 
+               key.toLowerCase().includes('faculty'))) {
+            allTeacherNames.push(value);
+          }
+        });
       });
-    });
+    }
     
     console.log('All teacher names found:', allTeacherNames);
     
@@ -473,15 +511,40 @@ export const excelService = {
         }
       }
       
-      // If we have teacher names but no emails, match them
-      if (!enhancedRow['Accompanying Teacher'] && allTeacherNames.length > 0) {
-        enhancedRow['Accompanying Teacher'] = allTeacherNames[0];
+      // Ensure Accompanying Teacher name
+      if (!enhancedRow['Accompanying Teacher'] || enhancedRow['Accompanying Teacher'].trim() === '') {
+        // Try to find any key that might contain a teacher name
+        const teacherKey = Object.keys(row).find(key => 
+          key.toLowerCase().includes('teacher name') || 
+          key.toLowerCase().includes('accompanying') ||
+          key.toLowerCase().includes('robe in charge')
+        );
+        
+        if (teacherKey && row[teacherKey] && !row[teacherKey].includes('@')) {
+          enhancedRow['Accompanying Teacher'] = row[teacherKey];
+        } else if (allTeacherNames.length > 0) {
+          // Use the first available teacher name
+          enhancedRow['Accompanying Teacher'] = allTeacherNames[0];
+        }
       }
       
-      if (!enhancedRow['Folder in Charge'] && allTeacherNames.length > 1) {
-        enhancedRow['Folder in Charge'] = allTeacherNames[1];
-      } else if (!enhancedRow['Folder in Charge'] && allTeacherNames.length === 1) {
-        enhancedRow['Folder in Charge'] = allTeacherNames[0];
+      // Ensure Folder in Charge name
+      if (!enhancedRow['Folder in Charge'] || enhancedRow['Folder in Charge'].trim() === '') {
+        // Try to find any key that might contain a folder in charge name
+        const folderTeacherKey = Object.keys(row).find(key => 
+          key.toLowerCase().includes('folder') && key.toLowerCase().includes('charge') ||
+          key.toLowerCase().includes('coordinator name')
+        );
+        
+        if (folderTeacherKey && row[folderTeacherKey] && !row[folderTeacherKey].includes('@')) {
+          enhancedRow['Folder in Charge'] = row[folderTeacherKey];
+        } else if (allTeacherNames.length > 1) {
+          // Use the second available teacher name
+          enhancedRow['Folder in Charge'] = allTeacherNames[1];
+        } else if (allTeacherNames.length === 1) {
+          // If only one teacher, use it for both roles
+          enhancedRow['Folder in Charge'] = allTeacherNames[0];
+        }
       }
       
       return enhancedRow;
