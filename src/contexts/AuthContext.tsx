@@ -66,7 +66,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (!authUser) return;
       
-      const userData = authUser.user_metadata;
+      // Try to get user profile from profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+        
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', profileError);
+      }
+      
+      // Use profile data if available, otherwise fall back to metadata
+      const userData = profileData || authUser.user_metadata;
       
       // Create user object from auth data
       const userWithRole: User = {
@@ -109,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (currentUser) {
           // Log device usage
-          logDeviceUsage(currentUser, deviceType);
+          await logDeviceUsage(currentUser, deviceType);
           console.log(`Logged in successfully as ${currentUser.name} using ${deviceType} device`);
           
           toast({
