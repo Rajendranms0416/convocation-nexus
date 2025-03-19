@@ -4,7 +4,9 @@
  */
 import { parseCSV, parseExcel } from './parsers';
 import { validateTeacherData } from './validators';
-import { enhanceTeacherData, saveTeacherData, getTeacherData, generateCSV } from './dataManipulation';
+import { enhanceTeacherData } from './enhance';
+import { saveTeacherData, getTeacherData } from './database';
+import { generateCSV } from './export';
 
 /**
  * Filter teacher data based on search criteria
