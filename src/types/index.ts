@@ -1,3 +1,4 @@
+
 export type Role = 'robe-in-charge' | 'folder-in-charge' | 'super-admin' | 'presenter';
 
 export interface User {
@@ -6,7 +7,7 @@ export interface User {
   email: string;
   role: Role;
   avatar?: string;
-  assignedClasses?: string[]; // Added for feature 5: Super Admin can assign classes
+  assignedClasses?: string[]; // Added for class assignment
 }
 
 export interface Student {
@@ -60,7 +61,7 @@ export interface StudentFilters {
   attendanceStage?: AttendanceStage;
   page?: number;
   pageSize?: number;
-  assignedClassesOnly?: boolean; // Added this property to fix the TypeScript error
+  assignedClassesOnly?: boolean; // Added for filtering by assigned classes
 }
 
 export interface DeviceLog {
@@ -72,4 +73,12 @@ export interface DeviceLog {
   userAgent: string;
   timestamp: Date;
   ipAddress?: string;
+}
+
+export interface RoleAssignment {
+  id: string;
+  teacherEmail: string;
+  teacherName: string;
+  role: Role;
+  assignedClasses: string[];
 }
