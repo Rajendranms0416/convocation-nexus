@@ -68,24 +68,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const userData = authUser.user_metadata;
       
-      // Get profile data from profiles table
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-        
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError);
-      }
-      
-      // Combine auth data with profile data
+      // Create user object from auth data
       const userWithRole: User = {
         id: authUser.id,
-        name: profileData?.name || userData.name || authUser.email?.split('@')[0] || 'User',
+        name: userData?.name || authUser.email?.split('@')[0] || 'User',
         email: authUser.email || '',
-        role: (profileData?.role || userData.role || 'presenter') as Role,
-        avatar: profileData?.avatar || userData.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData?.name || userData.name || 'User')}&background=random&color=fff`,
+        role: (userData?.role || 'presenter') as Role,
+        avatar: userData?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.name || authUser.email?.split('@')[0] || 'User')}&background=random&color=fff`,
       };
       
       setUser(userWithRole);
@@ -115,14 +104,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Get user data from the session
         await handleSession(data.session);
         
-        if (user) {
+        // We need to get the user after handleSession sets it
+        const currentUser = JSON.parse(localStorage.getItem('convocation_user') || 'null');
+        
+        if (currentUser) {
           // Log device usage
-          logDeviceUsage(user, deviceType);
-          console.log(`Logged in successfully as ${user.name} using ${deviceType} device`);
+          logDeviceUsage(currentUser, deviceType);
+          console.log(`Logged in successfully as ${currentUser.name} using ${deviceType} device`);
           
           toast({
             title: 'Login successful',
-            description: `Welcome back, ${user.name}!`,
+            description: `Welcome back, ${currentUser.name}!`,
           });
         }
       }
