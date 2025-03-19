@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ const ExcelUpload: React.FC = () => {
   const { toast } = useToast();
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [fileInfo, setFileInfo] = useState<string | null>(null);
+  const [rawFileContent, setRawFileContent] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -28,6 +30,16 @@ const ExcelUpload: React.FC = () => {
       setFile(selectedFile);
       setUploadError(null);
       setFileInfo(`Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`);
+      
+      // Preview the raw file content to help with debugging
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          const content = e.target.result;
+          setRawFileContent(content.substring(0, 500) + (content.length > 500 ? '...' : ''));
+        }
+      };
+      reader.readAsText(selectedFile);
     }
   };
 
@@ -57,8 +69,8 @@ const ExcelUpload: React.FC = () => {
       
       console.log('File content preview:', fileContent.substring(0, 200) + '...');
       
-      // Parse the CSV data
-      const parsedData = excelService.parseCSV(fileContent);
+      // Parse the CSV data with debug mode enabled
+      const parsedData = excelService.parseCSV(fileContent, true);
       console.log('Parsed data:', parsedData);
       
       // Validate the data
@@ -121,7 +133,7 @@ const ExcelUpload: React.FC = () => {
       <CardHeader>
         <CardTitle className="text-xl">Import Teacher Data</CardTitle>
         <CardDescription>
-          Upload an Excel file (.csv) with teacher information
+          Upload a CSV file with teacher information
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -129,15 +141,20 @@ const ExcelUpload: React.FC = () => {
           <Info className="h-4 w-4" />
           <AlertTitle>Format Information</AlertTitle>
           <AlertDescription>
-            Your CSV file should include columns for Programme Name, Robe Email ID, and Folder Email ID. 
-            The system will search through the entire sheet to find and recognize these data points, even if column names vary.
+            <p>Your CSV file should include these exact columns:</p>
+            <ul className="list-disc pl-5 mt-2">
+              <li><strong>Programme Name</strong> - The program or class name</li>
+              <li><strong>Robe Email ID</strong> - Email of the teacher in charge of robes</li>
+              <li><strong>Folder Email ID</strong> - Email of the teacher in charge of folders</li>
+            </ul>
+            <p className="mt-2">For best results, use a simple CSV with these three columns only.</p>
           </AlertDescription>
         </Alert>
         
         <div className="flex items-center gap-4">
           <Input
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept=".csv"
             onChange={handleFileChange}
             className="flex-1"
           />
@@ -152,6 +169,17 @@ const ExcelUpload: React.FC = () => {
         
         {fileInfo && (
           <p className="text-xs text-muted-foreground">{fileInfo}</p>
+        )}
+        
+        {rawFileContent && (
+          <div className="mt-2">
+            <details className="text-xs">
+              <summary className="text-muted-foreground cursor-pointer">File Preview (first 500 chars)</summary>
+              <pre className="mt-2 p-2 bg-muted rounded-md overflow-x-auto whitespace-pre-wrap text-xs">
+                {rawFileContent}
+              </pre>
+            </details>
+          </div>
         )}
         
         {uploadError && (
@@ -192,7 +220,7 @@ const ExcelUpload: React.FC = () => {
         <div className="text-sm text-muted-foreground">
           <p className="flex items-center">
             <FileSpreadsheet className="h-4 w-4 mr-1" /> 
-            Required data: Programme Name, Robe Email ID, and Folder Email ID
+            Example format: Programme Name, Robe Email ID, Folder Email ID
           </p>
         </div>
         <Button variant="outline" onClick={exportCurrentData}>

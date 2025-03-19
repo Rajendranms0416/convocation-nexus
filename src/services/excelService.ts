@@ -1,3 +1,4 @@
+
 /**
  * Excel Service for handling operations related to Excel data imports/exports
  */
@@ -7,232 +8,265 @@ export const excelService = {
   /**
    * Parse CSV data from a string
    * @param csvString The CSV string to parse
+   * @param debug Optional flag to enable debug logs
    * @returns Parsed data as an array of objects
    */
-  parseCSV: (csvString: string): Record<string, string>[] => {
+  parseCSV: (csvString: string, debug = false): Record<string, string>[] => {
     try {
-      // Split by lines
-      const rows = csvString.split(/\r?\n/);
+      if (debug) {
+        console.log('CSV string length:', csvString.length);
+        console.log('First 100 chars:', csvString.substring(0, 100));
+      }
+      
+      // Check for common BOM marker and remove it
+      const bomStripped = csvString.replace(/^\uFEFF/, '');
+      
+      // Split by lines and remove empty lines
+      const rows = bomStripped.split(/\r?\n/).filter(row => row.trim() !== '');
       
       if (rows.length === 0) {
-        throw new Error('Empty CSV file');
+        throw new Error('Empty CSV file or no valid rows found');
       }
       
-      // First, search through the entire file content for email patterns
-      const fullContent = csvString;
-      const emailMatches = fullContent.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
-      console.log('Found email patterns in full content:', emailMatches);
-      
-      // Handle CSV files where headers might be spread across multiple rows
-      // First, try to find the row that contains essential columns
-      let headerRowIndex = 0;
-      let headers: string[] = [];
-      
-      // Look through more rows to find potential header row
-      for (let i = 0; i < Math.min(10, rows.length); i++) {
-        const potentialHeaders = rows[i].split(',')
-          .map(h => h.trim())
-          .map(h => h.replace(/^["'](.*)["']$/, '$1').trim());
-          
-        // Check if this row contains potential headers
-        if (potentialHeaders.some(h => 
-          h.toLowerCase().includes('email') || 
-          h.toLowerCase().includes('robe') ||
-          h.toLowerCase().includes('folder') ||
-          h.toLowerCase().includes('program') ||
-          h.toLowerCase().includes('teacher')
-        )) {
-          headerRowIndex = i;
-          headers = potentialHeaders;
-          break;
-        }
+      if (debug) {
+        console.log('Number of rows:', rows.length);
+        console.log('First row:', rows[0]);
       }
       
-      // If we didn't find headers in first rows, use the first row
-      if (headers.length === 0) {
-        headers = rows[0].split(',')
-          .map(h => h.trim())
-          .map(h => h.replace(/^["'](.*)["']$/, '$1').trim());
+      // First detect if this is a simple CSV with just the needed columns
+      // or if it's a more complex format that needs intelligent parsing
+      const firstRow = rows[0].toLowerCase();
+      const isSimpleFormat = 
+        firstRow.includes('programme') && 
+        firstRow.includes('robe') && 
+        firstRow.includes('folder');
+      
+      if (debug) {
+        console.log('Detected simple format:', isSimpleFormat);
       }
       
-      console.log('Initial parsed CSV headers:', headers);
+      let parsedData: Record<string, string>[] = [];
       
-      // If we see there's a header that looks like it's been split incorrectly due to quotes
-      // let's try to reconstruct proper headers
-      if (headers.some(h => h.startsWith('"') && !h.endsWith('"')) || 
-          headers.join('').includes('"')) {
-        // The CSV might have headers with quotes that contain commas
-        // Try to re-parse the header row properly
-        let headerRow = rows[headerRowIndex];
-        let reconstructedHeaders: string[] = [];
-        let currentHeader = '';
-        let inQuotes = false;
+      if (isSimpleFormat) {
+        // Simple parsing for standard CSV
+        const headers = excelService.parseCSVRow(rows[0]);
         
-        for (let i = 0; i < headerRow.length; i++) {
-          const char = headerRow[i];
-          
-          if (char === '"' && (i === 0 || headerRow[i-1] !== '\\')) {
-            inQuotes = !inQuotes;
-            // Don't add quote characters to the header name
-            continue;
-          } 
-          
-          if (char === ',' && !inQuotes) {
-            reconstructedHeaders.push(currentHeader.trim());
-            currentHeader = '';
-          } else {
-            currentHeader += char;
-          }
+        if (debug) {
+          console.log('Found headers:', headers);
         }
         
-        // Add the last header
-        if (currentHeader.trim()) {
-          reconstructedHeaders.push(currentHeader.trim());
-        }
-        
-        headers = reconstructedHeaders;
-        console.log('Reconstructed headers:', headers);
-      }
-      
-      // Process each data row starting from the row after headers
-      const startRow = headerRowIndex + 1;
-      const data = rows.slice(startRow)
-        .filter(row => row.trim() !== '') // Skip empty rows
-        .map(row => {
-          // Handle quoted values that may contain commas
-          const values: string[] = [];
-          let inQuotes = false;
-          let currentValue = '';
-          
-          for (let i = 0; i < row.length; i++) {
-            const char = row[i];
+        // Process each data row
+        parsedData = rows.slice(1)
+          .filter(row => row.trim() !== '')
+          .map(row => {
+            const values = excelService.parseCSVRow(row);
+            const rowData: Record<string, string> = {};
             
-            if (char === '"' && (i === 0 || row[i-1] !== '\\')) {
-              inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-              values.push(currentValue.trim());
-              currentValue = '';
-            } else {
-              currentValue += char;
-            }
-          }
-          
-          // Add the last value
-          values.push(currentValue.trim());
-          
-          // Create object mapping headers to values
-          const rowData: Record<string, string> = {};
-          headers.forEach((header, index) => {
-            if (header) { // Only add non-empty headers
-              rowData[header] = values[index] || '';
-            }
-          });
-          
-          return rowData;
-        });
-      
-      // Sheet-wide search for emails and programme information
-      const enhancedData = data.map(row => {
-        const enhancedRow = { ...row };
-        let foundRobeEmail = false;
-        let foundFolderEmail = false;
-        let foundProgramme = false;
-        
-        // Check all fields for email patterns and mark as robe or folder
-        for (const [key, value] of Object.entries(row)) {
-          // Look for emails in any field
-          if (typeof value === 'string' && value.includes('@') && value.includes('.')) {
-            const lowercaseKey = key.toLowerCase();
-            
-            // Determine if it's for robe or folder based on the field name
-            if (lowercaseKey.includes('accompanying') || 
-                lowercaseKey.includes('robe') || 
-                lowercaseKey.includes('teacher') && !foundRobeEmail) {
-              enhancedRow['Robe Email ID'] = value;
-              foundRobeEmail = true;
-            } else if (lowercaseKey.includes('folder') || 
-                      lowercaseKey.includes('in charge') && !foundFolderEmail) {
-              enhancedRow['Folder Email ID'] = value;
-              foundFolderEmail = true;
-            } 
-            // If there's no clear indication but we don't have one category yet
-            else if (!foundRobeEmail && !foundFolderEmail) {
-              // First email we find goes to robe
-              enhancedRow['Robe Email ID'] = value;
-              foundRobeEmail = true;
-            } else if (foundRobeEmail && !foundFolderEmail) {
-              // Second email we find goes to folder
-              enhancedRow['Folder Email ID'] = value;
-              foundFolderEmail = true;
-            }
-          }
-          
-          // Look for programme name in any field
-          if (!foundProgramme && typeof value === 'string' && 
-              (value.toLowerCase().includes('program') || 
-               value.toLowerCase().includes('course') || 
-               value.toLowerCase().includes('bachelor') || 
-               value.toLowerCase().includes('master') || 
-               value.toLowerCase().includes('bca') || 
-               value.toLowerCase().includes('mca'))) {
-            enhancedRow['Programme Name'] = value;
-            foundProgramme = true;
-          } else if (!foundProgramme && key.toLowerCase().includes('program')) {
-            enhancedRow['Programme Name'] = value;
-            foundProgramme = true;
-          }
-        }
-        
-        // If we still don't have emails, check if there are values in the original data that look like names
-        if (!foundRobeEmail || !foundFolderEmail) {
-          // Try to use teacher names if we have them
-          for (const [key, value] of Object.entries(row)) {
-            const lowercaseKey = key.toLowerCase();
-            if ((lowercaseKey.includes('teacher') || lowercaseKey.includes('name') || 
-                 lowercaseKey.includes('staff') || lowercaseKey.includes('faculty')) && 
-                value && typeof value === 'string' && value.length > 2) {
-              
-              // If we have a teacher name but no robe email
-              if (!foundRobeEmail) {
-                enhancedRow['Accompanying Teacher'] = value;
-                enhancedRow['Robe Email ID'] = emailMatches[0] || '';
-                foundRobeEmail = true;
-              } 
-              // If we have a different teacher name for folder role
-              else if (!foundFolderEmail && enhancedRow['Accompanying Teacher'] !== value) {
-                enhancedRow['Folder in Charge'] = value;
-                enhancedRow['Folder Email ID'] = emailMatches[1] || emailMatches[0] || '';
-                foundFolderEmail = true;
+            headers.forEach((header, index) => {
+              if (header && index < values.length) {
+                // Normalize header names directly
+                const normalizedHeader = excelService.normalizeHeaderName(header);
+                rowData[normalizedHeader] = values[index] || '';
               }
-            }
+            });
+            
+            return rowData;
+          });
+      } else {
+        // More complex parsing logic for non-standard formats
+        // Extract all potential emails from the dataset
+        const allEmails: string[] = [];
+        const programNames: string[] = [];
+        
+        // First pass: collect all emails and potential program names
+        rows.forEach(row => {
+          // Find emails
+          const emailMatches = row.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
+          allEmails.push(...emailMatches);
+          
+          // Find potential program names (anything with digit+letters pattern common in course codes)
+          const potentialPrograms = row.match(/\b\d+[A-Za-z]+\b/g) || [];
+          programNames.push(...potentialPrograms);
+          
+          // Also match full program names
+          if (row.toLowerCase().includes('bachelor') || 
+              row.toLowerCase().includes('master') || 
+              row.toLowerCase().includes('programme')) {
+            const parts = row.split(',');
+            parts.forEach(part => {
+              if (part.trim().length > 5) {  // Arbitrary length to filter out short segments
+                programNames.push(part.trim());
+              }
+            });
+          }
+        });
+        
+        if (debug) {
+          console.log('All found emails:', allEmails);
+          console.log('Potential program names:', programNames);
+        }
+        
+        // Determine likely headers
+        let headerRowIndex = -1;
+        let headerCandidate = '';
+        
+        // Look for rows that might contain headers
+        for (let i = 0; i < Math.min(10, rows.length); i++) {
+          const lowercaseRow = rows[i].toLowerCase();
+          if (lowercaseRow.includes('programme') || 
+              lowercaseRow.includes('program') || 
+              lowercaseRow.includes('email') ||
+              lowercaseRow.includes('robe') ||
+              lowercaseRow.includes('folder')) {
+            headerRowIndex = i;
+            headerCandidate = rows[i];
+            break;
           }
         }
         
-        // Ensure we have some basic data for required fields
-        if (!enhancedRow['Programme Name']) {
-          // Look for anything that might be a programme name
-          for (const [key, value] of Object.entries(row)) {
-            if (typeof value === 'string' && 
-                (key.toLowerCase().includes('class') || 
-                 key.toLowerCase().includes('course'))) {
-              enhancedRow['Programme Name'] = value;
-              break;
-            }
+        let headers: string[] = [];
+        if (headerRowIndex >= 0) {
+          headers = excelService.parseCSVRow(headerCandidate);
+          if (debug) {
+            console.log('Found header row at index', headerRowIndex, ':', headers);
           }
-          // If still not found, use a default
-          if (!enhancedRow['Programme Name']) {
-            enhancedRow['Programme Name'] = 'Unknown Programme';
+        } else {
+          // If no header row found, create default headers
+          headers = ['Programme Name', 'Robe Email ID', 'Folder Email ID'];
+          headerRowIndex = -1; // Indicates we're using default headers
+          if (debug) {
+            console.log('No header row found, using default headers');
           }
         }
         
-        return enhancedRow;
-      });
+        // Create normalized headers
+        const normalizedHeaders = headers.map(header => 
+          excelService.normalizeHeaderName(header)
+        );
+        
+        if (debug) {
+          console.log('Normalized headers:', normalizedHeaders);
+        }
+        
+        // Process rows into data
+        if (headerRowIndex >= 0) {
+          // Standard processing with found headers
+          parsedData = rows.slice(headerRowIndex + 1)
+            .filter(row => row.trim() !== '')
+            .map(row => {
+              const values = excelService.parseCSVRow(row);
+              const rowData: Record<string, string> = {};
+              
+              normalizedHeaders.forEach((header, index) => {
+                if (header && index < values.length) {
+                  rowData[header] = values[index] || '';
+                }
+              });
+              
+              return rowData;
+            });
+        } else {
+          // Special case: No headers found, try to extract data by position or patterns
+          parsedData = rows.map((row, rowIndex) => {
+            const values = excelService.parseCSVRow(row);
+            let rowData: Record<string, string> = {
+              'Programme Name': '',
+              'Robe Email ID': '',
+              'Folder Email ID': ''
+            };
+            
+            // Try to intelligently assign values
+            values.forEach(value => {
+              if (value.includes('@')) {
+                // This is likely an email
+                if (!rowData['Robe Email ID']) {
+                  rowData['Robe Email ID'] = value;
+                } else if (!rowData['Folder Email ID']) {
+                  rowData['Folder Email ID'] = value;
+                }
+              } else if (/\b\d+[A-Za-z]+\b/.test(value) || 
+                         value.length > 5) {
+                // This could be a program code or name
+                if (!rowData['Programme Name']) {
+                  rowData['Programme Name'] = value;
+                }
+              }
+            });
+            
+            return rowData;
+          });
+        }
+      }
+      
+      // Ensure we have the required data
+      const enhancedData = excelService.enhanceTeacherData(parsedData, allEmails);
+      
+      if (debug) {
+        console.log('Final parsed data:', enhancedData);
+      }
       
       return enhancedData;
     } catch (error) {
       console.error('Error parsing CSV:', error);
-      throw new Error('Failed to parse CSV data');
+      throw new Error('Failed to parse CSV data. Please make sure your file is correctly formatted with the required columns.');
     }
+  },
+  
+  /**
+   * Parse a single CSV row with proper handling of quoted values
+   * @param rowStr The CSV row string
+   * @returns Array of values from the row
+   */
+  parseCSVRow: (rowStr: string): string[] => {
+    const result: string[] = [];
+    let currentValue = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < rowStr.length; i++) {
+      const char = rowStr[i];
+      const nextChar = i < rowStr.length - 1 ? rowStr[i + 1] : '';
+      
+      if (char === '"' && (i === 0 || rowStr[i - 1] !== '\\')) {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(currentValue.trim().replace(/^"(.*)"$/, '$1'));
+        currentValue = '';
+      } else {
+        currentValue += char;
+      }
+    }
+    
+    // Add the last value
+    result.push(currentValue.trim().replace(/^"(.*)"$/, '$1'));
+    
+    return result;
+  },
+  
+  /**
+   * Normalize header names to standard format
+   * @param headerName The original header name
+   * @returns Normalized header name
+   */
+  normalizeHeaderName: (headerName: string): string => {
+    const header = headerName.trim();
+    const lowerHeader = header.toLowerCase();
+    
+    // Define mappings for common variations
+    if (lowerHeader.includes('program') || 
+        lowerHeader.includes('course') || 
+        lowerHeader.includes('class')) {
+      return 'Programme Name';
+    } else if (lowerHeader.includes('robe') && lowerHeader.includes('email') || 
+               lowerHeader.includes('teacher') && lowerHeader.includes('email') ||
+               lowerHeader.includes('accompanying')) {
+      return 'Robe Email ID';
+    } else if (lowerHeader.includes('folder') && lowerHeader.includes('email') ||
+               lowerHeader.includes('charge') && lowerHeader.includes('email')) {
+      return 'Folder Email ID';
+    }
+    
+    // Return original if no mapping found
+    return header;
   },
   
   /**
@@ -259,27 +293,18 @@ export const excelService = {
     // For debugging
     console.log('Available columns:', availableColumns);
     
-    // First try to normalize the data
-    const normalizedData = excelService.normalizeColumnNames(data);
-    
-    // After normalization, check if required columns are present
-    const normalizedFirstRow = normalizedData[0];
-    const normalizedColumns = Object.keys(normalizedFirstRow);
-    
-    console.log('Normalized columns:', normalizedColumns);
-    
+    // Check if required columns are present
     const missingColumns: string[] = [];
     
     requiredColumns.forEach(requiredCol => {
-      // Check if the column exists after normalization
-      if (!normalizedColumns.includes(requiredCol)) {
+      if (!availableColumns.includes(requiredCol)) {
         missingColumns.push(requiredCol);
       }
     });
     
     if (missingColumns.length > 0) {
       // Try one more sheet-wide data enhancement before failing
-      const enhancedData = excelService.enhanceTeacherData(normalizedData);
+      const enhancedData = excelService.enhanceTeacherData(data);
       
       // Check again after the enhancement
       if (enhancedData.length > 0) {
@@ -293,15 +318,47 @@ export const excelService = {
         });
         
         if (stillMissing.length > 0) {
-          throw new Error(`Missing required columns: ${stillMissing.join(', ')}`);
+          // Create very clear error message
+          throw new Error(`Missing required columns: ${stillMissing.join(', ')}. Please ensure your CSV has these exact column headers: Programme Name, Robe Email ID, Folder Email ID.`);
         }
+      }
+    }
+    
+    // Validate that every row has the minimum data needed
+    data.forEach((row, index) => {
+      // Check if program name is present
+      if (!row['Programme Name'] || row['Programme Name'].trim() === '') {
+        // Try to find any value that might be a program name
+        const programKey = Object.keys(row).find(key => 
+          key.toLowerCase().includes('program') || 
+          key.toLowerCase().includes('course') ||
+          key.toLowerCase().includes('class')
+        );
         
-        // If we got here, the enhanced data has all required columns
-        return true;
+        if (programKey && row[programKey]) {
+          row['Programme Name'] = row[programKey];
+        } else {
+          row['Programme Name'] = `Unknown Program ${index + 1}`;
+        }
       }
       
-      throw new Error(`Missing required columns: ${missingColumns.join(', ')}`);
-    }
+      // Ensure there's at least one email address
+      if ((!row['Robe Email ID'] || row['Robe Email ID'].trim() === '') &&
+          (!row['Folder Email ID'] || row['Folder Email ID'].trim() === '')) {
+        
+        // Look for any field that might contain an email
+        const emailFound = Object.values(row).some(value => 
+          typeof value === 'string' && 
+          value.includes('@') && 
+          value.includes('.')
+        );
+        
+        if (!emailFound) {
+          console.warn(`Row ${index + 1} has no email addresses`);
+          // We don't throw an error here, as we'll try to enhance the data later
+        }
+      }
+    });
     
     return true;
   },
@@ -309,21 +366,24 @@ export const excelService = {
   /**
    * Enhance teacher data by searching sheet-wide for needed information
    * @param data Initial teacher data
+   * @param additionalEmails Optional list of all emails found in the sheet
    * @returns Enhanced data with required columns filled
    */
-  enhanceTeacherData: (data: Record<string, string>[]): Record<string, string>[] => {
+  enhanceTeacherData: (data: Record<string, string>[], additionalEmails: string[] = []): Record<string, string>[] => {
     if (!data || data.length === 0) return data;
     
-    // Extract all potential emails from the entire dataset
-    const allEmails: string[] = [];
-    data.forEach(row => {
-      Object.values(row).forEach(value => {
-        if (typeof value === 'string') {
-          const emailMatches = value.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
-          allEmails.push(...emailMatches);
-        }
+    // Extract all potential emails from the entire dataset if not provided
+    const allEmails: string[] = [...additionalEmails];
+    if (additionalEmails.length === 0) {
+      data.forEach(row => {
+        Object.values(row).forEach(value => {
+          if (typeof value === 'string') {
+            const emailMatches = value.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
+            allEmails.push(...emailMatches);
+          }
+        });
       });
-    });
+    }
     
     console.log('All emails found in data:', allEmails);
     
@@ -348,16 +408,27 @@ export const excelService = {
       
       // Ensure Programme Name
       if (!enhancedRow['Programme Name']) {
-        enhancedRow['Programme Name'] = 'Unknown Programme';
+        // Try to find any key that might contain a program name
+        const programKey = Object.keys(row).find(key => 
+          key.toLowerCase().includes('program') || 
+          key.toLowerCase().includes('course') ||
+          key.toLowerCase().includes('class')
+        );
+        
+        if (programKey && row[programKey]) {
+          enhancedRow['Programme Name'] = row[programKey];
+        } else {
+          enhancedRow['Programme Name'] = `Unknown Programme ${index + 1}`;
+        }
       }
       
       // Ensure Robe Email ID
       if (!enhancedRow['Robe Email ID']) {
         // Try to find any key that might contain a robe email
-        const robeKey = Object.keys(row).find(k => 
-          k.toLowerCase().includes('robe') || 
-          k.toLowerCase().includes('accompanying') ||
-          k.toLowerCase().includes('teacher email')
+        const robeKey = Object.keys(row).find(key => 
+          key.toLowerCase().includes('robe') || 
+          key.toLowerCase().includes('accompanying') ||
+          key.toLowerCase().includes('teacher email')
         );
         
         if (robeKey && row[robeKey] && row[robeKey].includes('@')) {
@@ -373,10 +444,10 @@ export const excelService = {
       // Ensure Folder Email ID
       if (!enhancedRow['Folder Email ID']) {
         // Try to find any key that might contain a folder email
-        const folderKey = Object.keys(row).find(k => 
-          k.toLowerCase().includes('folder') || 
-          k.toLowerCase().includes('in charge') ||
-          k.toLowerCase().includes('coordinator email')
+        const folderKey = Object.keys(row).find(key => 
+          key.toLowerCase().includes('folder') || 
+          key.toLowerCase().includes('in charge') ||
+          key.toLowerCase().includes('coordinator email')
         );
         
         if (folderKey && row[folderKey] && row[folderKey].includes('@')) {
@@ -408,75 +479,13 @@ export const excelService = {
   },
   
   /**
-   * Normalize column names to match expected format
-   * @param data The data with potentially non-standard column names
-   * @returns Data with normalized column names
-   */
-  normalizeColumnNames: (data: Record<string, string>[]): Record<string, string>[] => {
-    if (!data || data.length === 0) return data;
-    
-    // Define mappings for common variations of column names
-    const columnMappings: Record<string, string[]> = {
-      'Programme Name': ['program', 'programme', 'program name', 'course', 'course name', 'class'],
-      'Robe Email ID': ['robe email', 'robeemail', 'robe', 'robe id', 'robe email address', 'accompanying teacher email', 'teacher email'],
-      'Folder Email ID': ['folder email', 'folderemail', 'folder', 'folder id', 'folder email address', 'folder in charge email', 'coordinator email'],
-      'Accompanying Teacher': ['accompanying', 'teacher', 'faculty', 'teacher name', 'robe teacher'],
-      'Folder in Charge': ['in charge', 'folder teacher', 'coordinator', 'folder holder']
-    };
-    
-    // Get all columns from the first row
-    const originalColumns = Object.keys(data[0]);
-    
-    // Create a mapping of original to normalized column names
-    const normalizedColumnMap: Record<string, string> = {};
-    
-    originalColumns.forEach(originalCol => {
-      const lowerCol = originalCol.toLowerCase().trim();
-      
-      // Check each standard column name
-      for (const [standardCol, variations] of Object.entries(columnMappings)) {
-        if (variations.some(v => lowerCol.includes(v.toLowerCase())) || 
-            lowerCol.replace(/[^a-z0-9]/gi, '').includes(standardCol.toLowerCase().replace(/[^a-z0-9]/gi, ''))) {
-          normalizedColumnMap[originalCol] = standardCol;
-          break;
-        }
-      }
-    });
-    
-    console.log('Column name mapping:', normalizedColumnMap);
-    
-    // Create a new array with normalized columns
-    const result = data.map(row => {
-      const normalizedRow: Record<string, string> = {};
-      
-      // First copy existing columns
-      Object.entries(row).forEach(([col, value]) => {
-        normalizedRow[col] = value;
-      });
-      
-      // Then add normalized column mappings 
-      Object.entries(normalizedColumnMap).forEach(([originalCol, normalizedCol]) => {
-        if (row[originalCol]) {
-          normalizedRow[normalizedCol] = row[originalCol];
-        }
-      });
-      
-      return normalizedRow;
-    });
-    
-    // Apply sheet-wide enhancements to the result
-    return excelService.enhanceTeacherData(result);
-  },
-  
-  /**
    * Save data to localStorage and update the application state
    * @param data The data to save
    * @returns The saved data
    */
   saveTeacherData: (data: Record<string, string>[]): Record<string, string>[] => {
-    // First normalize column names and enhance data
-    const normalizedData = excelService.normalizeColumnNames(data);
-    const enhancedData = excelService.enhanceTeacherData(normalizedData);
+    // First enhance the data one final time
+    const enhancedData = excelService.enhanceTeacherData(data);
     console.log('Final data to save:', enhancedData);
     return updateTeachersList(enhancedData);
   },
@@ -525,4 +534,3 @@ export const excelService = {
 };
 
 export default excelService;
-
