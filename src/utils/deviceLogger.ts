@@ -39,8 +39,11 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
       
       // Fallback to localStorage if Supabase fails
       const storedLogs = localStorage.getItem('device_logs');
-      const logs: DeviceLog[] = storedLogs ? JSON.parse(storedLogs) : [];
-      logs.push(logEntry);
+      const logs: Array<Omit<DeviceLog, 'timestamp'> & { timestamp: string }> = storedLogs ? JSON.parse(storedLogs) : [];
+      logs.push({
+        ...logEntry,
+        timestamp: logEntry.timestamp.toISOString() // Store as ISO string in localStorage
+      });
       localStorage.setItem('device_logs', JSON.stringify(logs));
     }
     
@@ -66,8 +69,11 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
     // Try to save to localStorage as fallback
     try {
       const storedLogs = localStorage.getItem('device_logs');
-      const logs: DeviceLog[] = storedLogs ? JSON.parse(storedLogs) : [];
-      logs.push(logEntry);
+      const logs: Array<Omit<DeviceLog, 'timestamp'> & { timestamp: string }> = storedLogs ? JSON.parse(storedLogs) : [];
+      logs.push({
+        ...logEntry,
+        timestamp: logEntry.timestamp.toISOString() // Store as ISO string in localStorage
+      });
       localStorage.setItem('device_logs', JSON.stringify(logs));
     } catch (e) {
       console.error('Failed to save to localStorage:', e);
@@ -108,8 +114,9 @@ export const getDeviceLogs = async (): Promise<DeviceLog[]> => {
       const storedLogs = localStorage.getItem('device_logs');
       if (!storedLogs) return [];
       
-      const logs = JSON.parse(storedLogs);
-      return logs.map((log: any) => ({
+      const parsedLogs = JSON.parse(storedLogs);
+      // Ensure all timestamp strings are properly converted to Date objects
+      return parsedLogs.map((log: any) => ({
         ...log,
         timestamp: new Date(log.timestamp)
       }));

@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
 import MobileLoginForm from '@/components/auth/MobileLoginForm';
 import { logDeviceUsage } from '@/utils/deviceLogger';
+import { useToast } from '@/hooks/use-toast';
 
 const Login: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -12,6 +12,7 @@ const Login: React.FC = () => {
   const [searchParams] = useSearchParams();
   const deviceParam = searchParams.get('device');
   const [deviceType, setDeviceType] = useState<'desktop' | 'mobile' | null>(null);
+  const { toast } = useToast();
 
   // Debug logs
   console.log('Login rendering, device param:', deviceParam);
@@ -40,10 +41,11 @@ const Login: React.FC = () => {
     if (isAuthenticated && !isLoading && deviceType && user) {
       console.log('Authenticated, redirecting to dashboard for device type:', deviceType);
       
-      // Log device usage
+      // Log device usage and handle any errors more gracefully
       logDeviceUsage(user, deviceType)
-        .then(() => {
-          console.log('Device usage logged, now redirecting to:', deviceType === 'mobile' ? '/mobile-dashboard' : '/dashboard');
+        .then((logEntry) => {
+          console.log('Device usage logged successfully:', logEntry);
+          console.log('Now redirecting to:', deviceType === 'mobile' ? '/mobile-dashboard' : '/dashboard');
           
           // Redirect to appropriate dashboard based on device type
           if (deviceType === 'mobile') {
@@ -54,6 +56,12 @@ const Login: React.FC = () => {
         })
         .catch(error => {
           console.error('Error logging device usage:', error);
+          toast({
+            title: "Warning",
+            description: "Unable to log device usage, but continuing to dashboard",
+            variant: "destructive",
+          });
+          
           // Still redirect even if logging fails
           if (deviceType === 'mobile') {
             navigate('/mobile-dashboard', { replace: true });
@@ -62,7 +70,7 @@ const Login: React.FC = () => {
           }
         });
     }
-  }, [isAuthenticated, isLoading, navigate, deviceType, user]);
+  }, [isAuthenticated, isLoading, navigate, deviceType, user, toast]);
 
   // If still loading authentication state, show loading spinner
   if (isLoading) {
