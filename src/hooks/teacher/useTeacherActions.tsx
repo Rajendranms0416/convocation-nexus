@@ -13,7 +13,7 @@ type TeacherActionsProps = {
   emailType: 'robe' | 'folder';
   setEmailType: (type: 'robe' | 'folder') => void;
   selectedClasses: string[];
-  setSelectedClasses: (classes: string[]) => void;
+  setSelectedClasses: React.Dispatch<React.SetStateAction<string[]>>;
   setIsEditDialogOpen: (isOpen: boolean) => void;
   handleUpdateTeacher: (
     teacher: any,
@@ -24,8 +24,8 @@ type TeacherActionsProps = {
   ) => void;
   baseHandleAssignClasses: (
     teacher: any,
-    setTeacher: (teacher: any) => void,
-    setClasses: (classes: string[]) => void
+    setTeacher: React.Dispatch<React.SetStateAction<any>>,
+    setClasses: React.Dispatch<React.SetStateAction<string[]>>
   ) => void;
   baseSaveClassAssignments: (
     teacher: any,
