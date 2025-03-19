@@ -66,27 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (!authUser) return;
       
-      // Try to get user profile from profiles table
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-        
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError);
-      }
-      
-      // Use profile data if available, otherwise fall back to metadata
-      const userData = profileData || authUser.user_metadata;
-      
       // Create user object from auth data
       const userWithRole: User = {
         id: authUser.id,
-        name: userData?.name || authUser.email?.split('@')[0] || 'User',
+        name: authUser.user_metadata.name || authUser.email?.split('@')[0] || 'User',
         email: authUser.email || '',
-        role: (userData?.role || 'presenter') as Role,
-        avatar: userData?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.name || authUser.email?.split('@')[0] || 'User')}&background=random&color=fff`,
+        role: (authUser.user_metadata.role || 'presenter') as Role,
+        avatar: authUser.user_metadata.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authUser.user_metadata.name || authUser.email?.split('@')[0] || 'User')}&background=random&color=fff`,
       };
       
       setUser(userWithRole);
@@ -136,22 +122,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // Check if profile exists, if not create one
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-          
-        if (!profileData) {
-          // Create profile with role
-          await supabase.from('profiles').insert({
-            id: data.user.id,
-            name: email.split('@')[0].replace(/\./g, ' '),
+        // Update user metadata with role
+        await supabase.auth.updateUser({
+          data: {
             role: userRole,
+            name: email.split('@')[0].replace(/\./g, ' '),
             avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
-          });
-        }
+          }
+        });
       
         // Get user data from the session
         await handleSession(data.session);
