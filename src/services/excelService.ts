@@ -47,6 +47,38 @@ export const excelService = {
       
       let parsedData: Record<string, string>[] = [];
       
+      // Extract all potential emails from the dataset for later use
+      const allEmails: string[] = [];
+      const programNames: string[] = [];
+      
+      // First pass: collect all emails and potential program names
+      rows.forEach(row => {
+        // Find emails
+        const emailMatches = row.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
+        allEmails.push(...emailMatches);
+        
+        // Find potential program names (anything with digit+letters pattern common in course codes)
+        const potentialPrograms = row.match(/\b\d+[A-Za-z]+\b/g) || [];
+        programNames.push(...potentialPrograms);
+        
+        // Also match full program names
+        if (row.toLowerCase().includes('bachelor') || 
+            row.toLowerCase().includes('master') || 
+            row.toLowerCase().includes('programme')) {
+          const parts = row.split(',');
+          parts.forEach(part => {
+            if (part.trim().length > 5) {  // Arbitrary length to filter out short segments
+              programNames.push(part.trim());
+            }
+          });
+        }
+      });
+      
+      if (debug && !isSimpleFormat) {
+        console.log('All found emails:', allEmails);
+        console.log('Potential program names:', programNames);
+      }
+      
       if (isSimpleFormat) {
         // Simple parsing for standard CSV
         const headers = excelService.parseCSVRow(rows[0]);
@@ -74,38 +106,6 @@ export const excelService = {
           });
       } else {
         // More complex parsing logic for non-standard formats
-        // Extract all potential emails from the dataset
-        const allEmails: string[] = [];
-        const programNames: string[] = [];
-        
-        // First pass: collect all emails and potential program names
-        rows.forEach(row => {
-          // Find emails
-          const emailMatches = row.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
-          allEmails.push(...emailMatches);
-          
-          // Find potential program names (anything with digit+letters pattern common in course codes)
-          const potentialPrograms = row.match(/\b\d+[A-Za-z]+\b/g) || [];
-          programNames.push(...potentialPrograms);
-          
-          // Also match full program names
-          if (row.toLowerCase().includes('bachelor') || 
-              row.toLowerCase().includes('master') || 
-              row.toLowerCase().includes('programme')) {
-            const parts = row.split(',');
-            parts.forEach(part => {
-              if (part.trim().length > 5) {  // Arbitrary length to filter out short segments
-                programNames.push(part.trim());
-              }
-            });
-          }
-        });
-        
-        if (debug) {
-          console.log('All found emails:', allEmails);
-          console.log('Potential program names:', programNames);
-        }
-        
         // Determine likely headers
         let headerRowIndex = -1;
         let headerCandidate = '';
@@ -304,7 +304,17 @@ export const excelService = {
     
     if (missingColumns.length > 0) {
       // Try one more sheet-wide data enhancement before failing
-      const enhancedData = excelService.enhanceTeacherData(data);
+      const extractedEmails: string[] = [];
+      data.forEach(row => {
+        Object.values(row).forEach(value => {
+          if (typeof value === 'string') {
+            const emailMatches = value.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g) || [];
+            extractedEmails.push(...emailMatches);
+          }
+        });
+      });
+      
+      const enhancedData = excelService.enhanceTeacherData(data, extractedEmails);
       
       // Check again after the enhancement
       if (enhancedData.length > 0) {
