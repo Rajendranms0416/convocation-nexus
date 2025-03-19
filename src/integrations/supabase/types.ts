@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      device_logs: {
+        Row: {
+          device_type: string
+          id: string
+          ip_address: string | null
+          timestamp: string
+          user_agent: string
+          user_id: string
+          user_name: string
+          user_role: string
+        }
+        Insert: {
+          device_type: string
+          id?: string
+          ip_address?: string | null
+          timestamp?: string
+          user_agent: string
+          user_id: string
+          user_name: string
+          user_role: string
+        }
+        Update: {
+          device_type?: string
+          id?: string
+          ip_address?: string | null
+          timestamp?: string
+          user_agent?: string
+          user_id?: string
+          user_name?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
       "Teacher's List": {
         Row: {
           "Accompanying Teacher": string | null

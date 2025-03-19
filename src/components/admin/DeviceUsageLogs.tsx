@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const DeviceUsageLogs: React.FC = () => {
   const [logs, setLogs] = useState<DeviceLog[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
   // Fetch logs on component mount
@@ -25,24 +26,48 @@ const DeviceUsageLogs: React.FC = () => {
     refreshLogs();
   }, []);
   
-  const refreshLogs = () => {
-    const fetchedLogs = getDeviceLogs();
-    console.log('Fetched logs:', fetchedLogs);
-    setLogs(fetchedLogs);
-    toast({
-      title: "Logs refreshed",
-      description: `Retrieved ${fetchedLogs.length} device usage logs.`,
-    });
+  const refreshLogs = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedLogs = await getDeviceLogs();
+      console.log('Fetched logs:', fetchedLogs);
+      setLogs(fetchedLogs);
+      toast({
+        title: "Logs refreshed",
+        description: `Retrieved ${fetchedLogs.length} device usage logs.`,
+      });
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+      toast({
+        title: "Error refreshing logs",
+        description: "There was a problem retrieving the device logs.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const handleClearLogs = () => {
+  const handleClearLogs = async () => {
     if (confirm('Are you sure you want to clear all device logs? This action cannot be undone.')) {
-      clearDeviceLogs();
-      setLogs([]);
-      toast({
-        title: "Logs cleared",
-        description: "All device usage logs have been cleared.",
-      });
+      setIsLoading(true);
+      try {
+        await clearDeviceLogs();
+        setLogs([]);
+        toast({
+          title: "Logs cleared",
+          description: "All device usage logs have been cleared.",
+        });
+      } catch (error) {
+        console.error('Error clearing logs:', error);
+        toast({
+          title: "Error clearing logs",
+          description: "There was a problem clearing the device logs.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
   
@@ -66,8 +91,13 @@ const DeviceUsageLogs: React.FC = () => {
             size="sm" 
             onClick={refreshLogs}
             className="flex items-center gap-1"
+            disabled={isLoading}
           >
-            <RefreshCw className="h-4 w-4" />
+            {isLoading ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Refresh
           </Button>
           <Button 
@@ -75,6 +105,7 @@ const DeviceUsageLogs: React.FC = () => {
             size="sm" 
             onClick={handleClearLogs}
             className="flex items-center gap-1"
+            disabled={isLoading}
           >
             <Trash2 className="h-4 w-4" />
             Clear All
@@ -107,7 +138,12 @@ const DeviceUsageLogs: React.FC = () => {
         </div>
       </div>
       
-      {logs.length > 0 ? (
+      {isLoading ? (
+        <div className="text-center py-8 bg-white rounded-md border">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-convocation-500" />
+          <p className="text-muted-foreground">Loading device logs...</p>
+        </div>
+      ) : logs.length > 0 ? (
         <div className="rounded-md border bg-white">
           <Table>
             <TableHeader>
