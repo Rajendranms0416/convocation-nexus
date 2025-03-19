@@ -13,9 +13,11 @@ export type Database = {
         Row: {
           "Accompanying Teacher": string | null
           "Class Wise/\nSection Wise": string | null
+          "Folder Email ID": string | null
           "Folder in Charge": string | null
           "HOD/Coordinator": string | null
           "Programme Name": string | null
+          "Robe Email ID": string | null
           "Room Nos. Distribution of Robes": number | null
           "Room Nos. Return of Robes": number | null
           "Sl. No": number
@@ -24,9 +26,11 @@ export type Database = {
         Insert: {
           "Accompanying Teacher"?: string | null
           "Class Wise/\nSection Wise"?: string | null
+          "Folder Email ID"?: string | null
           "Folder in Charge"?: string | null
           "HOD/Coordinator"?: string | null
           "Programme Name"?: string | null
+          "Robe Email ID"?: string | null
           "Room Nos. Distribution of Robes"?: number | null
           "Room Nos. Return of Robes"?: number | null
           "Sl. No": number
@@ -35,9 +39,11 @@ export type Database = {
         Update: {
           "Accompanying Teacher"?: string | null
           "Class Wise/\nSection Wise"?: string | null
+          "Folder Email ID"?: string | null
           "Folder in Charge"?: string | null
           "HOD/Coordinator"?: string | null
           "Programme Name"?: string | null
+          "Robe Email ID"?: string | null
           "Room Nos. Distribution of Robes"?: number | null
           "Room Nos. Return of Robes"?: number | null
           "Sl. No"?: number

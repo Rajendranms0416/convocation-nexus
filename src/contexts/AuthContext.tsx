@@ -103,6 +103,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       console.log(`Attempting login with email: ${email}, device: ${deviceType}`);
       
+      // Check if this email exists in the Teacher's List table to determine role
+      const { data: teacherData, error: teacherError } = await supabase
+        .from('Teacher\'s List')
+        .select('*')
+        .or(`"Robe Email ID".eq.${email},"Folder Email ID".eq.${email}`);
+        
+      if (teacherError) {
+        console.error('Error checking teacher list:', teacherError);
+      }
+      
+      // Sign in using Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -113,6 +124,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
+        // If teacher data was found, determine role
+        let userRole: Role = 'presenter'; // Default role
+        
+        if (teacherData && teacherData.length > 0) {
+          const teacher = teacherData[0];
+          if (teacher["Robe Email ID"] === email) {
+            userRole = 'robe-in-charge';
+          } else if (teacher["Folder Email ID"] === email) {
+            userRole = 'folder-in-charge';
+          }
+        }
+        
+        // Check if profile exists, if not create one
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (!profileData) {
+          // Create profile with role
+          await supabase.from('profiles').insert({
+            id: data.user.id,
+            name: email.split('@')[0].replace(/\./g, ' '),
+            role: userRole,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
+          });
+        }
+      
         // Get user data from the session
         await handleSession(data.session);
         
