@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, FileSpreadsheet, Upload } from 'lucide-react';
+import { AlertCircle, FileSpreadsheet, Upload, Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { excelService } from '@/services/excelService';
 
@@ -20,11 +21,14 @@ const ExcelUpload: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const { toast } = useToast();
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [fileInfo, setFileInfo] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
       setUploadError(null);
+      setFileInfo(`Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`);
     }
   };
 
@@ -52,15 +56,21 @@ const ExcelUpload: React.FC = () => {
         reader.readAsText(file);
       });
       
+      console.log('File content preview:', fileContent.substring(0, 200) + '...');
+      
       // Parse the CSV data
       const parsedData = excelService.parseCSV(fileContent);
       console.log('Parsed data:', parsedData);
       
-      // Validate the data
-      excelService.validateTeacherData(parsedData);
+      // Normalize the data first (moved before validation)
+      const normalizedData = excelService.normalizeColumnNames(parsedData);
+      console.log('Normalized data:', normalizedData);
       
-      // Normalize and save the data
-      const savedData = excelService.saveTeacherData(parsedData);
+      // Validate the data
+      excelService.validateTeacherData(normalizedData);
+      
+      // Save the normalized data
+      const savedData = excelService.saveTeacherData(normalizedData);
       
       setPreviewData(savedData.slice(0, 5)); // Show first 5 rows as preview
       
@@ -120,6 +130,15 @@ const ExcelUpload: React.FC = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Format Information</AlertTitle>
+          <AlertDescription>
+            Your CSV file should include columns for Programme Name, Robe Email ID, and Folder Email ID. 
+            The system will try to recognize these columns even if they have slightly different names.
+          </AlertDescription>
+        </Alert>
+        
         <div className="flex items-center gap-4">
           <Input
             type="file"
@@ -135,6 +154,10 @@ const ExcelUpload: React.FC = () => {
             <Upload className="ml-2 h-4 w-4" />
           </Button>
         </div>
+        
+        {fileInfo && (
+          <p className="text-xs text-muted-foreground">{fileInfo}</p>
+        )}
         
         {uploadError && (
           <Alert variant="destructive">
