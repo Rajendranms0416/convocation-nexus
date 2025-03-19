@@ -55,7 +55,6 @@ const Login: React.FC = () => {
       logDeviceUsage(user, deviceType)
         .then((logEntry) => {
           console.log('Device usage logged successfully:', logEntry);
-          console.log('Now redirecting to:', deviceType === 'mobile' ? '/mobile-dashboard' : '/dashboard');
           
           // Redirect to appropriate dashboard based on device type
           if (deviceType === 'mobile') {
