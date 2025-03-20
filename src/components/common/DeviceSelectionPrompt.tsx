@@ -57,7 +57,6 @@ const DeviceSelectionPrompt: React.FC<DeviceSelectionPromptProps> = ({ onSelect 
         >
           <Laptop className="h-10 w-10" />
           <span className="font-medium">Desktop View</span>
-          <span className="text-xs text-muted-foreground">Full interface with all features</span>
         </Button>
         <Button 
           variant="outline"
@@ -66,7 +65,6 @@ const DeviceSelectionPrompt: React.FC<DeviceSelectionPromptProps> = ({ onSelect 
         >
           <Smartphone className="h-10 w-10" />
           <span className="font-medium">Mobile View</span>
-          <span className="text-xs text-muted-foreground">Optimized for attendance tracking</span>
         </Button>
       </CardContent>
       <CardFooter className="flex flex-col space-y-2">
