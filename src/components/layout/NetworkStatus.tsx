@@ -4,6 +4,8 @@ import { Wifi, WifiOff, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { getTeacherData } from '@/services/excel/database';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface NetworkStatusProps {
   className?: string;
@@ -15,6 +17,37 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ className }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [needsSync, setNeedsSync] = useState(false);
   const { toast } = useToast();
+  
+  // Initialize last sync time from localStorage or from Supabase query
+  useEffect(() => {
+    // Try to get the last sync time from localStorage first
+    const storedSyncTime = localStorage.getItem('lastSyncTime');
+    if (storedSyncTime) {
+      setLastSyncTime(new Date(storedSyncTime));
+    }
+    
+    // Then check if we have a connection to Supabase and data is available
+    const checkSupabaseData = async () => {
+      if (navigator.onLine) {
+        try {
+          const { count, error } = await supabase
+            .from('teachers')
+            .select('id', { count: 'exact', head: true });
+            
+          if (!error && count && count > 0) {
+            // There's data in Supabase, update the last sync time
+            const now = new Date();
+            setLastSyncTime(now);
+            localStorage.setItem('lastSyncTime', now.toISOString());
+          }
+        } catch (err) {
+          console.error('Error checking Supabase data:', err);
+        }
+      }
+    };
+    
+    checkSupabaseData();
+  }, []);
   
   // Monitor online/offline status
   useEffect(() => {
@@ -47,15 +80,15 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ className }) => {
     };
   }, [needsSync, toast]);
   
-  // Simulate data sync - in a real app, this would connect to your backend
+  // Sync data with Supabase
   const syncData = async () => {
     if (isSyncing) return;
     
     setIsSyncing(true);
     
     try {
-      // Simulate network request
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Get the latest data from the database
+      await getTeacherData();
       
       // Update last sync time
       const now = new Date();
@@ -65,8 +98,11 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ className }) => {
       
       toast({
         title: "Sync completed",
-        description: "All data is up to date.",
+        description: "All teacher data is up to date.",
       });
+      
+      // Notify other components that data has been updated
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
     } catch (error) {
       toast({
         variant: "destructive",
@@ -77,14 +113,6 @@ const NetworkStatus: React.FC<NetworkStatusProps> = ({ className }) => {
       setIsSyncing(false);
     }
   };
-  
-  // Initialize last sync time from localStorage
-  useEffect(() => {
-    const storedSyncTime = localStorage.getItem('lastSyncTime');
-    if (storedSyncTime) {
-      setLastSyncTime(new Date(storedSyncTime));
-    }
-  }, []);
   
   // Trigger manual sync
   const handleManualSync = () => {

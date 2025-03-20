@@ -1,4 +1,3 @@
-
 /**
  * Excel Service - Database operations for teacher data
  */
@@ -7,7 +6,7 @@ import { updateTeachersList, getAllTeachers } from '@/utils/authHelpers';
 import { enhanceTeacherData } from './enhance';
 
 /**
- * Save data to localStorage and the database
+ * Save data to both Supabase database and localStorage for offline capability
  * @param data The data to save
  * @returns The saved data
  */
@@ -17,7 +16,7 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
   console.log('Final data to save:', enhancedData);
   
   try {
-    // Save to local storage for backward compatibility
+    // Save to local storage for offline capability
     updateTeachersList(enhancedData);
     
     // Clear existing data in the database
@@ -55,23 +54,26 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
 };
 
 /**
- * Get all teacher data from database or fallback to localStorage
+ * Get all teacher data from database, prioritizing Supabase over localStorage
  * @returns All teacher data
  */
 export const getTeacherData = async (): Promise<Record<string, string>[]> => {
+  console.log('Getting teacher data from database...');
+  
   try {
     // Try to get from database first
     const { data, error } = await supabase.from('teachers').select('*');
     
     if (error) {
+      console.error('Supabase query error:', error);
       throw error;
     }
     
     if (data && data.length > 0) {
-      console.log('Retrieved data from database:', data);
+      console.log('Retrieved data from Supabase:', data);
       
       // Map database fields back to the expected format
-      return data.map(record => ({
+      const formattedData = data.map(record => ({
         id: record.id, // Include the database ID
         'Programme Name': record.program_name || '',
         'Robe Email ID': record.robe_email || '',
@@ -80,9 +82,15 @@ export const getTeacherData = async (): Promise<Record<string, string>[]> => {
         'Folder in Charge': record.folder_in_charge || '',
         'Class Wise/\nSection Wise': record.class_section || '',
       }));
+      
+      // Also update localStorage to keep offline capability
+      updateTeachersList(formattedData);
+      
+      return formattedData;
     }
     
-    // Fallback to localStorage if no data in database
+    // No data in Supabase, fallback to localStorage
+    console.log('No data in Supabase, using localStorage');
     return getAllTeachers();
   } catch (error) {
     console.error('Error fetching from database:', error);

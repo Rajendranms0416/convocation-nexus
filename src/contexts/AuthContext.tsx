@@ -3,6 +3,8 @@ import React, { createContext, useContext, useEffect } from 'react';
 import { AuthContextType } from '@/types/auth';
 import { useAuthOperations } from '@/hooks/useAuthOperations';
 import { User } from '@/types';
+import { getTeacherData } from '@/services/excel/database';
+import { loadTeachersFromStorage } from '@/utils/authHelpers';
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -23,19 +25,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   } = useAuthOperations();
 
   useEffect(() => {
-    // Check for stored user in localStorage
-    const storedUser = localStorage.getItem('convocation_user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser) as User;
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('convocation_user');
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      
+      // Check for stored user in localStorage
+      const storedUser = localStorage.getItem('convocation_user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser) as User;
+          setUser(parsedUser);
+          
+          // Load teacher data from database when user is present
+          await getTeacherData()
+            .then(() => console.log('Teacher data loaded on app init'))
+            .catch(err => console.error('Failed to load teacher data on init:', err));
+        } catch (error) {
+          console.error('Error parsing stored user:', error);
+          localStorage.removeItem('convocation_user');
+        }
       }
-    }
+      
+      setIsLoading(false);
+    };
     
-    setIsLoading(false);
+    initializeAuth();
   }, [setUser, setIsLoading]);
 
   return (
