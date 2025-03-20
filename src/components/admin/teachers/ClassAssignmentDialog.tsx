@@ -30,6 +30,8 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
   setSelectedClasses,
   onSave
 }) => {
+  const [isSaving, setIsSaving] = React.useState(false);
+  
   const toggleClassSelection = (className: string) => {
     if (selectedClasses.includes(className)) {
       setSelectedClasses(selectedClasses.filter(c => c !== className));
@@ -38,8 +40,13 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
     }
   };
 
-  const handleSave = () => {
-    onSave(teacher, selectedClasses);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(teacher, selectedClasses);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!teacher) return null;
@@ -82,8 +89,8 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
               <Button variant="outline" onClick={onClose} className="mr-2">
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
-                Save
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </div>

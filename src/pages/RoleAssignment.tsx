@@ -12,6 +12,7 @@ import EditTeacherDialog from '@/components/admin/teachers/EditTeacherDialog';
 import ClassAssignmentDialog from '@/components/admin/teachers/ClassAssignmentDialog';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
 import { RefreshCw } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const RoleAssignment: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -69,15 +70,39 @@ const RoleAssignment: React.FC = () => {
     
     window.addEventListener('teacherDataUpdated', handleDataUpdate);
     
+    // Set up Supabase real-time subscription for teachers table
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'teachers' },
+        (payload) => {
+          console.log('Supabase real-time update:', payload);
+          loadTeacherData();
+        }
+      )
+      .subscribe();
+    
     return () => {
       window.removeEventListener('teacherDataUpdated', handleDataUpdate);
+      supabase.removeChannel(channel);
     };
   }, [loadTeacherData]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
+      // Check the database connection first
+      const { data, error } = await supabase.from('teachers').select('count');
+      if (error) {
+        throw new Error(`Database connection error: ${error.message}`);
+      }
+      
+      console.log('Database connection successful, records count:', data);
+      
+      // Now load the teacher data
       await loadTeacherData();
+      
       toast({
         title: "Data refreshed",
         description: "Teacher data has been refreshed from the database"
@@ -93,6 +118,11 @@ const RoleAssignment: React.FC = () => {
       setIsRefreshing(false);
     }
   };
+
+  // Automatically refresh on mount
+  useEffect(() => {
+    handleRefresh();
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (

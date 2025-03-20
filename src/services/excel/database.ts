@@ -28,7 +28,7 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
       throw new Error(`Database error during delete: ${deleteError.message}`);
     }
     
-    // Prepare data for database insertion
+    // Prepare data for database insertion - ensure all required fields are present
     const dbRecords = enhancedData.map(teacher => ({
       program_name: teacher['Programme Name'] || '',
       robe_email: teacher['Robe Email ID'] || '',
@@ -40,15 +40,19 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
       updated_at: new Date().toISOString()
     }));
     
-    // Insert into database
-    const { error } = await supabase.from('teachers').insert(dbRecords);
-    
-    if (error) {
-      console.error('Error saving to database:', error);
-      throw new Error(`Database error during insert: ${error.message}`);
+    // Insert data in batches of 100 to avoid payload size issues
+    const batchSize = 100;
+    for (let i = 0; i < dbRecords.length; i += batchSize) {
+      const batch = dbRecords.slice(i, i + batchSize);
+      const { error } = await supabase.from('teachers').insert(batch);
+      
+      if (error) {
+        console.error(`Error saving batch ${i}-${i+batch.length} to database:`, error);
+        throw new Error(`Database error during insert: ${error.message}`);
+      }
     }
     
-    console.log('Saved to database successfully');
+    console.log(`Saved ${dbRecords.length} records to database successfully`);
     
     // Notify any listeners that data has been updated
     window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
@@ -78,7 +82,7 @@ export const getTeacherData = async (): Promise<Record<string, string>[]> => {
     }
     
     if (data && data.length > 0) {
-      console.log('Retrieved data from Supabase:', data);
+      console.log(`Retrieved ${data.length} records from Supabase`);
       
       // Map database fields back to the expected format
       const formattedData = data.map(record => ({

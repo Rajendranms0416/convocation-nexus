@@ -31,7 +31,7 @@ export const useTeacherDataLoader = () => {
             role: 'robe-in-charge' as Role,
             program: teacher['Programme Name'] || '',
             section: teacher['Class Wise/\nSection Wise'] || '',
-            assignedClasses: [teacher['Programme Name'] || ''],
+            assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
             rawData: teacher,
             dbId: teacher.id || ''
           });
@@ -46,7 +46,7 @@ export const useTeacherDataLoader = () => {
             role: 'folder-in-charge' as Role,
             program: teacher['Programme Name'] || '',
             section: teacher['Class Wise/\nSection Wise'] || '',
-            assignedClasses: [teacher['Programme Name'] || ''],
+            assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
             rawData: teacher,
             dbId: teacher.id || ''
           });
@@ -75,7 +75,7 @@ export const useTeacherDataLoader = () => {
             role: 'robe-in-charge' as Role,
             program: teacher['Programme Name'] || '',
             section: teacher['Class Wise/\nSection Wise'] || '',
-            assignedClasses: [teacher['Programme Name'] || ''],
+            assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
             rawData: teacher
           });
         }
@@ -89,7 +89,7 @@ export const useTeacherDataLoader = () => {
             role: 'folder-in-charge' as Role,
             program: teacher['Programme Name'] || '',
             section: teacher['Class Wise/\nSection Wise'] || '',
-            assignedClasses: [teacher['Programme Name'] || ''],
+            assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
             rawData: teacher
           });
         }
