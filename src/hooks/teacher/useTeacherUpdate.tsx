@@ -46,7 +46,7 @@ export const useTeacherUpdate = (
           program_name: selectedClasses[0] || '',
           robe_email: newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
           folder_email: newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
-          accompanying_teacher: newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
+          robe_in_charge: newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
           folder_in_charge: newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
           updated_at: new Date().toISOString(),
         })

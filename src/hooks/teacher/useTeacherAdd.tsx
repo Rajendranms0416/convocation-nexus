@@ -47,7 +47,7 @@ export const useTeacherAdd = (
           program_name: classes[0] || '',
           robe_email: emailType === 'robe' ? email : '',
           folder_email: emailType === 'folder' ? email : '',
-          accompanying_teacher: emailType === 'robe' ? name : '',
+          robe_in_charge: emailType === 'robe' ? name : '',
           folder_in_charge: emailType === 'folder' ? name : '',
           class_section: '',
         })

@@ -46,7 +46,7 @@ export const useClassAssignment = (
         program_name: selectedClasses[0] || '',
         robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
         folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
-        accompanying_teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
+        robe_in_charge: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
         folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
         class_section: currentTeacher.section || '',
         updated_at: new Date().toISOString()

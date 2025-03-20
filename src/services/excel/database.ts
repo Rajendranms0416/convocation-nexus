@@ -24,7 +24,7 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
       program_name: teacher['Programme Name'] || '',
       robe_email: teacher['Robe Email ID'] || '',
       folder_email: teacher['Folder Email ID'] || '',
-      accompanying_teacher: teacher['Accompanying Teacher'] || '',
+      robe_in_charge: teacher['Accompanying Teacher'] || '',
       folder_in_charge: teacher['Folder in Charge'] || '',
       class_section: teacher['Class Wise/\nSection Wise'] || '',
       updated_at: new Date().toISOString()
@@ -108,7 +108,7 @@ export const getTeacherData = async (): Promise<Record<string, string>[]> => {
         'Programme Name': record.program_name || '',
         'Robe Email ID': record.robe_email || '',
         'Folder Email ID': record.folder_email || '',
-        'Accompanying Teacher': record.accompanying_teacher || '',
+        'Accompanying Teacher': record.robe_in_charge || '',
         'Folder in Charge': record.folder_in_charge || '',
         'Class Wise/\nSection Wise': record.class_section || '',
       }));
