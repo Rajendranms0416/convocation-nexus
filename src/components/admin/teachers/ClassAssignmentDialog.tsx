@@ -61,6 +61,7 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
         title: "Classes assigned",
         description: `Successfully assigned ${selectedClasses.length} classes to ${teacher?.name}`
       });
+      onClose(); // Close dialog after successful save
     } catch (error) {
       console.error("Error saving class assignments:", error);
       toast({

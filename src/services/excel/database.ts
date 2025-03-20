@@ -19,14 +19,6 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
     // Save to local storage for offline capability first
     updateTeachersList(enhancedData);
     
-    // Clear existing data in the database - Commenting this out as it might be causing issues
-    // const { error: deleteError } = await supabase.from('teachers').delete().not('id', 'is', null);
-    // 
-    // if (deleteError) {
-    //   console.error('Error clearing existing data:', deleteError);
-    //   throw new Error(`Database error during delete: ${deleteError.message}`);
-    // }
-    
     // Prepare data for database insertion - ensure all required fields are present
     const dbRecords = enhancedData.map(teacher => ({
       program_name: teacher['Programme Name'] || '',
@@ -35,22 +27,24 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
       accompanying_teacher: teacher['Accompanying Teacher'] || '',
       folder_in_charge: teacher['Folder in Charge'] || '',
       class_section: teacher['Class Wise/\nSection Wise'] || '',
+      updated_at: new Date().toISOString()
     }));
     
     console.log(`Preparing to save ${dbRecords.length} records to database`);
     
-    // Insert data in batches of 10 to avoid payload size issues (reduced from 100)
-    const batchSize = 10;
+    // Insert data in batches of 5 to avoid payload size issues (reduced from 10)
+    const batchSize = 5;
     let successCount = 0;
     
     for (let i = 0; i < dbRecords.length; i += batchSize) {
       const batch = dbRecords.slice(i, i + batchSize);
       console.log(`Saving batch ${i}-${i+batch.length} to database...`);
       
+      // Use upsert with onConflict for program_name or emails if they exist
       const { data: insertedData, error } = await supabase
         .from('teachers')
         .upsert(batch, { 
-          onConflict: 'program_name', 
+          onConflict: 'program_name',
           ignoreDuplicates: false
         });
       
@@ -62,8 +56,8 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
         console.log(`Successfully saved batch ${i}-${i+batch.length}`);
       }
       
-      // Small delay between batches to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Larger delay between batches to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
     console.log(`Saved ${successCount} out of ${dbRecords.length} records to database successfully`);
@@ -87,6 +81,16 @@ export const getTeacherData = async (): Promise<Record<string, string>[]> => {
   console.log('Getting teacher data from database...');
   
   try {
+    // First check if database is available
+    const { data: statusCheck, error: statusError } = await supabase
+      .from('teachers')
+      .select('count(*)', { count: 'exact', head: true });
+      
+    if (statusError) {
+      console.error('Database connection error:', statusError);
+      throw statusError;
+    }
+    
     // Try to get from database first
     const { data, error } = await supabase.from('teachers').select('*');
     

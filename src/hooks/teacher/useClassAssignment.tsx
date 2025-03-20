@@ -41,52 +41,43 @@ export const useClassAssignment = (
       
       setTeachers(updatedTeachers);
       
-      // Determine method to identify this teacher in the database
-      let teacherIdentifier = {};
-      let newRecord = {};
+      // Prepare the data for database update
+      let teacherData = {
+        program_name: selectedClasses[0] || '',
+        robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
+        folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
+        accompanying_teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
+        folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
+        class_section: currentTeacher.section || '',
+        updated_at: new Date().toISOString()
+      };
       
-      // If we have a database ID, use that
+      console.log('Data to save to database:', teacherData);
+      
+      // Try to upsert the record
+      let upsertResponse;
+      
       if (currentTeacher.dbId) {
-        console.log(`Using database ID ${currentTeacher.dbId} to update teacher`);
-        teacherIdentifier = { id: currentTeacher.dbId };
-      } 
-      // Otherwise try to identify by email based on role
-      else if (currentTeacher.email) {
-        const emailField = currentTeacher.role === 'robe-in-charge' ? 'robe_email' : 'folder_email';
-        console.log(`Using ${emailField} = ${currentTeacher.email} to identify teacher`);
-        teacherIdentifier = { [emailField]: currentTeacher.email };
-        
-        // In case this teacher doesn't exist yet, prepare a full record
-        newRecord = {
-          program_name: selectedClasses[0] || '',
-          robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
-          folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
-          accompanying_teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
-          folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
-          class_section: currentTeacher.section || '',
-        };
+        // If we have a database ID, use that for the update
+        console.log(`Updating existing record with ID ${currentTeacher.dbId}`);
+        upsertResponse = await supabase
+          .from('teachers')
+          .update(teacherData)
+          .eq('id', currentTeacher.dbId)
+          .select();
       } else {
-        throw new Error('Cannot identify teacher - no ID or email');
+        // Otherwise insert a new record
+        console.log('Inserting new record');
+        upsertResponse = await supabase
+          .from('teachers')
+          .insert(teacherData)
+          .select();
       }
       
-      // Try an upsert first - this will insert if it doesn't exist or update if it does
-      const { data: upsertResult, error: upsertError } = await supabase
-        .from('teachers')
-        .upsert(
-          {
-            ...newRecord,
-            ...teacherIdentifier,
-            program_name: selectedClasses[0] || '',
-          }, 
-          { 
-            onConflict: Object.keys(teacherIdentifier)[0],
-            ignoreDuplicates: false 
-          }
-        )
-        .select();
+      const { data: upsertResult, error: upsertError } = upsertResponse;
       
       if (upsertError) {
-        console.error('Error upserting teacher:', upsertError);
+        console.error('Error updating/inserting teacher record:', upsertError);
         throw new Error(`Database error: ${upsertError.message}`);
       }
       
@@ -125,8 +116,6 @@ export const useClassAssignment = (
       
       // Trigger data refresh
       window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
-      
-      setIsClassAssignDialogOpen(false);
     } catch (error) {
       console.error('Error assigning classes:', error);
       toast({
@@ -134,6 +123,7 @@ export const useClassAssignment = (
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive"
       });
+      throw error; // Re-throw to let the dialog component handle it
     }
   };
 
