@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +23,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
-      // Validate file type
       const validExtensions = ['.csv', '.xlsx', '.xls'];
       const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
       
@@ -51,7 +49,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     setUploadError(null);
 
     try {
-      // Handle both CSV and Excel formats
       const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
       let parsedData;
       
@@ -71,7 +68,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         
         parsedData = excelService.parseCSV(fileContent, true);
       } else {
-        // For Excel files (.xlsx, .xls)
         const fileBuffer = await file.arrayBuffer();
         parsedData = await excelService.parseExcel(fileBuffer);
       }
@@ -80,7 +76,6 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       
       excelService.validateTeacherData(parsedData);
       
-      // Save to both local storage and Supabase
       const savedData = await excelService.saveTeacherData(parsedData);
       
       onDataLoaded(savedData);
@@ -105,24 +100,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
 
   const exportCurrentData = async () => {
     try {
-      // Fetch data from Supabase
       const { data: teachersData, error } = await supabase
         .from('teachers')
         .select('*');
         
       if (error) throw error;
       
-      // Map database fields to expected format
       const formattedData = teachersData.map(teacher => ({
         'Programme Name': teacher.program_name,
         'Robe Email ID': teacher.robe_email,
         'Folder Email ID': teacher.folder_email,
-        'Accompanying Teacher': teacher.accompanying_teacher,
+        'Accompanying Teacher': teacher.robe_in_charge,
         'Folder in Charge': teacher.folder_in_charge,
         'Class Wise/\nSection Wise': teacher.class_section
       }));
       
-      // Generate CSV
       const csvContent = excelService.generateCSV(formattedData);
       
       if (!csvContent) {
