@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface ClassAssignmentDialogProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
   onSave
 }) => {
   const [isSaving, setIsSaving] = React.useState(false);
+  const { toast } = useToast();
   
   const toggleClassSelection = (className: string) => {
     if (selectedClasses.includes(className)) {
@@ -43,7 +45,29 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      if (!selectedClasses.length) {
+        toast({
+          title: "No classes selected",
+          description: "Please select at least one class to assign",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return;
+      }
+      
+      console.log("Saving class assignments:", { teacher, selectedClasses });
       await onSave(teacher, selectedClasses);
+      toast({
+        title: "Classes assigned",
+        description: `Successfully assigned ${selectedClasses.length} classes to ${teacher?.name}`
+      });
+    } catch (error) {
+      console.error("Error saving class assignments:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save class assignments",
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }

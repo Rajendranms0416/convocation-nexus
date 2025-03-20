@@ -1,4 +1,3 @@
-
 import { useToast } from '@/hooks/use-toast';
 import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,7 +29,10 @@ export const useClassAssignment = (
     if (!currentTeacher) return;
     
     try {
-      // Update in the UI
+      console.log('Saving class assignments for teacher:', currentTeacher);
+      console.log('Selected classes:', selectedClasses);
+      
+      // Update in the UI first
       const updatedTeachers = teachers.map(teacher => 
         teacher.id === currentTeacher.id 
           ? { ...teacher, assignedClasses: selectedClasses } 
@@ -39,107 +41,87 @@ export const useClassAssignment = (
       
       setTeachers(updatedTeachers);
       
-      // Update in database
+      // Determine method to identify this teacher in the database
+      let teacherIdentifier = {};
+      let newRecord = {};
+      
+      // If we have a database ID, use that
       if (currentTeacher.dbId) {
-        console.log(`Updating teacher with dbId: ${currentTeacher.dbId}`);
-        const { error } = await supabase
-          .from('teachers')
-          .update({
-            program_name: selectedClasses[0] || '',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', currentTeacher.dbId);
-        
-        if (error) {
-          console.error('Supabase update error:', error);
-          throw new Error(`Database error: ${error.message}`);
-        }
-      } else {
-        // If no dbId, try to find the teacher by email in the database
+        console.log(`Using database ID ${currentTeacher.dbId} to update teacher`);
+        teacherIdentifier = { id: currentTeacher.dbId };
+      } 
+      // Otherwise try to identify by email based on role
+      else if (currentTeacher.email) {
         const emailField = currentTeacher.role === 'robe-in-charge' ? 'robe_email' : 'folder_email';
+        console.log(`Using ${emailField} = ${currentTeacher.email} to identify teacher`);
+        teacherIdentifier = { [emailField]: currentTeacher.email };
         
-        console.log(`Looking for teacher with ${emailField} = ${currentTeacher.email}`);
-        const { data, error: fetchError } = await supabase
-          .from('teachers')
-          .select('*')
-          .eq(emailField, currentTeacher.email)
-          .limit(1);
-        
-        if (fetchError) {
-          console.error('Error finding teacher in database:', fetchError);
-        } else if (data && data.length > 0) {
-          // Update the existing record
-          console.log(`Found teacher in db with id: ${data[0].id}`);
-          const { error: updateError } = await supabase
-            .from('teachers')
-            .update({
-              program_name: selectedClasses[0] || '',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', data[0].id);
-          
-          if (updateError) {
-            console.error('Supabase update error:', updateError);
-            throw new Error(`Database error: ${updateError.message}`);
-          }
-        } else {
-          // Create a new record
-          console.log('No teacher found in db, creating new record');
-          const newRecord = {
+        // In case this teacher doesn't exist yet, prepare a full record
+        newRecord = {
+          program_name: selectedClasses[0] || '',
+          robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
+          folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
+          accompanying_teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
+          folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
+          class_section: currentTeacher.section || '',
+        };
+      } else {
+        throw new Error('Cannot identify teacher - no ID or email');
+      }
+      
+      // Try an upsert first - this will insert if it doesn't exist or update if it does
+      const { data: upsertResult, error: upsertError } = await supabase
+        .from('teachers')
+        .upsert(
+          {
+            ...newRecord,
+            ...teacherIdentifier,
             program_name: selectedClasses[0] || '',
-            robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
-            folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
-            accompanying_teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
-            folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
-            class_section: currentTeacher.section || '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          
-          const { data: insertedData, error: insertError } = await supabase
-            .from('teachers')
-            .insert(newRecord)
-            .select()
-            .single();
-          
-          if (insertError) {
-            console.error('Supabase insert error:', insertError);
-            throw new Error(`Database error: ${insertError.message}`);
+          }, 
+          { 
+            onConflict: Object.keys(teacherIdentifier)[0],
+            ignoreDuplicates: false 
           }
-          
-          if (insertedData) {
-            // Update teacher with new dbId
-            const newTeachers = teachers.map(teacher => 
-              teacher.id === currentTeacher.id 
-                ? { ...teacher, dbId: insertedData.id } 
-                : teacher
-            );
-            setTeachers(newTeachers);
-          }
-        }
+        )
+        .select();
+      
+      if (upsertError) {
+        console.error('Error upserting teacher:', upsertError);
+        throw new Error(`Database error: ${upsertError.message}`);
+      }
+      
+      console.log('Upsert result:', upsertResult);
+      
+      // If we got a result back, update the teacher with the database ID
+      if (upsertResult && upsertResult.length > 0) {
+        const dbId = upsertResult[0].id;
+        
+        // Update the teachers list with the new dbId
+        const teachersWithDbId = teachers.map(teacher => 
+          teacher.id === currentTeacher.id 
+            ? { ...teacher, dbId, assignedClasses: selectedClasses } 
+            : teacher
+        );
+        
+        setTeachers(teachersWithDbId);
       }
       
       // Update in local storage
       const allTeachers = getAllTeachers();
-      const programIndex = allTeachers.findIndex(t => 
-        t['Programme Name'] === currentTeacher.program ||
+      const teacherIndex = allTeachers.findIndex(t => 
         (currentTeacher.role === 'robe-in-charge' && t['Robe Email ID'] === currentTeacher.email) ||
-        (currentTeacher.role === 'folder-in-charge' && t['Folder Email ID'] === currentTeacher.email)
+        (currentTeacher.role === 'folder-in-charge' && t['Folder Email ID'] === currentTeacher.email) ||
+        t['Programme Name'] === currentTeacher.program
       );
       
-      if (programIndex >= 0 && selectedClasses.length > 0) {
-        allTeachers[programIndex] = {
-          ...allTeachers[programIndex],
+      if (teacherIndex >= 0 && selectedClasses.length > 0) {
+        allTeachers[teacherIndex] = {
+          ...allTeachers[teacherIndex],
           "Programme Name": selectedClasses[0] // Use first selected class as programme name
         };
         
         updateTeachersList(allTeachers);
       }
-      
-      toast({
-        title: "Classes Assigned",
-        description: `Updated class assignments for ${currentTeacher.name}`,
-      });
       
       // Trigger data refresh
       window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
