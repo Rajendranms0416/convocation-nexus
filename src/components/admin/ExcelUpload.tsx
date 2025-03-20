@@ -24,6 +24,7 @@ const ExcelUpload: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [hasErrors, setHasErrors] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   const handleDataLoaded = async (data: any[]) => {
@@ -87,8 +88,10 @@ const ExcelUpload: React.FC = () => {
       // If data is valid, save it
       if (!hasErrors && enhancedData.length > 0) {
         try {
+          setIsSaving(true);
           // This will save to both database and local storage
           await excelService.saveTeacherData(enhancedData);
+          setIsSaving(false);
           
           toast({
             title: "Data imported",
@@ -98,6 +101,7 @@ const ExcelUpload: React.FC = () => {
           // Force refresh the teacher display by triggering a window event
           window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
         } catch (error) {
+          setIsSaving(false);
           console.error("Error saving data:", error);
           toast({
             title: "Error saving data",
@@ -111,6 +115,39 @@ const ExcelUpload: React.FC = () => {
       setHasErrors(true);
       setErrorMessage(error instanceof Error ? error.message : 'Unknown error processing data');
       setPreviewData([]);
+    }
+  };
+
+  const handleSaveData = async () => {
+    if (previewData.length === 0) {
+      toast({
+        title: "No data to save",
+        description: "Please upload a CSV file first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await excelService.saveTeacherData(previewData);
+      setIsSaving(false);
+      
+      // Force refresh the teacher display
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
+      
+      toast({
+        title: "Data saved",
+        description: `${previewData.length} teacher assignments saved to database`
+      });
+    } catch (error) {
+      setIsSaving(false);
+      console.error("Error saving data:", error);
+      toast({
+        title: "Error saving data",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
     }
   };
 
@@ -148,27 +185,11 @@ const ExcelUpload: React.FC = () => {
         {previewData.length > 0 && (
           <Button 
             className="w-full mt-4" 
-            onClick={async () => {
-              try {
-                await excelService.saveTeacherData(previewData);
-                // Force refresh the teacher display
-                window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
-                toast({
-                  title: "Data saved",
-                  description: `${previewData.length} teacher assignments saved`
-                });
-              } catch (error) {
-                console.error("Error saving data:", error);
-                toast({
-                  title: "Error saving data",
-                  description: error instanceof Error ? error.message : "An unknown error occurred",
-                  variant: "destructive"
-                });
-              }
-            }}
+            onClick={handleSaveData}
+            disabled={isSaving}
           >
             <Upload className="h-4 w-4 mr-2" />
-            Save Teacher Assignments
+            {isSaving ? 'Saving...' : 'Save Teacher Assignments'}
           </Button>
         )}
       </CardContent>

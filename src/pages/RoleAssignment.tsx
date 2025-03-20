@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ const RoleAssignment: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const {
     teachers,
     isEditDialogOpen,
@@ -73,6 +74,26 @@ const RoleAssignment: React.FC = () => {
     };
   }, [loadTeacherData]);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadTeacherData();
+      toast({
+        title: "Data refreshed",
+        description: "Teacher data has been refreshed from the database"
+      });
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast({
+        title: "Error refreshing data",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center">
@@ -98,11 +119,12 @@ const RoleAssignment: React.FC = () => {
             <div className="flex space-x-2">
               <Button 
                 variant="outline" 
-                onClick={loadTeacherData} 
+                onClick={handleRefresh} 
                 className="flex items-center"
+                disabled={isRefreshing}
               >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Refresh
+                <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
               <Button onClick={() => navigate(-1)} variant="outline">
                 Back

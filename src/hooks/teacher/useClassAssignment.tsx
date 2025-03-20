@@ -51,17 +51,68 @@ export const useClassAssignment = (
         
         if (error) {
           console.error('Supabase update error:', error);
-          // Continue anyway to update local storage
+          throw new Error(`Database error: ${error.message}`);
+        }
+      } else {
+        // If no dbId, try to find the teacher by email in the database
+        const emailField = currentTeacher.role === 'robe-in-charge' ? 'robe_email' : 'folder_email';
+        
+        const { data, error: fetchError } = await supabase
+          .from('teachers')
+          .select('*')
+          .eq(emailField, currentTeacher.email)
+          .limit(1);
+        
+        if (fetchError) {
+          console.error('Error finding teacher in database:', fetchError);
+        } else if (data && data.length > 0) {
+          // Update the existing record
+          const { error: updateError } = await supabase
+            .from('teachers')
+            .update({
+              program_name: selectedClasses[0] || '',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', data[0].id);
+          
+          if (updateError) {
+            console.error('Supabase update error:', updateError);
+            throw new Error(`Database error: ${updateError.message}`);
+          }
+        } else {
+          // Create a new record
+          const newRecord = {
+            program_name: selectedClasses[0] || '',
+            robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
+            folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
+            accompanying_teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
+            folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          const { error: insertError } = await supabase
+            .from('teachers')
+            .insert(newRecord);
+          
+          if (insertError) {
+            console.error('Supabase insert error:', insertError);
+            throw new Error(`Database error: ${insertError.message}`);
+          }
         }
       }
       
       // Update in local storage
       const allTeachers = getAllTeachers();
-      const index = parseInt(currentTeacher.id) - 1;
+      const programIndex = allTeachers.findIndex(t => 
+        t['Programme Name'] === currentTeacher.program ||
+        (currentTeacher.role === 'robe-in-charge' && t['Robe Email ID'] === currentTeacher.email) ||
+        (currentTeacher.role === 'folder-in-charge' && t['Folder Email ID'] === currentTeacher.email)
+      );
       
-      if (index >= 0 && index < allTeachers.length && selectedClasses.length > 0) {
-        allTeachers[index] = {
-          ...allTeachers[index],
+      if (programIndex >= 0 && selectedClasses.length > 0) {
+        allTeachers[programIndex] = {
+          ...allTeachers[programIndex],
           "Programme Name": selectedClasses[0] // Use first selected class as programme name
         };
         
@@ -72,6 +123,9 @@ export const useClassAssignment = (
         title: "Classes Assigned",
         description: `Updated class assignments for ${currentTeacher.name}`,
       });
+      
+      // Trigger data refresh
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
       
       setIsClassAssignDialogOpen(false);
     } catch (error) {

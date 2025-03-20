@@ -28,24 +28,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       setIsLoading(true);
       
-      // Check for stored user in localStorage
-      const storedUser = localStorage.getItem('convocation_user');
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser) as User;
-          setUser(parsedUser);
-          
-          // Load teacher data from database when user is present
-          await getTeacherData()
-            .then(() => console.log('Teacher data loaded on app init'))
-            .catch(err => console.error('Failed to load teacher data on init:', err));
-        } catch (error) {
-          console.error('Error parsing stored user:', error);
-          localStorage.removeItem('convocation_user');
+      try {
+        // Check for stored user in localStorage
+        const storedUser = localStorage.getItem('convocation_user');
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser) as User;
+            setUser(parsedUser);
+            
+            // Load teacher data from database when user is present
+            await getTeacherData()
+              .then(() => console.log('Teacher data loaded on app init'))
+              .catch(err => console.error('Failed to load teacher data on init:', err));
+          } catch (error) {
+            console.error('Error parsing stored user:', error);
+            localStorage.removeItem('convocation_user');
+          }
         }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
     initializeAuth();

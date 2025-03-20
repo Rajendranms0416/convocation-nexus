@@ -18,7 +18,7 @@ interface ClassAssignmentDialogProps {
   availableClasses: string[];
   selectedClasses: string[];
   setSelectedClasses: React.Dispatch<React.SetStateAction<string[]>>;
-  onSave: () => void;
+  onSave: (teacher: any, selectedClasses: string[]) => void;
 }
 
 const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
@@ -36,6 +36,10 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
     } else {
       setSelectedClasses([...selectedClasses, className]);
     }
+  };
+
+  const handleSave = () => {
+    onSave(teacher, selectedClasses);
   };
 
   if (!teacher) return null;
@@ -78,7 +82,7 @@ const ClassAssignmentDialog: React.FC<ClassAssignmentDialogProps> = ({
               <Button variant="outline" onClick={onClose} className="mr-2">
                 Cancel
               </Button>
-              <Button onClick={onSave}>
+              <Button onClick={handleSave}>
                 Save
               </Button>
             </div>

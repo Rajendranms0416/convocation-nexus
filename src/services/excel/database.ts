@@ -1,3 +1,4 @@
+
 /**
  * Excel Service - Database operations for teacher data
  */
@@ -20,7 +21,12 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
     updateTeachersList(enhancedData);
     
     // Clear existing data in the database
-    await supabase.from('teachers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error: deleteError } = await supabase.from('teachers').delete().not('id', 'is', null);
+    
+    if (deleteError) {
+      console.error('Error clearing existing data:', deleteError);
+      throw new Error(`Database error during delete: ${deleteError.message}`);
+    }
     
     // Prepare data for database insertion
     const dbRecords = enhancedData.map(teacher => ({
@@ -30,6 +36,8 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
       accompanying_teacher: teacher['Accompanying Teacher'] || '',
       folder_in_charge: teacher['Folder in Charge'] || '',
       class_section: teacher['Class Wise/\nSection Wise'] || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }));
     
     // Insert into database
@@ -37,7 +45,7 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
     
     if (error) {
       console.error('Error saving to database:', error);
-      throw new Error(`Database error: ${error.message}`);
+      throw new Error(`Database error during insert: ${error.message}`);
     }
     
     console.log('Saved to database successfully');
