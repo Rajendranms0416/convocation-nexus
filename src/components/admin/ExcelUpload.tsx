@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileSpreadsheet, Upload, AlertCircle } from 'lucide-react';
@@ -9,6 +8,7 @@ import FileUploader from './excel/FileUploader';
 import FormatHelp from './excel/FormatHelp';
 import DataPreview from './excel/DataPreview';
 import { excelService } from '@/services/excel';
+import { updateTeachersList } from '@/utils/authHelpers';
 
 // Define the expected column structure
 const requiredColumns = [
@@ -57,7 +57,7 @@ const ExcelUpload: React.FC = () => {
         setErrorMessage('');
       }
       
-      // Check for potential duplicate data (first row being duplicated)
+      // Check for potential duplicate data
       const uniquePrograms = new Set(data.map(row => row['Programme Name']));
       if (uniquePrograms.size === 1 && data.length > 1) {
         toast({
@@ -84,32 +84,6 @@ const ExcelUpload: React.FC = () => {
       // Enhance the data to ensure all required fields are present
       const enhancedData = excelService.enhanceTeacherData(data);
       setPreviewData(enhancedData);
-      
-      // If data is valid, save it
-      if (!hasErrors && enhancedData.length > 0) {
-        try {
-          setIsSaving(true);
-          // This will save to both database and local storage
-          await excelService.saveTeacherData(enhancedData);
-          setIsSaving(false);
-          
-          toast({
-            title: "Data imported",
-            description: `Successfully imported ${enhancedData.length} teacher assignments`,
-          });
-          
-          // Force refresh the teacher display by triggering a window event
-          window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
-        } catch (error) {
-          setIsSaving(false);
-          console.error("Error saving data:", error);
-          toast({
-            title: "Error saving data",
-            description: error instanceof Error ? error.message : "An unknown error occurred",
-            variant: "destructive"
-          });
-        }
-      }
     } catch (error) {
       console.error("Error processing data:", error);
       setHasErrors(true);
@@ -130,24 +104,25 @@ const ExcelUpload: React.FC = () => {
 
     try {
       setIsSaving(true);
-      await excelService.saveTeacherData(previewData);
-      setIsSaving(false);
+      // Save directly to localStorage
+      updateTeachersList(previewData);
       
       // Force refresh the teacher display
       window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
       
       toast({
         title: "Data saved",
-        description: `${previewData.length} teacher assignments saved to database`
+        description: `${previewData.length} teacher assignments saved to local storage`
       });
     } catch (error) {
-      setIsSaving(false);
       console.error("Error saving data:", error);
       toast({
         title: "Error saving data",
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 

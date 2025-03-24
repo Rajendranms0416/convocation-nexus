@@ -22,8 +22,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     isUploading, 
     uploadError, 
     handleFileChange, 
-    handleUpload,
-    isDbConnected
+    handleUpload
   } = useFileUpload({ onDataLoaded });
   
   const { isExporting, exportCurrentData } = useDataExport();
@@ -40,19 +39,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       />
       
       {useOfflineStorage && (
-        <Alert variant="warning" className="mt-3">
+        <Alert variant="info" className="mt-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Offline mode is enabled. Files will be saved to local storage only.
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {!useOfflineStorage && isDbConnected === false && (
-        <Alert variant="warning" className="mt-3">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Database connection is unavailable. Files will be saved to local storage only.
+            The file will be processed and saved to local storage only.
           </AlertDescription>
         </Alert>
       )}

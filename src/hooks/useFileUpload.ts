@@ -2,8 +2,7 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
-import { useDatabaseConnection } from '@/hooks/useDatabaseConnection';
-import { updateTeachersList } from '@/utils/authHelpers'; // Import directly from authHelpers
+import { updateTeachersList } from '@/utils/authHelpers';
 
 interface UseFileUploadOptions {
   onDataLoaded: (data: any[]) => void;
@@ -15,7 +14,6 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<string | null>(null);
   const { toast } = useToast();
-  const { isConnected, checkConnection } = useDatabaseConnection();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -47,9 +45,6 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
     setUploadError(null);
 
     try {
-      // Check database connection before proceeding
-      const dbConnected = await checkConnection();
-      
       const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
       let parsedData;
       
@@ -77,43 +72,19 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
       
       excelService.validateTeacherData(parsedData);
       
-      let savedData;
+      // Enhance the data with any missing fields
+      const enhancedData = excelService.enhanceTeacherData(parsedData);
       
-      if (dbConnected) {
-        try {
-          // Try to save to database
-          savedData = await excelService.saveTeacherData(parsedData);
-          toast({
-            title: 'File uploaded successfully to database',
-            description: `Loaded ${savedData.length} teacher records.`,
-          });
-        } catch (dbError) {
-          console.error('Database save failed, falling back to local storage:', dbError);
-          // Fall back to local storage
-          savedData = excelService.enhanceTeacherData(parsedData);
-          // Save to localStorage via updateTeachersList imported directly
-          updateTeachersList(savedData);
-          
-          toast({
-            title: 'Saved to local storage (database unavailable)',
-            description: `Loaded ${savedData.length} teacher records to local storage.`,
-            variant: 'default',
-          });
-        }
-      } else {
-        // If database is not connected, use local storage directly
-        savedData = excelService.enhanceTeacherData(parsedData);
-        // Save to localStorage via updateTeachersList imported directly
-        updateTeachersList(savedData);
-        
-        toast({
-          title: 'Saved to local storage (database unavailable)',
-          description: `Loaded ${savedData.length} teacher records to local storage.`,
-          variant: 'default',
-        });
-      }
+      // Save directly to localStorage 
+      updateTeachersList(enhancedData);
       
-      onDataLoaded(savedData);
+      toast({
+        title: 'File processed successfully',
+        description: `Loaded ${enhancedData.length} teacher records to local storage.`,
+        variant: 'default',
+      });
+      
+      onDataLoaded(enhancedData);
       
       // Notify any listeners that data has been updated
       window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
@@ -123,7 +94,7 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
       setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
       
       toast({
-        title: 'Failed to upload file',
+        title: 'Failed to process file',
         description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: 'destructive',
       });
@@ -138,7 +109,6 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
     isUploading,
     uploadError,
     handleFileChange,
-    handleUpload,
-    isDbConnected: isConnected
+    handleUpload
   };
 };

@@ -5,8 +5,8 @@
 import { parseCSV, parseExcel } from './parsers';
 import { validateTeacherData } from './validators';
 import { enhanceTeacherData } from './enhance';
-import { saveTeacherData, getTeacherData } from './database';
 import { generateCSV } from './export';
+import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
 
 /**
  * Filter teacher data based on search criteria
@@ -35,8 +35,8 @@ export const excelService = {
   parseExcel,
   validateTeacherData,
   enhanceTeacherData,
-  saveTeacherData,
-  getTeacherData,
+  saveTeacherData: updateTeachersList, // Just use updateTeachersList directly
+  getTeacherData: getAllTeachers, // Just use getAllTeachers directly
   generateCSV,
   filterTeacherData
 };
