@@ -1,9 +1,13 @@
+
 /**
  * Excel Service - Database operations for teacher data
  */
 import { supabase } from '@/integrations/supabase/client';
-import { updateTeachersList, getAllTeachers } from '@/utils/authHelpers';
+import { updateTeachersList as updateLocalTeachers, getAllTeachers } from '@/utils/authHelpers';
 import { enhanceTeacherData } from './enhance';
+
+// Re-export the updateTeachersList function to make it available through the service
+export const updateTeachersList = updateLocalTeachers;
 
 /**
  * Save data to both Supabase database and localStorage for offline capability
@@ -19,48 +23,64 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
     // Save to local storage for offline capability first
     updateTeachersList(enhancedData);
     
-    // Prepare data for database insertion - ensure all required fields are present
-    const dbRecords = enhancedData.map(teacher => ({
-      program_name: teacher['Programme Name'] || '',
-      robe_email: teacher['Robe Email ID'] || '',
-      folder_email: teacher['Folder Email ID'] || '',
-      robe_in_charge: teacher['Accompanying Teacher'] || '',
-      folder_in_charge: teacher['Folder in Charge'] || '',
-      class_section: teacher['Class Wise/\nSection Wise'] || '',
-      updated_at: new Date().toISOString()
-    }));
-    
-    console.log(`Preparing to save ${dbRecords.length} records to database`);
-    
-    // Insert data in batches of 5 to avoid payload size issues (reduced from 10)
-    const batchSize = 5;
-    let successCount = 0;
-    
-    for (let i = 0; i < dbRecords.length; i += batchSize) {
-      const batch = dbRecords.slice(i, i + batchSize);
-      console.log(`Saving batch ${i}-${i+batch.length} to database...`);
-      
-      // Use upsert with onConflict for program_name or emails if they exist
-      const { data: insertedData, error } = await supabase
+    try {
+      // Check database connection
+      const { error: connectionError } = await supabase
         .from('teachers')
-        .upsert(batch, { 
-          onConflict: 'program_name',
-          ignoreDuplicates: false
-        });
+        .select('id', { count: 'exact', head: true });
       
-      if (error) {
-        console.error(`Error saving batch ${i}-${i+batch.length} to database:`, error);
-        // Continue with next batch instead of failing completely
-      } else {
-        successCount += batch.length;
-        console.log(`Successfully saved batch ${i}-${i+batch.length}`);
+      if (connectionError) {
+        console.error('Database connection error, using local storage only:', connectionError);
+        // Return the data saved to localStorage
+        return enhancedData;
       }
       
-      // Larger delay between batches to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Prepare data for database insertion - ensure all required fields are present
+      const dbRecords = enhancedData.map(teacher => ({
+        program_name: teacher['Programme Name'] || '',
+        robe_email: teacher['Robe Email ID'] || '',
+        folder_email: teacher['Folder Email ID'] || '',
+        robe_in_charge: teacher['Accompanying Teacher'] || '',
+        folder_in_charge: teacher['Folder in Charge'] || '',
+        class_section: teacher['Class Wise/\nSection Wise'] || '',
+        updated_at: new Date().toISOString()
+      }));
+      
+      console.log(`Preparing to save ${dbRecords.length} records to database`);
+      
+      // Insert data in batches of 5 to avoid payload size issues (reduced from 10)
+      const batchSize = 3; // Even smaller batch size
+      let successCount = 0;
+      
+      for (let i = 0; i < dbRecords.length; i += batchSize) {
+        const batch = dbRecords.slice(i, i + batchSize);
+        console.log(`Saving batch ${i}-${i+batch.length} to database...`);
+        
+        // Use upsert with onConflict for program_name or emails if they exist
+        const { data: insertedData, error } = await supabase
+          .from('teachers')
+          .upsert(batch, { 
+            onConflict: 'program_name',
+            ignoreDuplicates: false
+          });
+        
+        if (error) {
+          console.error(`Error saving batch ${i}-${i+batch.length} to database:`, error);
+          // Continue with next batch instead of failing completely
+        } else {
+          successCount += batch.length;
+          console.log(`Successfully saved batch ${i}-${i+batch.length}`);
+        }
+        
+        // Larger delay between batches to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      console.log(`Saved ${successCount} out of ${dbRecords.length} records to database successfully`);
+    } catch (dbError) {
+      console.error('Error saving to database, using local storage only:', dbError);
+      // We already saved to localStorage, so just return the data
     }
-    
-    console.log(`Saved ${successCount} out of ${dbRecords.length} records to database successfully`);
     
     // Notify any listeners that data has been updated
     window.dispatchEvent(new CustomEvent('teacherDataUpdated'));

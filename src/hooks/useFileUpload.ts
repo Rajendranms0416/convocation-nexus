@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
+import { useDatabaseConnection } from '@/hooks/useDatabaseConnection';
 
 interface UseFileUploadOptions {
   onDataLoaded: (data: any[]) => void;
@@ -13,6 +14,7 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<string | null>(null);
   const { toast } = useToast();
+  const { isConnected, checkConnection } = useDatabaseConnection();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -44,6 +46,9 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
     setUploadError(null);
 
     try {
+      // Check database connection before proceeding
+      const dbConnected = await checkConnection();
+      
       const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
       let parsedData;
       
@@ -71,14 +76,47 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
       
       excelService.validateTeacherData(parsedData);
       
-      const savedData = await excelService.saveTeacherData(parsedData);
+      let savedData;
+      
+      if (dbConnected) {
+        try {
+          // Try to save to database
+          savedData = await excelService.saveTeacherData(parsedData);
+          toast({
+            title: 'File uploaded successfully to database',
+            description: `Loaded ${savedData.length} teacher records.`,
+          });
+        } catch (dbError) {
+          console.error('Database save failed, falling back to local storage:', dbError);
+          // Fall back to local storage
+          savedData = excelService.enhanceTeacherData(parsedData);
+          // Save to localStorage via updateTeachersList
+          excelService.updateTeachersList(savedData);
+          
+          toast({
+            title: 'Saved to local storage (database unavailable)',
+            description: `Loaded ${savedData.length} teacher records to local storage.`,
+            variant: 'default',
+          });
+        }
+      } else {
+        // If database is not connected, use local storage directly
+        savedData = excelService.enhanceTeacherData(parsedData);
+        // Save to localStorage via updateTeachersList
+        excelService.updateTeachersList(savedData);
+        
+        toast({
+          title: 'Saved to local storage (database unavailable)',
+          description: `Loaded ${savedData.length} teacher records to local storage.`,
+          variant: 'default',
+        });
+      }
       
       onDataLoaded(savedData);
       
-      toast({
-        title: 'File uploaded successfully',
-        description: `Loaded ${savedData.length} teacher records.`,
-      });
+      // Notify any listeners that data has been updated
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
+      
     } catch (error) {
       console.error('Upload error:', error);
       setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
@@ -99,6 +137,7 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
     isUploading,
     uploadError,
     handleFileChange,
-    handleUpload
+    handleUpload,
+    isDbConnected: isConnected
   };
 };

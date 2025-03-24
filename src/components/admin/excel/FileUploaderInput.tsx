@@ -2,7 +2,9 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Upload, Download } from 'lucide-react';
+import { Upload, Download, Database, RefreshCw } from 'lucide-react';
+import { useDatabaseConnection } from '@/hooks/useDatabaseConnection';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface FileUploaderInputProps {
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -21,33 +23,69 @@ const FileUploaderInput: React.FC<FileUploaderInputProps> = ({
   isExporting,
   hasFile
 }) => {
+  const { isConnected, isChecking, checkConnection } = useDatabaseConnection();
+  
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-3">
-      <Input
-        type="file"
-        accept=".csv,.xlsx,.xls"
-        onChange={onFileChange}
-        className="flex-1"
-      />
-      <div className="flex gap-2 w-full sm:w-auto">
-        <Button 
-          onClick={onUpload} 
-          disabled={!hasFile || isUploading}
-          className="flex-1 sm:flex-none"
-        >
-          {isUploading ? 'Uploading...' : 'Upload'}
-          <Upload className="ml-2 h-4 w-4" />
-        </Button>
-        <Button 
-          variant="outline" 
-          onClick={onExport}
-          disabled={isExporting}
-          className="flex-1 sm:flex-none"
-        >
-          {isExporting ? 'Exporting...' : 'Export'}
-          <Download className="ml-2 h-4 w-4" />
-        </Button>
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <Input
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          onChange={onFileChange}
+          className="flex-1"
+        />
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            onClick={onUpload} 
+            disabled={!hasFile || isUploading}
+            className="flex-1 sm:flex-none"
+          >
+            {isUploading ? 'Uploading...' : 'Upload'}
+            <Upload className="ml-2 h-4 w-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={onExport}
+            disabled={isExporting}
+            className="flex-1 sm:flex-none"
+          >
+            {isExporting ? 'Exporting...' : 'Export'}
+            <Download className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
+      
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="p-1 h-auto"
+                onClick={checkConnection}
+                disabled={isChecking}
+              >
+                {isChecking ? (
+                  <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Database className={`h-3.5 w-3.5 mr-1 ${isConnected ? 'text-green-500' : 'text-red-500'}`} />
+                )}
+              </Button>
+              <span>
+                {isChecking 
+                  ? 'Checking database connection...' 
+                  : isConnected 
+                    ? 'Database connected' 
+                    : 'Database not connected - fallback to local storage enabled'}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Click to check database connection</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   );
 };
