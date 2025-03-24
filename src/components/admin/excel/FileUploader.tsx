@@ -39,7 +39,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       />
       
       {useOfflineStorage && (
-        <Alert variant="info" className="mt-3">
+        <Alert variant="warning" className="mt-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             The file will be processed and saved to local storage only.

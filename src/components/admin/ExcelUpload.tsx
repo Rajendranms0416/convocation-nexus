@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileSpreadsheet, Upload, AlertCircle } from 'lucide-react';
@@ -10,8 +11,8 @@ import DataPreview from './excel/DataPreview';
 import { excelService } from '@/services/excel';
 import { updateTeachersList } from '@/utils/authHelpers';
 
-// Define the expected column structure
-const requiredColumns = [
+// No longer enforcing specific columns
+const suggestedColumns = [
   'Programme Name',
   'Robe Email ID',
   'Folder Email ID',
@@ -31,59 +32,36 @@ const ExcelUpload: React.FC = () => {
     // Check if there's any data
     if (!data || data.length === 0) {
       setHasErrors(true);
-      setErrorMessage('No data found in the CSV file.');
+      setErrorMessage('No data found in the file.');
       setPreviewData([]);
       return;
     }
     
     try {
-      // Validate that required columns are present
+      // We'll accept any data structure now
       const firstRow = data[0];
-      const missingColumns = requiredColumns.filter(
-        col => !Object.keys(firstRow).includes(col)
+      const availableColumns = Object.keys(firstRow);
+      
+      console.log('Available columns:', availableColumns);
+      
+      // Check for potentially useful columns, but don't require them
+      const foundColumns = suggestedColumns.filter(
+        col => availableColumns.includes(col)
       );
       
-      if (missingColumns.length > 0) {
+      if (foundColumns.length > 0) {
         toast({
-          title: "Missing columns",
-          description: `These columns are missing: ${missingColumns.join(', ')}`,
-          variant: "destructive"
-        });
-        // Still show data with warnings
-        setHasErrors(true);
-        setErrorMessage(`Missing columns: ${missingColumns.join(', ')}`);
-      } else {
-        setHasErrors(false);
-        setErrorMessage('');
-      }
-      
-      // Check for potential duplicate data
-      const uniquePrograms = new Set(data.map(row => row['Programme Name']));
-      if (uniquePrograms.size === 1 && data.length > 1) {
-        toast({
-          title: "Warning",
-          description: "All rows have the same program name. This might indicate duplicate data.",
+          title: "Found useful columns",
+          description: `These useful columns were found: ${foundColumns.join(', ')}`,
           variant: "default"
         });
       }
       
-      // Check for any bad data like missing teacher names
-      const missingTeacherNames = data.filter(
-        row => (!row['Accompanying Teacher'] || row['Accompanying Teacher'] === 'Sl. No') &&
-               (!row['Folder in Charge'] || row['Folder in Charge'] === '"Class Wise/')
-      );
+      // Just accept any data structure - no more validation
+      setPreviewData(data);
+      setHasErrors(false);
+      setErrorMessage('');
       
-      if (missingTeacherNames.length > 0) {
-        toast({
-          title: "Missing teacher names",
-          description: `${missingTeacherNames.length} entries are missing teacher names`,
-          variant: "default"
-        });
-      }
-      
-      // Enhance the data to ensure all required fields are present
-      const enhancedData = excelService.enhanceTeacherData(data);
-      setPreviewData(enhancedData);
     } catch (error) {
       console.error("Error processing data:", error);
       setHasErrors(true);
@@ -96,7 +74,7 @@ const ExcelUpload: React.FC = () => {
     if (previewData.length === 0) {
       toast({
         title: "No data to save",
-        description: "Please upload a CSV file first",
+        description: "Please upload a file first",
         variant: "destructive"
       });
       return;
@@ -104,7 +82,7 @@ const ExcelUpload: React.FC = () => {
 
     try {
       setIsSaving(true);
-      // Save directly to localStorage
+      // Save to localStorage
       updateTeachersList(previewData);
       
       // Force refresh the teacher display
@@ -112,7 +90,7 @@ const ExcelUpload: React.FC = () => {
       
       toast({
         title: "Data saved",
-        description: `${previewData.length} teacher assignments saved to local storage`
+        description: `${previewData.length} records saved to local storage`
       });
     } catch (error) {
       console.error("Error saving data:", error);
@@ -129,9 +107,9 @@ const ExcelUpload: React.FC = () => {
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-medium">Import Teacher Data</CardTitle>
+        <CardTitle className="text-lg font-medium">Import Data</CardTitle>
         <CardDescription>
-          Upload a CSV file with teacher and class information
+          Upload any CSV or Excel file with tabular data
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -147,7 +125,7 @@ const ExcelUpload: React.FC = () => {
         <FormatHelp 
           showHelp={showHelp} 
           setShowHelp={setShowHelp} 
-          requiredColumns={requiredColumns} 
+          requiredColumns={suggestedColumns} 
         />
         
         {previewData.length > 0 && (
@@ -164,13 +142,13 @@ const ExcelUpload: React.FC = () => {
             disabled={isSaving}
           >
             <Upload className="h-4 w-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save Teacher Assignments'}
+            {isSaving ? 'Saving...' : 'Save Data'}
           </Button>
         )}
       </CardContent>
       <CardFooter className="border-t pt-3 text-xs text-muted-foreground">
         <FileSpreadsheet className="h-3 w-3 mr-1" /> 
-        CSV columns needed: Programme Name, Robe Email ID, Folder Email ID, Accompanying Teacher, Folder in Charge
+        Upload any CSV or Excel file - all columns will be preserved
       </CardFooter>
     </Card>
   );

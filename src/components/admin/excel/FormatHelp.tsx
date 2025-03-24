@@ -33,14 +33,15 @@ const FormatHelp: React.FC<FormatHelpProps> = ({
         <Alert className="bg-muted/50">
           <AlertTitle className="text-sm">Format Information</AlertTitle>
           <AlertDescription className="text-xs">
-            <p>Your CSV file should include these columns:</p>
+            <p>You can upload any CSV or Excel file with data in table format.</p>
+            <p className="mt-1">Common columns that might be useful include:</p>
             <ul className="list-disc pl-5 mt-1 space-y-0.5">
-              <li><strong>Programme Name</strong> - The program or class name</li>
-              <li><strong>Robe Email ID</strong> - Email of the teacher in charge of robes</li>
-              <li><strong>Folder Email ID</strong> - Email of the teacher in charge of folders</li>
-              <li><strong>Accompanying Teacher</strong> - Name of the robe-in-charge teacher</li>
-              <li><strong>Folder in Charge</strong> - Name of the folder-in-charge teacher</li>
+              <li>Program or class names</li>
+              <li>Teacher emails</li>
+              <li>Teacher names</li>
+              <li>Class sections</li>
             </ul>
+            <p className="mt-1">All columns will be preserved and displayed in the preview.</p>
           </AlertDescription>
         </Alert>
       )}

@@ -70,21 +70,21 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
       
       console.log('Parsed data:', parsedData);
       
-      excelService.validateTeacherData(parsedData);
+      // Minimal validation - just check if there's data
+      if (!parsedData || parsedData.length === 0) {
+        throw new Error('No data found in the file');
+      }
       
-      // Enhance the data with any missing fields
-      const enhancedData = excelService.enhanceTeacherData(parsedData);
-      
-      // Save directly to localStorage 
-      updateTeachersList(enhancedData);
+      // Save the data to localStorage directly
+      updateTeachersList(parsedData);
       
       toast({
         title: 'File processed successfully',
-        description: `Loaded ${enhancedData.length} teacher records to local storage.`,
+        description: `Loaded ${parsedData.length} records.`,
         variant: 'default',
       });
       
-      onDataLoaded(enhancedData);
+      onDataLoaded(parsedData);
       
       // Notify any listeners that data has been updated
       window.dispatchEvent(new CustomEvent('teacherDataUpdated'));

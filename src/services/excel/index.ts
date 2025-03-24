@@ -9,10 +9,10 @@ import { generateCSV } from './export';
 import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
 
 /**
- * Filter teacher data based on search criteria
- * @param data The teacher data to filter
+ * Filter data based on search criteria
+ * @param data The data to filter
  * @param searchTerm The search term to filter by
- * @returns Filtered teacher data
+ * @returns Filtered data
  */
 export const filterTeacherData = (data: Record<string, string>[], searchTerm: string): Record<string, string>[] => {
   if (!searchTerm || searchTerm.trim() === '') {
@@ -21,9 +21,9 @@ export const filterTeacherData = (data: Record<string, string>[], searchTerm: st
   
   const term = searchTerm.toLowerCase().trim();
   
-  return data.filter(teacher => {
-    // Search across all fields in the teacher record
-    return Object.values(teacher).some(value => 
+  return data.filter(record => {
+    // Search across all fields in the record
+    return Object.values(record).some(value => 
       value && typeof value === 'string' && value.toLowerCase().includes(term)
     );
   });
