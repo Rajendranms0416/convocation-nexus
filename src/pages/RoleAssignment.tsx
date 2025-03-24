@@ -1,19 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import ExcelUpload from '@/components/admin/ExcelUpload';
-import TeachersList from '@/components/admin/teachers/TeachersList';
-import AddTeacherDialog from '@/components/admin/teachers/AddTeacherDialog';
-import EditTeacherDialog from '@/components/admin/teachers/EditTeacherDialog';
-import ClassAssignmentDialog from '@/components/admin/teachers/ClassAssignmentDialog';
-import SessionSelector from '@/components/admin/teachers/SessionSelector';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
 import { getAllSessions } from '@/utils/authHelpers';
-import { RefreshCw } from 'lucide-react';
+import RoleAssignmentHeader from '@/components/admin/teachers/RoleAssignmentHeader';
+import TeacherManagementContent from '@/components/admin/teachers/TeacherManagementContent';
+import DialogsContainer from '@/components/admin/teachers/DialogsContainer';
 
 const RoleAssignment: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -155,85 +150,45 @@ const RoleAssignment: React.FC = () => {
   return (
     <div className="container mx-auto p-4 max-w-6xl">
       <Card className="mb-6">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl">Teacher Role Management</CardTitle>
-              <CardDescription>
-                Assign roles and classes to teachers for the convocation
-              </CardDescription>
-            </div>
-            <div className="flex space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={handleRefresh} 
-                className="flex items-center"
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? 'Refreshing...' : 'Refresh'}
-              </Button>
-              
-              <Button onClick={() => navigate(-1)} variant="outline">
-                Back
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <SessionSelector 
-            sessions={availableSessions}
-            currentSession={currentSession}
-            onSessionChange={handleSessionChange}
-          />
-          
-          <ExcelUpload />
-          
-          <div className="flex justify-between mb-6">
-            <h3 className="text-lg font-medium">
-              Manage Teachers ({teachers.length}) - {currentSession}
-            </h3>
-            
-            <AddTeacherDialog 
-              availableClasses={availableClasses}
-              onAddTeacher={handleAddTeacher}
-            />
-          </div>
-          
-          <TeachersList 
-            teachers={teachers}
-            onEdit={handleEditTeacher}
-            onDelete={handleDeleteTeacher}
-            onAssignClasses={handleAssignClasses}
-          />
-        </CardContent>
+        <RoleAssignmentHeader 
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+        />
+        
+        <TeacherManagementContent
+          sessions={availableSessions}
+          currentSession={currentSession}
+          onSessionChange={handleSessionChange}
+          isRefreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          teachers={teachers}
+          availableClasses={availableClasses}
+          onAddTeacher={handleAddTeacher}
+          onEditTeacher={handleEditTeacher}
+          onDeleteTeacher={handleDeleteTeacher}
+          onAssignClasses={handleAssignClasses}
+        />
       </Card>
 
-      <EditTeacherDialog 
-        isOpen={isEditDialogOpen}
-        onClose={() => setIsEditDialogOpen(false)}
-        teacher={currentTeacher}
-        availableClasses={availableClasses}
-        selectedClasses={selectedClasses}
-        setSelectedClasses={setSelectedClasses}
-        teacherName={newTeacherName}
-        setTeacherName={setNewTeacherName}
-        teacherEmail={newTeacherEmail}
-        setTeacherEmail={setNewTeacherEmail}
+      <DialogsContainer
+        isEditDialogOpen={isEditDialogOpen}
+        setIsEditDialogOpen={setIsEditDialogOpen}
+        isClassAssignDialogOpen={isClassAssignDialogOpen}
+        setIsClassAssignDialogOpen={setIsClassAssignDialogOpen}
+        currentTeacher={currentTeacher}
+        newTeacherName={newTeacherName}
+        setNewTeacherName={setNewTeacherName}
+        newTeacherEmail={newTeacherEmail}
+        setNewTeacherEmail={setNewTeacherEmail}
+        newTeacherRole={newTeacherRole}
+        setNewTeacherRole={setNewTeacherRole}
         emailType={emailType}
         setEmailType={setEmailType}
-        onUpdate={handleUpdateTeacher}
-        setTeacherRole={setNewTeacherRole}
-      />
-
-      <ClassAssignmentDialog 
-        isOpen={isClassAssignDialogOpen}
-        onClose={() => setIsClassAssignDialogOpen(false)}
-        teacher={currentTeacher}
         availableClasses={availableClasses}
         selectedClasses={selectedClasses}
         setSelectedClasses={setSelectedClasses}
-        onSave={saveClassAssignments}
+        onUpdateTeacher={handleUpdateTeacher}
+        onSaveClassAssignments={saveClassAssignments}
       />
     </div>
   );
