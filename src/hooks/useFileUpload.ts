@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
 import { useDatabaseConnection } from '@/hooks/useDatabaseConnection';
+import { updateTeachersList } from '@/utils/authHelpers'; // Import directly from authHelpers
 
 interface UseFileUploadOptions {
   onDataLoaded: (data: any[]) => void;
@@ -90,8 +91,8 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
           console.error('Database save failed, falling back to local storage:', dbError);
           // Fall back to local storage
           savedData = excelService.enhanceTeacherData(parsedData);
-          // Save to localStorage via updateTeachersList
-          excelService.updateTeachersList(savedData);
+          // Save to localStorage via updateTeachersList imported directly
+          updateTeachersList(savedData);
           
           toast({
             title: 'Saved to local storage (database unavailable)',
@@ -102,8 +103,8 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
       } else {
         // If database is not connected, use local storage directly
         savedData = excelService.enhanceTeacherData(parsedData);
-        // Save to localStorage via updateTeachersList
-        excelService.updateTeachersList(savedData);
+        // Save to localStorage via updateTeachersList imported directly
+        updateTeachersList(savedData);
         
         toast({
           title: 'Saved to local storage (database unavailable)',

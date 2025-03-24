@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Upload, Download, Database, RefreshCw } from 'lucide-react';
 import { useDatabaseConnection } from '@/hooks/useDatabaseConnection';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import OfflineModeToggle from './OfflineModeToggle';
+import { useOfflineMode } from '@/hooks/useOfflineMode';
 
 interface FileUploaderInputProps {
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -24,6 +26,7 @@ const FileUploaderInput: React.FC<FileUploaderInputProps> = ({
   hasFile
 }) => {
   const { isConnected, isChecking, checkConnection } = useDatabaseConnection();
+  const { useOfflineStorage } = useOfflineMode();
   
   return (
     <div className="space-y-3">
@@ -55,37 +58,43 @@ const FileUploaderInput: React.FC<FileUploaderInputProps> = ({
         </div>
       </div>
       
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="p-1 h-auto"
-                onClick={checkConnection}
-                disabled={isChecking}
-              >
-                {isChecking ? (
-                  <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" />
-                ) : (
-                  <Database className={`h-3.5 w-3.5 mr-1 ${isConnected ? 'text-green-500' : 'text-red-500'}`} />
-                )}
-              </Button>
-              <span>
-                {isChecking 
-                  ? 'Checking database connection...' 
-                  : isConnected 
-                    ? 'Database connected' 
-                    : 'Database not connected - fallback to local storage enabled'}
-              </span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Click to check database connection</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <div className="flex items-center justify-between">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="p-1 h-auto"
+                  onClick={checkConnection}
+                  disabled={isChecking || useOfflineStorage}
+                >
+                  {isChecking ? (
+                    <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Database className={`h-3.5 w-3.5 mr-1 ${isConnected && !useOfflineStorage ? 'text-green-500' : 'text-red-500'}`} />
+                  )}
+                </Button>
+                <span>
+                  {isChecking 
+                    ? 'Checking database connection...' 
+                    : useOfflineStorage
+                      ? 'Using offline mode (local storage only)'
+                      : isConnected 
+                        ? 'Database connected' 
+                        : 'Database not connected - fallback to local storage enabled'}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Click to check database connection</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <OfflineModeToggle />
+      </div>
     </div>
   );
 };

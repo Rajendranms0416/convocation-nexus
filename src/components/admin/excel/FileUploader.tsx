@@ -7,12 +7,15 @@ import { useFileUpload } from '@/hooks/useFileUpload';
 import { useDataExport } from '@/hooks/useDataExport';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { useOfflineMode } from '@/hooks/useOfflineMode';
 
 interface FileUploaderProps {
   onDataLoaded: (data: any[]) => void;
 }
 
 const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
+  const { useOfflineStorage } = useOfflineMode();
+  
   const { 
     file, 
     fileInfo, 
@@ -36,7 +39,16 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         hasFile={!!file}
       />
       
-      {isDbConnected === false && (
+      {useOfflineStorage && (
+        <Alert variant="warning" className="mt-3">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Offline mode is enabled. Files will be saved to local storage only.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {!useOfflineStorage && isDbConnected === false && (
         <Alert variant="warning" className="mt-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>

@@ -3,11 +3,8 @@
  * Excel Service - Database operations for teacher data
  */
 import { supabase } from '@/integrations/supabase/client';
-import { updateTeachersList as updateLocalTeachers, getAllTeachers } from '@/utils/authHelpers';
+import { updateTeachersList, getAllTeachers } from '@/utils/authHelpers';
 import { enhanceTeacherData } from './enhance';
-
-// Re-export the updateTeachersList function to make it available through the service
-export const updateTeachersList = updateLocalTeachers;
 
 /**
  * Save data to both Supabase database and localStorage for offline capability
@@ -20,8 +17,15 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
   console.log('Final data to save:', enhancedData);
   
   try {
-    // Save to local storage for offline capability first
+    // Always save to local storage for offline capability first
     updateTeachersList(enhancedData);
+    
+    // Check if offline mode is preferred
+    const preferOffline = localStorage.getItem('preferOfflineMode') === 'true';
+    if (preferOffline) {
+      console.log('Offline mode preferred, skipping database save');
+      return enhancedData;
+    }
     
     try {
       // Check database connection
@@ -48,48 +52,82 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
       
       console.log(`Preparing to save ${dbRecords.length} records to database`);
       
-      // Insert data in batches of 5 to avoid payload size issues (reduced from 10)
-      const batchSize = 3; // Even smaller batch size
+      // Even smaller batch size with longer delay between batches
+      const batchSize = 2;
       let successCount = 0;
+      
+      // For better observability, implement progress tracking
+      let progress = 0;
+      const totalBatches = Math.ceil(dbRecords.length / batchSize);
       
       for (let i = 0; i < dbRecords.length; i += batchSize) {
         const batch = dbRecords.slice(i, i + batchSize);
-        console.log(`Saving batch ${i}-${i+batch.length} to database...`);
+        progress++;
+        console.log(`Saving batch ${progress}/${totalBatches} to database...`);
         
-        // Use upsert with onConflict for program_name or emails if they exist
-        const { data: insertedData, error } = await supabase
-          .from('teachers')
-          .upsert(batch, { 
-            onConflict: 'program_name',
-            ignoreDuplicates: false
-          });
-        
-        if (error) {
-          console.error(`Error saving batch ${i}-${i+batch.length} to database:`, error);
-          // Continue with next batch instead of failing completely
-        } else {
-          successCount += batch.length;
-          console.log(`Successfully saved batch ${i}-${i+batch.length}`);
+        try {
+          // Use upsert with onConflict for program_name
+          const { error } = await supabase
+            .from('teachers')
+            .upsert(batch, { 
+              onConflict: 'program_name',
+              ignoreDuplicates: false
+            });
+          
+          if (error) {
+            console.error(`Error saving batch ${i}-${i+batch.length} to database:`, error);
+            throw error; // Propagate the error to trigger retry
+          } else {
+            successCount += batch.length;
+            console.log(`Successfully saved batch ${progress}/${totalBatches}`);
+          }
+        } catch (batchError) {
+          console.error(`Batch ${progress}/${totalBatches} failed, retrying with individual records:`, batchError);
+          
+          // If batch fails, try to save records individually
+          for (const record of batch) {
+            try {
+              const { error: individualError } = await supabase
+                .from('teachers')
+                .upsert([record], { 
+                  onConflict: 'program_name',
+                  ignoreDuplicates: false
+                });
+              
+              if (!individualError) {
+                successCount++;
+                console.log(`Successfully saved individual record for ${record.program_name}`);
+              } else {
+                console.error(`Failed to save individual record for ${record.program_name}:`, individualError);
+              }
+            } catch (individualSaveError) {
+              console.error(`Exception saving individual record for ${record.program_name}:`, individualSaveError);
+            }
+            
+            // Add a small delay between individual saves
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
         }
         
         // Larger delay between batches to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
       console.log(`Saved ${successCount} out of ${dbRecords.length} records to database successfully`);
+      
+      // Notify any listeners that data has been updated
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
+      
+      return enhancedData;
     } catch (dbError) {
       console.error('Error saving to database, using local storage only:', dbError);
       // We already saved to localStorage, so just return the data
+      return enhancedData;
     }
-    
-    // Notify any listeners that data has been updated
-    window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
-    
-    return enhancedData;
   } catch (error) {
     console.error('Error in saveTeacherData:', error);
     // Fall back to just local storage
-    return updateTeachersList(enhancedData);
+    return enhancedData;
   }
 };
 
@@ -99,6 +137,13 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
  */
 export const getTeacherData = async (): Promise<Record<string, string>[]> => {
   console.log('Getting teacher data from database...');
+  
+  // Check if offline mode is preferred
+  const preferOffline = localStorage.getItem('preferOfflineMode') === 'true';
+  if (preferOffline) {
+    console.log('Offline mode preferred, getting data from local storage only');
+    return getAllTeachers();
+  }
   
   try {
     // First check if database is available
@@ -148,3 +193,6 @@ export const getTeacherData = async (): Promise<Record<string, string>[]> => {
     return getAllTeachers();
   }
 };
+
+// Export the updateTeachersList so it's available through the excelService
+export { updateTeachersList, getAllTeachers };
