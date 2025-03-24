@@ -10,7 +10,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
 
 interface FileUploaderProps {
-  onDataLoaded: (data: any[]) => void;
+  onDataLoaded: (data: any[], sessionInfo: string) => void;
 }
 
 const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
@@ -19,6 +19,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
   const { 
     file, 
     fileInfo, 
+    sessionInfo,
     isUploading, 
     uploadError, 
     handleFileChange, 
@@ -36,6 +37,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         isUploading={isUploading}
         isExporting={isExporting}
         hasFile={!!file}
+        fileName={sessionInfo}
       />
       
       {useOfflineStorage && (

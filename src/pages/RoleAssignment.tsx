@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,16 +10,19 @@ import TeachersList from '@/components/admin/teachers/TeachersList';
 import AddTeacherDialog from '@/components/admin/teachers/AddTeacherDialog';
 import EditTeacherDialog from '@/components/admin/teachers/EditTeacherDialog';
 import ClassAssignmentDialog from '@/components/admin/teachers/ClassAssignmentDialog';
+import SessionSelector from '@/components/admin/teachers/SessionSelector';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
-import { RefreshCw, Database } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { getAllSessions } from '@/utils/authHelpers';
+import { RefreshCw } from 'lucide-react';
 
 const RoleAssignment: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dbConnectionStatus, setDbConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [currentSession, setCurrentSession] = useState<string>("April 22, 2023 - Morning (09:00 AM)");
+  const [availableSessions, setAvailableSessions] = useState<string[]>([]);
+  
   const {
     teachers,
     isEditDialogOpen,
@@ -46,6 +50,36 @@ const RoleAssignment: React.FC = () => {
     loadTeacherData
   } = useTeacherManagement();
 
+  // Effect to load available sessions
+  useEffect(() => {
+    const loadSessions = () => {
+      const sessions = getAllSessions();
+      setAvailableSessions(sessions);
+      
+      if (sessions.length > 0 && !sessions.includes(currentSession)) {
+        setCurrentSession(sessions[0]);
+      }
+    };
+    
+    loadSessions();
+    
+    // Listen for data updates from other components
+    const handleDataUpdate = (event: CustomEvent) => {
+      loadSessions();
+      
+      // Update current session if provided in the event
+      if (event.detail?.session) {
+        setCurrentSession(event.detail.session);
+      }
+    };
+    
+    window.addEventListener('teacherDataUpdated', handleDataUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('teacherDataUpdated', handleDataUpdate as EventListener);
+    };
+  }, [currentSession]);
+
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       if (user?.role !== 'super-admin') {
@@ -61,68 +95,39 @@ const RoleAssignment: React.FC = () => {
     }
   }, [isLoading, isAuthenticated, user, navigate, toast]);
 
-  const checkDatabaseConnection = async () => {
-    setDbConnectionStatus('checking');
-    try {
-      const { count, error } = await supabase
-        .from('teachers')
-        .select('*', { count: 'exact', head: true });
-      
-      setDbConnectionStatus(error ? 'disconnected' : 'connected');
-      
-      if (error) {
-        console.error('Database connection error:', error);
+  // Load teacher data for the current session
+  useEffect(() => {
+    const loadSessionData = async () => {
+      setIsRefreshing(true);
+      try {
+        await loadTeacherData(currentSession);
+      } catch (error) {
+        console.error("Error loading session data:", error);
         toast({
-          title: "Database Connection Error",
-          description: error.message,
+          title: "Error loading data",
+          description: error instanceof Error ? error.message : "An unknown error occurred",
           variant: "destructive"
         });
-      } else {
-        console.log('Database connected, count:', count);
+      } finally {
+        setIsRefreshing(false);
       }
-    } catch (err) {
-      console.error('Error checking database:', err);
-      setDbConnectionStatus('disconnected');
-    }
-  };
+    };
+    
+    loadSessionData();
+  }, [currentSession, loadTeacherData, toast]);
 
-  useEffect(() => {
-    checkDatabaseConnection();
-    
-    const handleDataUpdate = () => {
-      loadTeacherData();
-    };
-    
-    window.addEventListener('teacherDataUpdated', handleDataUpdate);
-    
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'teachers' },
-        (payload) => {
-          console.log('Supabase real-time update:', payload);
-          loadTeacherData();
-        }
-      )
-      .subscribe();
-    
-    return () => {
-      window.removeEventListener('teacherDataUpdated', handleDataUpdate);
-      supabase.removeChannel(channel);
-    };
-  }, [loadTeacherData]);
+  const handleSessionChange = (session: string) => {
+    setCurrentSession(session);
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await checkDatabaseConnection();
-      
-      await loadTeacherData();
+      await loadTeacherData(currentSession);
       
       toast({
         title: "Data refreshed",
-        description: "Teacher data has been refreshed from the database"
+        description: `Teacher data has been refreshed for session: ${currentSession}`
       });
     } catch (error) {
       console.error("Error refreshing data:", error);
@@ -135,10 +140,6 @@ const RoleAssignment: React.FC = () => {
       setIsRefreshing(false);
     }
   };
-
-  useEffect(() => {
-    handleRefresh();
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (
@@ -164,23 +165,6 @@ const RoleAssignment: React.FC = () => {
             </div>
             <div className="flex space-x-2">
               <Button 
-                variant={dbConnectionStatus === 'connected' ? 'outline' : 'destructive'} 
-                onClick={checkDatabaseConnection} 
-                className="flex items-center"
-                disabled={dbConnectionStatus === 'checking'}
-              >
-                {dbConnectionStatus === 'checking' ? (
-                  <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                ) : dbConnectionStatus === 'connected' ? (
-                  <Database className="h-4 w-4 mr-1 text-green-500" />
-                ) : (
-                  <Database className="h-4 w-4 mr-1 text-red-500" />
-                )}
-                {dbConnectionStatus === 'checking' ? 'Checking...' : 
-                 dbConnectionStatus === 'connected' ? 'DB Connected' : 'DB Disconnected'}
-              </Button>
-              
-              <Button 
                 variant="outline" 
                 onClick={handleRefresh} 
                 className="flex items-center"
@@ -197,11 +181,17 @@ const RoleAssignment: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          <SessionSelector 
+            sessions={availableSessions}
+            currentSession={currentSession}
+            onSessionChange={handleSessionChange}
+          />
+          
           <ExcelUpload />
           
           <div className="flex justify-between mb-6">
             <h3 className="text-lg font-medium">
-              Manage Teachers ({teachers.length})
+              Manage Teachers ({teachers.length}) - {currentSession}
             </h3>
             
             <AddTeacherDialog 

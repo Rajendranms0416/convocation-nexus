@@ -23,8 +23,13 @@ let TEACHERS_LIST = [
   // Add more teacher entries as needed
 ];
 
-// Function to update the teachers list with new data
-export const updateTeachersList = (newData: any[]) => {
+// Store session-based data
+const SESSIONS_DATA: Record<string, any[]> = {
+  "April 22, 2023 - Morning (09:00 AM)": [...TEACHERS_LIST]
+};
+
+// Function to update the teachers list with new data and associate with a session
+export const updateTeachersList = (newData: any[], sessionInfo: string = "April 22, 2023 - Morning (09:00 AM)"): any[] => {
   // Ensure each teacher has all required fields before saving
   const completeData = newData.map(teacher => {
     const enhancedTeacher = { ...teacher };
@@ -45,18 +50,39 @@ export const updateTeachersList = (newData: any[]) => {
     (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@'))
   );
   
-  console.log('Saving teachers list with valid entries:', validTeachers.length);
+  console.log(`Saving teachers list with valid entries for session: ${sessionInfo}`, validTeachers.length);
   
+  // Update the global variable
   TEACHERS_LIST = validTeachers;
+  
+  // Store in the sessions data
+  SESSIONS_DATA[sessionInfo] = validTeachers;
+  
   // Store in localStorage for persistence across page refreshes
   localStorage.setItem('convocation_teachers', JSON.stringify(validTeachers));
-  console.log('Updated teachers list:', TEACHERS_LIST);
-  return TEACHERS_LIST;
+  
+  // Also store the session data
+  localStorage.setItem('convocation_sessions', JSON.stringify(SESSIONS_DATA));
+  
+  console.log('Updated teachers list for session:', sessionInfo, validTeachers);
+  return validTeachers;
+};
+
+// Get teachers for a specific session
+export const getTeachersBySession = (sessionInfo: string = "April 22, 2023 - Morning (09:00 AM)"): any[] => {
+  return SESSIONS_DATA[sessionInfo] || [];
+};
+
+// Get all sessions
+export const getAllSessions = (): string[] => {
+  return Object.keys(SESSIONS_DATA);
 };
 
 // Load teachers from localStorage if available
 export const loadTeachersFromStorage = () => {
   const storedTeachers = localStorage.getItem('convocation_teachers');
+  const storedSessions = localStorage.getItem('convocation_sessions');
+  
   if (storedTeachers) {
     try {
       TEACHERS_LIST = JSON.parse(storedTeachers);
@@ -65,6 +91,16 @@ export const loadTeachersFromStorage = () => {
       console.error('Error parsing stored teachers:', error);
     }
   }
+  
+  if (storedSessions) {
+    try {
+      Object.assign(SESSIONS_DATA, JSON.parse(storedSessions));
+      console.log('Loaded sessions from storage:', SESSIONS_DATA);
+    } catch (error) {
+      console.error('Error parsing stored sessions:', error);
+    }
+  }
+  
   return TEACHERS_LIST;
 };
 

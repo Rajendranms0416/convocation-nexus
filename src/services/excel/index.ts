@@ -6,7 +6,7 @@ import { parseCSV, parseExcel } from './parsers';
 import { validateTeacherData } from './validators';
 import { enhanceTeacherData } from './enhance';
 import { generateCSV } from './export';
-import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
+import { getAllTeachers, updateTeachersList, getTeachersBySession } from '@/utils/authHelpers';
 
 /**
  * Filter data based on search criteria
@@ -29,14 +29,25 @@ export const filterTeacherData = (data: Record<string, string>[], searchTerm: st
   });
 };
 
+/**
+ * Save teacher data with session information
+ * @param data The data to save
+ * @param sessionInfo The session information
+ * @returns The saved data
+ */
+export const saveTeacherData = (data: Record<string, string>[], sessionInfo: string = '') => {
+  return updateTeachersList(data, sessionInfo);
+};
+
 // Re-export all functionality through a single service object
 export const excelService = {
   parseCSV,
   parseExcel,
   validateTeacherData,
   enhanceTeacherData,
-  saveTeacherData: updateTeachersList, // Just use updateTeachersList directly
-  getTeacherData: getAllTeachers, // Just use getAllTeachers directly
+  saveTeacherData,
+  getTeacherData: getAllTeachers,
+  getTeachersBySession,
   generateCSV,
   filterTeacherData
 };

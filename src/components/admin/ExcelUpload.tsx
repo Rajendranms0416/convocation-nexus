@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileSpreadsheet, Upload, AlertCircle } from 'lucide-react';
+import { FileSpreadsheet, Upload, AlertCircle, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +9,7 @@ import FileUploader from './excel/FileUploader';
 import FormatHelp from './excel/FormatHelp';
 import DataPreview from './excel/DataPreview';
 import { excelService } from '@/services/excel';
-import { updateTeachersList } from '@/utils/authHelpers';
+import { Badge } from '@/components/ui/badge';
 
 // No longer enforcing specific columns
 const suggestedColumns = [
@@ -22,13 +22,14 @@ const suggestedColumns = [
 
 const ExcelUpload: React.FC = () => {
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [currentSession, setCurrentSession] = useState<string>("April 22, 2023 - Morning (09:00 AM)");
   const [showHelp, setShowHelp] = useState(false);
   const [hasErrors, setHasErrors] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  const handleDataLoaded = async (data: any[]) => {
+  const handleDataLoaded = async (data: any[], sessionInfo: string) => {
     // Check if there's any data
     if (!data || data.length === 0) {
       setHasErrors(true);
@@ -43,6 +44,10 @@ const ExcelUpload: React.FC = () => {
       const availableColumns = Object.keys(firstRow);
       
       console.log('Available columns:', availableColumns);
+      console.log('Session info:', sessionInfo);
+      
+      // Set the current session for display
+      setCurrentSession(sessionInfo);
       
       // Check for potentially useful columns, but don't require them
       const foundColumns = suggestedColumns.filter(
@@ -82,15 +87,17 @@ const ExcelUpload: React.FC = () => {
 
     try {
       setIsSaving(true);
-      // Save to localStorage
-      updateTeachersList(previewData);
+      // Save to localStorage with session info
+      excelService.saveTeacherData(previewData, currentSession);
       
       // Force refresh the teacher display
-      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated', {
+        detail: { session: currentSession }
+      }));
       
       toast({
         title: "Data saved",
-        description: `${previewData.length} records saved to local storage`
+        description: `${previewData.length} records saved for session: ${currentSession}`
       });
     } catch (error) {
       console.error("Error saving data:", error);
@@ -107,7 +114,13 @@ const ExcelUpload: React.FC = () => {
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-medium">Import Data</CardTitle>
+        <CardTitle className="text-lg font-medium flex items-center justify-between">
+          <div>Import Data</div>
+          <Badge variant="outline" className="flex items-center">
+            <CalendarClock className="h-4 w-4 mr-1" />
+            {currentSession}
+          </Badge>
+        </CardTitle>
         <CardDescription>
           Upload any CSV or Excel file with tabular data
         </CardDescription>
@@ -130,7 +143,7 @@ const ExcelUpload: React.FC = () => {
         
         {previewData.length > 0 && (
           <div>
-            <h3 className="text-md font-medium mb-2">Data Preview</h3>
+            <h3 className="text-md font-medium mb-2">Data Preview for {currentSession}</h3>
             <DataPreview previewData={previewData} />
           </div>
         )}

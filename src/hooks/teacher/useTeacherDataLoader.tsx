@@ -1,20 +1,23 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAllTeachers } from '@/utils/authHelpers';
+import { getTeachersBySession } from '@/utils/authHelpers';
 import { Role } from '@/types';
 
 /**
- * Hook to load and format teacher data
+ * Hook to load and format teacher data based on selected session
  */
 export const useTeacherDataLoader = () => {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSession, setCurrentSession] = useState<string>("April 22, 2023 - Morning (09:00 AM)");
 
-  const loadTeacherData = useCallback(async () => {
+  const loadTeacherData = useCallback(async (session: string = currentSession) => {
     setIsLoading(true);
+    setCurrentSession(session);
+    
     try {
-      // Load from localStorage
-      const loadedTeachers = getAllTeachers();
+      // Load from localStorage for the specific session
+      const loadedTeachers = getTeachersBySession(session);
       
       // Array to hold our formatted teachers
       const formattedTeachers: any[] = [];
@@ -31,6 +34,7 @@ export const useTeacherDataLoader = () => {
             program: teacher['Programme Name'] || '',
             section: teacher['Class Wise/\nSection Wise'] || '',
             assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
+            session: session,
             rawData: teacher
           });
         }
@@ -45,12 +49,13 @@ export const useTeacherDataLoader = () => {
             program: teacher['Programme Name'] || '',
             section: teacher['Class Wise/\nSection Wise'] || '',
             assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
+            session: session,
             rawData: teacher
           });
         }
       });
       
-      console.log('Loaded and formatted teachers:', formattedTeachers);
+      console.log(`Loaded and formatted teachers for session ${session}:`, formattedTeachers);
       setTeachers(formattedTeachers);
     } catch (error) {
       console.error('Error loading teachers:', error);
@@ -58,28 +63,35 @@ export const useTeacherDataLoader = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentSession]);
 
   // Set up initial data loading and update listener
   useEffect(() => {
-    loadTeacherData();
+    loadTeacherData(currentSession);
     
     // Listen for data updates from other components
-    const handleDataUpdate = () => {
-      loadTeacherData();
+    const handleDataUpdate = (event: CustomEvent) => {
+      // If the event includes a session, load data for that session
+      if (event.detail?.session) {
+        loadTeacherData(event.detail.session);
+      } else {
+        loadTeacherData(currentSession);
+      }
     };
     
-    window.addEventListener('teacherDataUpdated', handleDataUpdate);
+    window.addEventListener('teacherDataUpdated', handleDataUpdate as EventListener);
     
     return () => {
-      window.removeEventListener('teacherDataUpdated', handleDataUpdate);
+      window.removeEventListener('teacherDataUpdated', handleDataUpdate as EventListener);
     };
-  }, [loadTeacherData]);
+  }, [loadTeacherData, currentSession]);
 
   return {
     teachers,
     setTeachers,
     isLoading,
+    currentSession,
+    setCurrentSession,
     loadTeacherData,
   };
 };

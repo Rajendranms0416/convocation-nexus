@@ -12,6 +12,7 @@ interface FileUploaderInputProps {
   isUploading: boolean;
   isExporting: boolean;
   hasFile: boolean;
+  fileName?: string;
 }
 
 const FileUploaderInput: React.FC<FileUploaderInputProps> = ({
@@ -20,7 +21,8 @@ const FileUploaderInput: React.FC<FileUploaderInputProps> = ({
   onExport,
   isUploading,
   isExporting,
-  hasFile
+  hasFile,
+  fileName
 }) => {
   return (
     <div className="space-y-3">
@@ -51,6 +53,12 @@ const FileUploaderInput: React.FC<FileUploaderInputProps> = ({
           </Button>
         </div>
       </div>
+      
+      {fileName && (
+        <div className="text-sm text-muted-foreground">
+          <span className="font-medium">Session detected:</span> {fileName}
+        </div>
+      )}
       
       <div className="flex items-center justify-end">
         <OfflineModeToggle />
