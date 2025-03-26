@@ -18,7 +18,7 @@ interface SessionDataLoaderProps {
   setAvailableSessions: (sessions: string[]) => void;
   currentDatabase: DatabaseInfo | null;
   setCurrentDatabase: (database: DatabaseInfo | null) => void;
-  loadTeacherData: (session: string) => Promise<void>;
+  loadTeacherData: (session: string) => Promise<any>; // Updated type to accept any Promise return
   children: React.ReactNode;
 }
 

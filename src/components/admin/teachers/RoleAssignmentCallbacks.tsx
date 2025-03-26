@@ -8,7 +8,7 @@ interface RoleAssignmentCallbacksProps {
   currentSession: string;
   setCurrentSession: (session: string) => void;
   setCurrentDatabase: (database: DatabaseInfo | null) => void;
-  loadTeacherData: (session: string) => Promise<void>;
+  loadTeacherData: (session: string) => Promise<any>; // Updated type to match
 }
 
 export const useRoleAssignmentCallbacks = ({
