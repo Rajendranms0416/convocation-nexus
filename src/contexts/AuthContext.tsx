@@ -1,67 +1,84 @@
 
-import React, { createContext, useContext, useEffect } from 'react';
-import { AuthContextType } from '@/types/auth';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { useAuthOperations } from '@/hooks/useAuthOperations';
-import { User } from '@/types';
-import { getTeacherData } from '@/services/excel/database';
-import { loadTeachersFromStorage } from '@/utils/authHelpers';
+import { logDeviceUsage } from '@/utils/deviceLogger';
+import { Role } from '@/types';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+}
+
+interface AuthContextType {
+  user: User | null;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  login: (email: string, password: string, deviceType: 'mobile' | 'desktop', loginMode?: 'teacher' | 'admin') => Promise<void>;
+  logout: () => void;
+}
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  login: async () => {},
-  logout: () => {},
+  setUser: () => {},
   isAuthenticated: false,
-  isLoading: true,
+  isLoading: false,
+  setIsLoading: () => {},
+  login: async () => {},
+  logout: () => {}
 });
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { 
-    user, 
-    setUser, 
-    isLoading, 
-    setIsLoading, 
-    login, 
-    logout 
-  } = useAuthOperations();
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { login: baseLogin, logout: baseLogout } = useAuthOperations();
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      setIsLoading(true);
-      
-      try {
-        // Check for stored user in localStorage
+  const login = async (
+    email: string, 
+    password: string, 
+    deviceType: 'mobile' | 'desktop', 
+    loginMode?: 'teacher' | 'admin'
+  ) => {
+    setIsLoading(true);
+    try {
+      const success = await baseLogin(email, password);
+      if (success) {
+        // Retrieve user from localStorage
         const storedUser = localStorage.getItem('convocation_user');
         if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser) as User;
-            setUser(parsedUser);
-            
-            // Load teacher data from database when user is present
-            await getTeacherData()
-              .then(() => console.log('Teacher data loaded on app init'))
-              .catch(err => console.error('Failed to load teacher data on init:', err));
-          } catch (error) {
-            console.error('Error parsing stored user:', error);
-            localStorage.removeItem('convocation_user');
-          }
+          const parsedUser = JSON.parse(storedUser) as User;
+          setUser(parsedUser);
+          
+          // Log device usage
+          await logDeviceUsage(parsedUser, deviceType);
         }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
-    initializeAuth();
-  }, [setUser, setIsLoading]);
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    baseLogout();
+    setUser(null);
+  };
+
+  const isAuthenticated = !!user;
 
   return (
     <AuthContext.Provider value={{
       user,
-      login,
-      logout,
-      isAuthenticated: !!user,
+      setUser,
+      isAuthenticated,
       isLoading,
+      setIsLoading,
+      login,
+      logout
     }}>
       {children}
     </AuthContext.Provider>

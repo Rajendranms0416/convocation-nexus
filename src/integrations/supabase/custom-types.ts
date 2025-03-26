@@ -1,7 +1,7 @@
 
 import { Database } from './types';
 
-// Extend the existing Database type to add our custom tables
+// Extend the custom types to include more precise definitions
 export type ExtendedDatabase = Database & {
   public: {
     Tables: {
@@ -30,13 +30,12 @@ export type ExtendedDatabase = Database & {
           session_info?: string | null;
           record_count?: number | null;
         };
-        Relationships: [];
       };
     } & Database['public']['Tables'];
   };
 };
 
-// Define the structure for the dynamic tables created for each upload
+// Precise definition for dynamic table row
 export interface DynamicTableRow {
   id: number;
   Programme_Name: string | null;
@@ -49,7 +48,7 @@ export interface DynamicTableRow {
   updated_at?: string;
 }
 
-// Type for dynamic table insert/update operations
+// Type for dynamic table insert operations
 export interface DynamicTableInsert {
   Programme_Name?: string | null;
   Robe_Email_ID?: string | null;
@@ -59,26 +58,8 @@ export interface DynamicTableInsert {
   Class_Section?: string | null;
 }
 
-// Interface for teachers table operations to match column names
-export interface TeachersInsert {
-  "Programme Name"?: string | null;
-  "Robe Email ID"?: string | null;
-  "Folder Email ID"?: string | null;
-  "Robe in Charge"?: string | null;
-  "Folder in Charge"?: string | null;
-  id?: number;
-}
-
-export interface TeachersUpdate {
-  "Programme Name"?: string | null;
-  "Robe Email ID"?: string | null;
-  "Folder Email ID"?: string | null;
-  "Robe in Charge"?: string | null;
-  "Folder in Charge"?: string | null;
-  id?: number;
-}
-
-// Add a type for our RLS function
+// Custom functions interface
 export interface CustomFunctions {
   create_upload_table: (table_name: string) => void;
+  is_super_admin: () => boolean;
 }

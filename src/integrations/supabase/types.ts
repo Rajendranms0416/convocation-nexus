@@ -42,6 +42,33 @@ export type Database = {
         }
         Relationships: []
       }
+      file_uploads: {
+        Row: {
+          filename: string
+          id: number
+          record_count: number | null
+          session_info: string | null
+          table_name: string
+          upload_date: string | null
+        }
+        Insert: {
+          filename: string
+          id?: number
+          record_count?: number | null
+          session_info?: string | null
+          table_name: string
+          upload_date?: string | null
+        }
+        Update: {
+          filename?: string
+          id?: number
+          record_count?: number | null
+          session_info?: string | null
+          table_name?: string
+          upload_date?: string | null
+        }
+        Relationships: []
+      }
       "Teacher's List": {
         Row: {
           "Accompanying Teacher": string | null
@@ -116,6 +143,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_upload_table: {
+        Args: {
+          table_name: string
+        }
+        Returns: undefined
+      }
       is_super_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
