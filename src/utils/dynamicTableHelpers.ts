@@ -1,6 +1,6 @@
 
 import { supabase, callFunction, queryDynamicTable } from '@/integrations/supabase/client';
-import { DynamicTableRow, DynamicTableInsert } from '@/integrations/supabase/custom-types';
+import { DynamicTableInsert } from '@/integrations/supabase/custom-types';
 
 /**
  * Create a dynamic table in the database

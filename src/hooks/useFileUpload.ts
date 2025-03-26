@@ -134,7 +134,10 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
           throw new Error(`Failed to record upload: ${uploadRecordResult.error.message}`);
         }
         
-        const uploadRecordId = uploadRecordResult.data?.[0]?.id || null;
+        // Safe access to data property with type checking
+        const uploadRecordId = uploadRecordResult.error ? null : 
+                              uploadRecordResult.data && uploadRecordResult.data.length > 0 ? 
+                              uploadRecordResult.data[0].id : null;
         
         const formattedData = parsedData.map((item: any) => ({
           "Programme_Name": item["Programme Name"] || '',

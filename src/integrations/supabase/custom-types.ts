@@ -191,21 +191,25 @@ export type TableUpdate<
     : never
 
 // Use interface instead of type for ExtendedDatabase
-export interface ExtendedDatabase extends Database {
+export interface ExtendedDatabase {
   public: {
     Tables: Database['public']['Tables'] & {
-      teachers: {
-        Row: TeachersRow;
-        Insert: TeachersInsert;
-        Update: TeachersUpdate;
-      };
-      // Any table name can be used with the dynamic table system
       [key: string]: {
         Row: any;
         Insert: any;
         Update: any;
+        Relationships: any[];
       };
     };
+    Views: Database['public']['Views'];
+    Functions: Database['public']['Functions'] & {
+      [key: string]: {
+        Args: any;
+        Returns: any;
+      };
+    };
+    Enums: Database['public']['Enums'];
+    CompositeTypes: Database['public']['CompositeTypes'];
   };
 }
 

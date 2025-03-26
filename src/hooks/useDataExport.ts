@@ -17,7 +17,7 @@ export const useDataExport = () => {
     setIsExporting(true);
     
     try {
-      // Fetch data from the dynamic table
+      // Fetch data from the dynamic table using updated queryDynamicTable helper
       const { data, error } = await queryDynamicTable(tableName).select('*');
       
       if (error) {

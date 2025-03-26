@@ -13,15 +13,15 @@ export const supabase = createClient<ExtendedDatabase>(
 
 // Helper function to safely query dynamic tables with proper type handling
 export const queryDynamicTable = (tableName: string) => {
-  // Use type assertion to bypass type checking for dynamic tables
-  return supabase.from(tableName as any);
+  // Bypass TypeScript's type checking for dynamic table names
+  return supabase.from(tableName) as any;
 };
 
 // Helper for handling RPC functions
-export const callFunction = (
+export const callFunction = <T extends keyof CustomFunctions>(
   functionName: string,
   args?: any
 ) => {
-  // Use type assertion for dynamic function names
+  // Bypass TypeScript's type checking for dynamic function names
   return supabase.rpc(functionName as any, args);
 };
