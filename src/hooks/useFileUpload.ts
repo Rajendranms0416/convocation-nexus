@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { toast } from './use-toast';
 import * as XLSX from 'xlsx';
+import { updateTeachersList } from '@/utils/authHelpers';
 
 export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
@@ -62,6 +63,9 @@ export const useFileUpload = () => {
         Folder_in_Charge: item['Folder in Charge'] || '',
         Class_Section: item['Class Wise/Section Wise'] || '',
       }));
+      
+      // Save transformed data to localStorage with session info
+      updateTeachersList(transformedData, sessionInfo);
       
       setFileUploaded(true);
       

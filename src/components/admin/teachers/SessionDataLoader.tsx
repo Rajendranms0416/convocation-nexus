@@ -34,10 +34,13 @@ const SessionDataLoader: React.FC<SessionDataLoaderProps> = ({
   // Load sessions on mount
   useEffect(() => {
     const loadSessions = () => {
+      console.log('Loading available sessions');
       const sessions = getAllSessions();
+      console.log('Sessions loaded:', sessions);
       setAvailableSessions(sessions);
       
       if (sessions.length > 0 && !sessions.includes(currentSession)) {
+        console.log('Setting current session to first available:', sessions[0]);
         setCurrentSession(sessions[0]);
       }
     };
@@ -45,9 +48,11 @@ const SessionDataLoader: React.FC<SessionDataLoaderProps> = ({
     loadSessions();
     
     const handleDataUpdate = (event: CustomEvent) => {
+      console.log('Teacher data updated event received:', event.detail);
       loadSessions();
       
       if (event.detail?.session) {
+        console.log('Setting session from event:', event.detail.session);
         setCurrentSession(event.detail.session);
       }
     };
@@ -62,9 +67,11 @@ const SessionDataLoader: React.FC<SessionDataLoaderProps> = ({
   // Load data when session changes
   useEffect(() => {
     const loadSessionData = async () => {
+      console.log('Loading session data for:', currentSession);
       setIsRefreshing(true);
       try {
-        await loadTeacherData(currentSession);
+        const data = await loadTeacherData(currentSession);
+        console.log('Session data loaded:', data?.length || 0, 'records');
       } catch (error) {
         console.error("Error loading session data:", error);
         toast({
@@ -77,7 +84,9 @@ const SessionDataLoader: React.FC<SessionDataLoaderProps> = ({
       }
     };
     
-    loadSessionData();
+    if (currentSession) {
+      loadSessionData();
+    }
   }, [currentSession, loadTeacherData, toast]);
 
   // Pass isRefreshing state to children

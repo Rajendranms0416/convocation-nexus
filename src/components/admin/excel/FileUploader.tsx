@@ -8,6 +8,7 @@ import { useDataExport } from '@/hooks/useDataExport';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
+import DataPreview from './DataPreview';
 
 interface FileUploaderProps {
   onDataLoaded: (data: any[], sessionInfo: string) => void;
@@ -45,8 +46,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     if (!uploadedFile) return;
     
     try {
+      console.log('Uploading file:', uploadedFile.name, 'with session:', sessionInfo);
       const result = await uploadFile(uploadedFile, sessionInfo);
       if (result) {
+        console.log('Upload successful, calling onDataLoaded with session:', result.sessionInfo);
         onDataLoaded(result.data, result.sessionInfo);
       }
     } catch (err) {
@@ -83,8 +86,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
       )}
       
       <FileInfo info={fileName ? `File: ${fileName}` : null} />
-      
       <FileError error={error || ''} />
+      
+      {data && data.length > 0 && (
+        <DataPreview previewData={data} />
+      )}
     </>
   );
 };

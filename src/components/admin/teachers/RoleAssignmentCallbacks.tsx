@@ -16,12 +16,15 @@ export const useRoleAssignmentCallbacks = ({
   const { toast } = useToast();
 
   const handleSessionChange = useCallback((session: string) => {
+    console.log('Session changed to:', session);
     setCurrentSession(session);
   }, [setCurrentSession]);
 
   const handleRefresh = useCallback(async () => {
+    console.log('Refreshing data for session:', currentSession);
     try {
-      await loadTeacherData(currentSession);
+      const data = await loadTeacherData(currentSession);
+      console.log('Data refreshed:', data);
       
       toast({
         title: "Data refreshed",
@@ -38,6 +41,8 @@ export const useRoleAssignmentCallbacks = ({
   }, [currentSession, loadTeacherData, toast]);
 
   const handleDataLoaded = useCallback((data: any[], sessionInfo: string) => {
+    console.log('Data loaded event received with session:', sessionInfo);
+    console.log('Data sample:', data.slice(0, 2));
     setCurrentSession(sessionInfo);
     loadTeacherData(sessionInfo);
   }, [setCurrentSession, loadTeacherData]);
