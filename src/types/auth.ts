@@ -11,8 +11,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
-  avatar?: string; // Adding avatar property
-  assignedClasses?: string[]; // Adding assignedClasses property
+  avatar?: string;
+  assignedClasses?: string[];
 }
 
 export interface AuthState {
@@ -21,3 +21,6 @@ export interface AuthState {
   user: User | null;
   error: Error | null;
 }
+
+// Default super admin email
+export const SUPER_ADMIN_EMAIL = 'admin@example.com';

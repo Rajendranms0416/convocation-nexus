@@ -24,7 +24,7 @@ export const createDynamicTable = async (tableName: string) => {
  */
 export const insertIntoDynamicTable = async (tableName: string, data: DynamicTableInsert[]) => {
   try {
-    return await queryDynamicTable(tableName).insert(data as any);
+    return await queryDynamicTable(tableName).insert(data);
   } catch (error) {
     console.error('Error inserting data into dynamic table:', error);
     return { error };
@@ -53,9 +53,8 @@ export const createFileUploadRecord = async (
         table_name: tableName,
         session_info: sessionInfo,
         record_count: recordCount
-      } as any)
-      .select()
-      .single();
+      })
+      .select();
   } catch (error) {
     console.error('Error creating file upload record:', error);
     return { error };

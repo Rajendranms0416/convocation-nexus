@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
@@ -121,17 +122,19 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
           throw new Error(`Failed to create table: ${createTableError.message}`);
         }
         
-        const { data: uploadRecord, error: uploadError } = await createFileUploadRecord(
+        const uploadRecordResult = await createFileUploadRecord(
           file.name,
           safeTableName,
           sessionInfo,
           parsedData.length
         );
         
-        if (uploadError) {
-          console.error('Error recording upload:', uploadError);
-          throw new Error(`Failed to record upload: ${uploadError.message}`);
+        if (uploadRecordResult.error) {
+          console.error('Error recording upload:', uploadRecordResult.error);
+          throw new Error(`Failed to record upload: ${uploadRecordResult.error.message}`);
         }
+        
+        const uploadRecordId = uploadRecordResult.data?.[0]?.id || null;
         
         const formattedData = parsedData.map((item: any) => ({
           "Programme_Name": item["Programme Name"] || '',
@@ -160,10 +163,10 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
           variant: 'default',
         });
         
-        onDataLoaded(parsedData, sessionInfo, uploadRecord?.id?.toString());
+        onDataLoaded(parsedData, sessionInfo, uploadRecordId?.toString());
         
         window.dispatchEvent(new CustomEvent('teacherDataUpdated', { 
-          detail: { session: sessionInfo, tableId: uploadRecord?.id?.toString() } 
+          detail: { session: sessionInfo, tableId: uploadRecordId?.toString() } 
         }));
       } catch (error) {
         console.error('Database operation error:', error);

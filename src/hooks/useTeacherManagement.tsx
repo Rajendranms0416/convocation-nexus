@@ -3,6 +3,7 @@ import { useTeacherState } from './teacher/useTeacherState';
 import { useTeacherOperations } from './teacher/useTeacherOperations';
 import { useTeacherActions } from './teacher/useTeacherActions';
 import { supabase } from '@/integrations/supabase/client';
+import { Role } from '@/types';
 
 interface DatabaseInfo {
   id: string;
@@ -44,7 +45,7 @@ export const useTeacherManagement = () => {
     loadTeacherData
   } = teacherState;
 
-  // Get base operations
+  // Get base operations - ensure the types match what's needed
   const { 
     handleAddTeacher,
     handleUpdateTeacher,

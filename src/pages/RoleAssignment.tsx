@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -101,7 +100,7 @@ const RoleAssignment: React.FC = () => {
     const loadSessionData = async () => {
       setIsRefreshing(true);
       try {
-        await loadTeacherData(currentSession, currentDatabase);
+        await loadTeacherData(currentSession);
       } catch (error) {
         console.error("Error loading session data:", error);
         toast({
@@ -130,7 +129,7 @@ const RoleAssignment: React.FC = () => {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await loadTeacherData(currentSession, currentDatabase);
+      await loadTeacherData(currentSession);
       
       toast({
         title: "Data refreshed",
@@ -172,7 +171,7 @@ const RoleAssignment: React.FC = () => {
             };
             
             setCurrentDatabase(dbInfo);
-            loadTeacherData(sessionInfo, dbInfo);
+            loadTeacherData(sessionInfo);
           }
         } catch (error) {
           console.error('Error getting database info:', error);

@@ -7,6 +7,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Define the basic structure from Database type
 export interface Database {
   public: {
     Tables: {
@@ -149,6 +150,7 @@ export interface Database {
   }
 }
 
+// Rest of the type definitions for custom types
 export type Tables<
   PublicTableNameOrOptions extends
     | keyof (Database["public"]["Tables"] & { row: any })
@@ -188,17 +190,24 @@ export type TableUpdate<
     ? Database["public"]["Tables"][PublicTableNameOrOptions]["Update"]
     : never
 
-export type ExtendedDatabase = Database & {
+// Use interface instead of type for ExtendedDatabase
+export interface ExtendedDatabase extends Database {
   public: {
-    Tables: {
+    Tables: Database['public']['Tables'] & {
       teachers: {
         Row: TeachersRow;
         Insert: TeachersInsert;
         Update: TeachersUpdate;
       };
+      // Any table name can be used with the dynamic table system
+      [key: string]: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
     };
   };
-};
+}
 
 // Function types
 export interface CustomFunctions {

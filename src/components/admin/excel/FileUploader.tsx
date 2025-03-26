@@ -26,14 +26,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     handleUpload
   } = useFileUpload({ onDataLoaded });
   
-  const { isExporting, exportCurrentData } = useDataExport();
+  const { exportToExcel, isExporting } = useDataExport();
+  
+  // Create a wrapper function to handle export with current session info
+  const handleExport = () => {
+    if (sessionInfo) {
+      exportToExcel(sessionInfo, `Teachers_${sessionInfo.replace(/[^a-zA-Z0-9]/g, '_')}`);
+    }
+  };
 
   return (
     <>
       <FileUploaderInput
         onFileChange={handleFileChange}
         onUpload={handleUpload}
-        onExport={exportCurrentData}
+        onExport={handleExport}
         isUploading={isUploading}
         isExporting={isExporting}
         hasFile={!!file}
