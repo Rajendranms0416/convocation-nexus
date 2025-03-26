@@ -18,7 +18,7 @@ export const useDataExport = () => {
     
     try {
       // Fetch data from the dynamic table
-      const { data, error } = await queryDynamicTable(tableName as any).select('*');
+      const { data, error } = await queryDynamicTable(tableName).select('*');
       
       if (error) {
         throw error;
@@ -29,7 +29,7 @@ export const useDataExport = () => {
       }
       
       // Convert data for Excel format
-      const excelData = (data as unknown as DynamicTableRow[]).map(row => ({
+      const excelData = (data as any[]).map(row => ({
         "Id": row.id,
         "Programme Name": row.Programme_Name || '',
         "Robe Email ID": row.Robe_Email_ID || '',

@@ -12,14 +12,14 @@ export const supabase = createClient<ExtendedDatabase>(
 );
 
 // Helper function to safely query dynamic tables with proper type handling
-export const queryDynamicTable = (tableName: keyof ExtendedDatabase['public']['Tables'] | string) => {
-  return supabase.from(tableName as any);
+export const queryDynamicTable = (tableName: string) => {
+  return supabase.from(tableName);
 };
 
 // Helper for handling RPC functions
-export const callFunction = <T extends keyof CustomFunctions>(
-  functionName: T,
-  ...args: Parameters<CustomFunctions[T]>
+export const callFunction = (
+  functionName: string,
+  ...args: any[]
 ) => {
-  return supabase.rpc(functionName as string, ...(args as [any]));
+  return supabase.rpc(functionName, ...args);
 };

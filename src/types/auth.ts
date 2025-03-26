@@ -1,13 +1,23 @@
 
-import { User, Role } from '@/types';
-
-export interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string, deviceType: 'mobile' | 'desktop', loginMode?: 'teacher' | 'admin') => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
-  isLoading: boolean;
+export enum Role {
+  ADMIN = 'admin',
+  TEACHER = 'teacher',
+  STUDENT = 'student',
+  SUPER_ADMIN = 'super-admin'
 }
 
-export const SUPER_ADMIN_EMAIL = 'admin@convocation.edu';
-export const SUPER_ADMIN_PASSWORD = 'admin123';
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  avatar?: string; // Adding avatar property
+  assignedClasses?: string[]; // Adding assignedClasses property
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: User | null;
+  error: Error | null;
+}
