@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import FileUploaderInput from './FileUploaderInput';
 import FileInfo from './FileInfo';
 import FileError from './FileError';
@@ -15,18 +15,45 @@ interface FileUploaderProps {
 
 const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
   const { useOfflineStorage } = useOfflineMode();
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<string>('');
   
   const { 
-    file, 
-    fileInfo, 
-    sessionInfo,
-    isUploading, 
-    uploadError, 
-    handleFileChange, 
-    handleUpload
-  } = useFileUpload({ onDataLoaded });
+    uploadFile,
+    isUploading,
+    error,
+    fileName,
+    data,
+    fileUploaded,
+    tableInfo
+  } = useFileUpload();
   
   const { exportToExcel, isExporting } = useDataExport();
+  
+  // Handle file input change
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadedFile(e.target.files[0]);
+      // Set a default session info from the filename
+      const file = e.target.files[0];
+      const sessionName = file.name.replace(/\.[^/.]+$/, ""); // Remove file extension
+      setSessionInfo(sessionName);
+    }
+  };
+  
+  // Handle upload button click
+  const handleUpload = async () => {
+    if (!uploadedFile) return;
+    
+    try {
+      const result = await uploadFile(uploadedFile, sessionInfo);
+      if (result) {
+        onDataLoaded(result.data, result.sessionInfo, result.id.toString());
+      }
+    } catch (err) {
+      console.error('Error during file upload:', err);
+    }
+  };
   
   // Create a wrapper function to handle export with current session info
   const handleExport = () => {
@@ -43,7 +70,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         onExport={handleExport}
         isUploading={isUploading}
         isExporting={isExporting}
-        hasFile={!!file}
+        hasFile={!!uploadedFile}
         fileName={sessionInfo}
       />
       
@@ -56,9 +83,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         </Alert>
       )}
       
-      <FileInfo info={fileInfo} />
+      <FileInfo info={fileName ? `File: ${fileName}` : null} />
       
-      <FileError error={uploadError || ''} />
+      <FileError error={error || ''} />
     </>
   );
 };
