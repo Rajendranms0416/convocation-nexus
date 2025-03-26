@@ -10,8 +10,8 @@ type TeacherActionsProps = {
   setNewTeacherEmail: (email: string) => void;
   newTeacherRole: Role;
   setNewTeacherRole: (role: Role) => void;
-  emailType: 'robe' | 'folder';
-  setEmailType: (type: 'robe' | 'folder') => void;
+  emailType: 'robe' | 'folder' | 'presenter'; // Updated to include 'presenter'
+  setEmailType: (type: 'robe' | 'folder' | 'presenter') => void; // Updated to include 'presenter'
   selectedClasses: string[];
   setSelectedClasses: React.Dispatch<React.SetStateAction<string[]>>;
   setIsEditDialogOpen: (isOpen: boolean) => void;

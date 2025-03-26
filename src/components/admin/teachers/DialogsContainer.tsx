@@ -16,8 +16,8 @@ interface DialogsContainerProps {
   setNewTeacherEmail: React.Dispatch<React.SetStateAction<string>>;
   newTeacherRole: Role;
   setNewTeacherRole: React.Dispatch<React.SetStateAction<Role>>;
-  emailType: 'robe' | 'folder';
-  setEmailType: React.Dispatch<React.SetStateAction<'robe' | 'folder'>>;
+  emailType: 'robe' | 'folder' | 'presenter'; // Updated to include 'presenter'
+  setEmailType: React.Dispatch<React.SetStateAction<'robe' | 'folder' | 'presenter'>>; // Updated to include 'presenter'
   availableClasses: string[];
   selectedClasses: string[];
   setSelectedClasses: React.Dispatch<React.SetStateAction<string[]>>;

@@ -17,7 +17,7 @@ export const useTeacherAdd = (
     name: string, 
     email: string, 
     role: Role, 
-    emailType: 'robe' | 'folder' | 'presenter', 
+    emailType: 'robe' | 'folder' | 'presenter', // Updated to include 'presenter'
     classes: string[]
   ) => {
     if (!name || !email || !role) {

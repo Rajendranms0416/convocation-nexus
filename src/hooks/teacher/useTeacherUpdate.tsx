@@ -23,6 +23,11 @@ export const useTeacherUpdate = (
   ) => {
     if (!currentTeacher) return;
     
+    // Determine the email type based on the role
+    const emailType = 
+      newTeacherRole === 'robe-in-charge' ? 'robe' : 
+      newTeacherRole === 'folder-in-charge' ? 'folder' : 'presenter';
+    
     try {
       // Update in the UI first
       const updatedTeachers = teachers.map(teacher => 
@@ -40,16 +45,26 @@ export const useTeacherUpdate = (
       setTeachers(updatedTeachers);
       
       // Update in the database
+      const updateData: Record<string, any> = {
+        program_name: selectedClasses[0] || '',
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Set the appropriate email and name fields based on role
+      if (newTeacherRole === 'robe-in-charge') {
+        updateData.robe_email = newTeacherEmail;
+        updateData.robe_in_charge = newTeacherName;
+      } else if (newTeacherRole === 'folder-in-charge') {
+        updateData.folder_email = newTeacherEmail;
+        updateData.folder_in_charge = newTeacherName;
+      } else if (newTeacherRole === 'presenter') {
+        updateData.presenter_email = newTeacherEmail;
+        updateData.presenter = newTeacherName;
+      }
+      
       const { error } = await supabase
         .from('teachers')
-        .update({
-          program_name: selectedClasses[0] || '',
-          robe_email: newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
-          folder_email: newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
-          robe_in_charge: newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
-          folder_in_charge: newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', currentTeacher.dbId || '');
       
       if (error) {
@@ -62,15 +77,31 @@ export const useTeacherUpdate = (
       const index = parseInt(currentTeacher.id) - 1;
       
       if (index >= 0 && index < allTeachers.length) {
-        allTeachers[index] = {
+        // Create a new teacher object with updated fields based on role
+        const updatedTeacher = {
           ...allTeachers[index],
           "Programme Name": selectedClasses[0] || allTeachers[index]["Programme Name"],
-          "Robe Email ID": newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
-          "Folder Email ID": newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
-          "Accompanying Teacher": newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
-          "Folder in Charge": newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
+          "Robe Email ID": '',
+          "Folder Email ID": '',
+          "Presenter Email ID": '',
+          "Accompanying Teacher": '',
+          "Folder in Charge": '',
+          "Presenter": ''
         };
         
+        // Set appropriate fields based on role
+        if (newTeacherRole === 'robe-in-charge') {
+          updatedTeacher["Robe Email ID"] = newTeacherEmail;
+          updatedTeacher["Accompanying Teacher"] = newTeacherName;
+        } else if (newTeacherRole === 'folder-in-charge') {
+          updatedTeacher["Folder Email ID"] = newTeacherEmail;
+          updatedTeacher["Folder in Charge"] = newTeacherName;
+        } else if (newTeacherRole === 'presenter') {
+          updatedTeacher["Presenter Email ID"] = newTeacherEmail;
+          updatedTeacher["Presenter"] = newTeacherName;
+        }
+        
+        allTeachers[index] = updatedTeacher;
         updateTeachersList(allTeachers);
       }
       

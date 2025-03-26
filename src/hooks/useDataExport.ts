@@ -23,6 +23,8 @@ export const useDataExport = () => {
         'Folder Email ID': teacher['Folder Email ID'] || '',
         'Accompanying Teacher': teacher['Accompanying Teacher'] || '',
         'Folder in Charge': teacher['Folder in Charge'] || '',
+        'Presenter Email ID': teacher['Presenter Email ID'] || '', // Added Presenter Email ID
+        'Presenter': teacher['Presenter'] || '', // Added Presenter
         'Class Wise/\nSection Wise': teacher['Class Wise/Section Wise'] || ''
       }));
       

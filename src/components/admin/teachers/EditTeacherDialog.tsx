@@ -32,8 +32,8 @@ interface EditTeacherDialogProps {
   setTeacherName: React.Dispatch<React.SetStateAction<string>>;
   teacherEmail: string;
   setTeacherEmail: React.Dispatch<React.SetStateAction<string>>;
-  emailType: 'robe' | 'folder';
-  setEmailType: React.Dispatch<React.SetStateAction<'robe' | 'folder'>>;
+  emailType: 'robe' | 'folder' | 'presenter'; // Updated to include 'presenter'
+  setEmailType: React.Dispatch<React.SetStateAction<'robe' | 'folder' | 'presenter'>>; // Updated to include 'presenter'
   onUpdate: () => void;
   setTeacherRole: React.Dispatch<React.SetStateAction<Role>>;
 }
@@ -99,8 +99,11 @@ const EditTeacherDialog: React.FC<EditTeacherDialogProps> = ({
             <Select 
               value={emailType} 
               onValueChange={(value) => {
-                setEmailType(value as 'robe' | 'folder');
-                setTeacherRole(value === 'robe' ? 'robe-in-charge' : 'folder-in-charge');
+                setEmailType(value as 'robe' | 'folder' | 'presenter');
+                setTeacherRole(
+                  value === 'robe' ? 'robe-in-charge' : 
+                  value === 'folder' ? 'folder-in-charge' : 'presenter'
+                );
               }}
             >
               <SelectTrigger>
@@ -109,6 +112,7 @@ const EditTeacherDialog: React.FC<EditTeacherDialogProps> = ({
               <SelectContent>
                 <SelectItem value="robe">Robe Email (Robe In-charge)</SelectItem>
                 <SelectItem value="folder">Folder Email (Folder In-charge)</SelectItem>
+                <SelectItem value="presenter">Presenter Email</SelectItem>
               </SelectContent>
             </Select>
           </div>
