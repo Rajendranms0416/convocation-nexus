@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTeachersBySession } from '@/utils/authHelpers';
 import { Role } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
+import { DynamicTableRow } from '@/integrations/supabase/custom-types';
 
 interface DatabaseInfo {
   id: string;
@@ -34,8 +35,7 @@ export const useTeacherDataLoader = () => {
         setCurrentDatabase(database);
         
         // Load from Supabase using the specific table name
-        const { data: tableData, error } = await supabase
-          .from(database.tableName)
+        const { data: tableData, error } = await queryDynamicTable(database.tableName)
           .select('*');
         
         if (error) {
@@ -44,7 +44,7 @@ export const useTeacherDataLoader = () => {
         }
         
         // Transform to the format needed for the table
-        const formattedTeachers = tableData.map((teacher, index) => {
+        const formattedTeachers = (tableData as DynamicTableRow[]).map((teacher, index) => {
           const formattedTeacher: any[] = [];
           
           // Process teacher with Robe Email ID

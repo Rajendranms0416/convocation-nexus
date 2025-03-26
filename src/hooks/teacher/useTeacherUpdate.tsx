@@ -2,7 +2,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { Role } from '@/types';
 import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
 
 /**
  * Hook for updating teacher functionality
@@ -41,21 +41,40 @@ export const useTeacherUpdate = (
       
       // Update in the database
       if (currentTeacher.dbId) {
-        const { error } = await supabase
-          .from('teachers')
-          .update({
-            Programme_Name: selectedClasses[0] || '',
-            Robe_Email_ID: newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
-            Folder_Email_ID: newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
-            Accompanying_Teacher: newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
-            Folder_in_Charge: newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', currentTeacher.dbId);
-        
-        if (error) {
-          console.error('Supabase update error:', error);
-          // Continue anyway to update local storage
+        // Check if we're using a dynamic table
+        if (currentTeacher.dbTable) {
+          const { error } = await queryDynamicTable(currentTeacher.dbTable)
+            .update({
+              "Programme_Name": selectedClasses[0] || '',
+              "Robe_Email_ID": newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
+              "Folder_Email_ID": newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
+              "Accompanying_Teacher": newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
+              "Folder_in_Charge": newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
+              "updated_at": new Date().toISOString(),
+            })
+            .eq('id', currentTeacher.dbId);
+          
+          if (error) {
+            console.error('Supabase update error:', error);
+            // Continue anyway to update local storage
+          }
+        } else {
+          // Use the default teachers table
+          const { error } = await supabase
+            .from('teachers')
+            .update({
+              "Programme Name": selectedClasses[0] || '',
+              "Robe Email ID": newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
+              "Folder Email ID": newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
+              "Robe in Charge": newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
+              "Folder in Charge": newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
+            })
+            .eq('id', currentTeacher.dbId);
+          
+          if (error) {
+            console.error('Supabase update error:', error);
+            // Continue anyway to update local storage
+          }
         }
       }
       

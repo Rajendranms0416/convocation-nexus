@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
+import { DynamicTableRow } from '@/integrations/supabase/custom-types';
 
 export const useDataExport = (tableName?: string) => {
   const [isExporting, setIsExporting] = useState(false);
@@ -15,12 +16,11 @@ export const useDataExport = (tableName?: string) => {
       
       if (tableName) {
         // Export data from the specific table
-        const { data, error } = await supabase
-          .from(tableName)
+        const { data, error } = await queryDynamicTable(tableName)
           .select('*');
           
         if (error) throw error;
-        teachersData = data;
+        teachersData = data as DynamicTableRow[];
       } else {
         // Fallback to the default teachers table
         const { data, error } = await supabase
@@ -31,14 +31,29 @@ export const useDataExport = (tableName?: string) => {
         teachersData = data;
       }
       
-      const formattedData = teachersData.map(teacher => ({
-        'Programme Name': teacher.Programme_Name || '',
-        'Robe Email ID': teacher.Robe_Email_ID || '',
-        'Folder Email ID': teacher.Folder_Email_ID || '',
-        'Accompanying Teacher': teacher.Accompanying_Teacher || '',
-        'Folder in Charge': teacher.Folder_in_Charge || '',
-        'Class Wise/\nSection Wise': teacher.Class_Section || ''
-      }));
+      const formattedData = teachersData.map(teacher => {
+        if ('Programme_Name' in teacher) {
+          // For dynamic tables
+          return {
+            'Programme Name': teacher.Programme_Name || '',
+            'Robe Email ID': teacher.Robe_Email_ID || '',
+            'Folder Email ID': teacher.Folder_Email_ID || '',
+            'Accompanying Teacher': teacher.Accompanying_Teacher || '',
+            'Folder in Charge': teacher.Folder_in_Charge || '',
+            'Class Wise/\nSection Wise': teacher.Class_Section || ''
+          };
+        } else {
+          // For the default teachers table
+          return {
+            'Programme Name': teacher['Programme Name'] || '',
+            'Robe Email ID': teacher['Robe Email ID'] || '',
+            'Folder Email ID': teacher['Folder Email ID'] || '',
+            'Accompanying Teacher': teacher['Robe in Charge'] || '',
+            'Folder in Charge': teacher['Folder in Charge'] || '',
+            'Class Wise/\nSection Wise': ''
+          };
+        }
+      });
       
       const csvContent = excelService.generateCSV(formattedData);
       

@@ -2,7 +2,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { Role } from '@/types';
 import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
 
 /**
  * Hook for adding teacher functionality
@@ -40,22 +40,45 @@ export const useTeacherAdd = (
         "Class Wise/\nSection Wise": '',
       };
       
-      // Insert into database
-      const { data: insertedTeacher, error } = await supabase
-        .from('teachers')
-        .insert({
-          Programme_Name: classes[0] || '',
-          Robe_Email_ID: emailType === 'robe' ? email : '',
-          Folder_Email_ID: emailType === 'folder' ? email : '',
-          Accompanying_Teacher: emailType === 'robe' ? name : '',
-          Folder_in_Charge: emailType === 'folder' ? name : '',
-          Class_Section: '',
-        })
-        .select()
-        .single();
+      // For database insertion, prepare with the correct field names
+      const dbRecord = {
+        "Programme_Name": classes[0] || '',
+        "Robe_Email_ID": emailType === 'robe' ? email : '',
+        "Folder_Email_ID": emailType === 'folder' ? email : '',
+        "Accompanying_Teacher": emailType === 'robe' ? name : '',
+        "Folder_in_Charge": emailType === 'folder' ? name : '',
+        "Class_Section": '',
+      };
       
-      if (error) {
-        throw error;
+      // Insert into database - check if we have a custom table for the current session
+      const currentTeacher = teachers.find(t => t.dbTable);
+      let insertedTeacher;
+      
+      if (currentTeacher?.dbTable) {
+        // Insert into the dynamic table
+        const { data, error } = await queryDynamicTable(currentTeacher.dbTable)
+          .insert(dbRecord)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        insertedTeacher = data;
+      } else {
+        // Insert into the default teachers table
+        const { data, error } = await supabase
+          .from('teachers')
+          .insert({
+            "Programme Name": classes[0] || '',
+            "Robe Email ID": emailType === 'robe' ? email : '',
+            "Folder Email ID": emailType === 'folder' ? email : '',
+            "Folder in Charge": emailType === 'folder' ? name : '',
+            "Robe in Charge": emailType === 'robe' ? name : '',
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        insertedTeacher = data;
       }
       
       // Get the current teachers list and add the new teacher for local storage
@@ -72,7 +95,8 @@ export const useTeacherAdd = (
         program: classes[0] || '',
         assignedClasses: classes,
         rawData: newTeacherRaw,
-        dbId: insertedTeacher?.id
+        dbId: insertedTeacher?.id,
+        dbTable: currentTeacher?.dbTable
       };
       
       setTeachers([...teachers, newTeacherFormatted]);
