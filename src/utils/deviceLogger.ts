@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 
@@ -20,22 +19,29 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
     // Get device information
     const userAgent = navigator.userAgent;
     
-    // Insert into device_logs table
-    const { data, error } = await supabase
-      .from('device_logs')
-      .insert({
-        user_id: user.id,
-        user_name: user.name,
-        user_role: user.role,
-        device_type: deviceType,
-        user_agent: userAgent,
-        ip_address: 'Client IP not available client-side'
-      });
-    
-    if (error) {
-      console.error('Error logging device usage:', error);
+    // Try to insert into device_logs table
+    try {
+      const { data, error } = await supabase
+        .from('device_logs')
+        .insert({
+          user_id: user.id,
+          user_name: user.name,
+          user_role: user.role,
+          device_type: deviceType,
+          user_agent: userAgent,
+          ip_address: 'Client IP not available client-side'
+        });
       
-      // Fallback to localStorage if database error
+      if (error) {
+        throw error;
+      }
+      
+      console.log('Device usage logged successfully to database');
+      return true;
+    } catch (dbError) {
+      console.warn('Error logging to database, falling back to localStorage:', dbError);
+      
+      // Fallback to localStorage
       const logs = JSON.parse(localStorage.getItem('device_logs') || '[]');
       logs.push({
         userId: user.id,
@@ -46,11 +52,9 @@ export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop
         timestamp: new Date().toISOString()
       });
       localStorage.setItem('device_logs', JSON.stringify(logs));
-    } else {
-      console.log('Device usage logged successfully');
+      console.log('Device usage logged successfully to localStorage');
+      return true;
     }
-    
-    return true;
   } catch (error) {
     console.error('Error in logDeviceUsage:', error);
     return false;
@@ -91,7 +95,7 @@ export const fetchDeviceLogs = async ({ limit = 100, offset = 0, filterBy = null
     const { data, error, count } = await query;
     
     if (error) {
-      console.error('Error fetching device logs from Supabase:', error);
+      console.warn('Error fetching device logs from Supabase, falling back to localStorage:', error);
       
       // Fallback to localStorage if database error
       const localLogs = JSON.parse(localStorage.getItem('device_logs') || '[]');
@@ -136,19 +140,9 @@ export const fetchDeviceLogs = async ({ limit = 100, offset = 0, filterBy = null
   }
 };
 
-// Function to create device_logs table if it doesn't exist
+// This function is no longer needed since we'll create the table via SQL migrations
+// But we'll keep it for backward compatibility, it will just return true without doing anything
 export const createDeviceLogsTable = async () => {
-  try {
-    const { error } = await supabase.rpc('create_device_logs_table');
-    
-    if (error) {
-      console.error('Error creating device_logs table:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error creating device_logs table:', error);
-    return false;
-  }
+  console.log('Device logs table is expected to be created via migrations');
+  return true;
 };

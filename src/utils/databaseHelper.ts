@@ -1,19 +1,23 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { createDeviceLogsTable } from './deviceLogger';
 
 export const initializeTables = async () => {
   try {
-    // Check if the device_logs table exists, if not create it
-    const isDeviceLogsCreated = await createDeviceLogsTable();
+    // Check if we can connect to the database
+    const { error } = await supabase
+      .from('teachers')
+      .select('id')
+      .limit(1);
     
-    if (!isDeviceLogsCreated) {
-      console.error('Failed to create device_logs table');
+    if (error) {
+      console.error('Error connecting to database:', error);
+      return false;
     }
     
+    console.log('Successfully connected to database');
     return true;
   } catch (error) {
-    console.error('Error initializing database tables:', error);
+    console.error('Error initializing database connection:', error);
     return false;
   }
 };
