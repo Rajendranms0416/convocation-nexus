@@ -155,6 +155,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_device_logs_table: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       create_upload_table: {
         Args: {
           table_name: string
