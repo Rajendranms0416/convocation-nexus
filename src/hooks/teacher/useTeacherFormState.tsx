@@ -9,7 +9,7 @@ export const useTeacherFormState = () => {
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [newTeacherRole, setNewTeacherRole] = useState<Role>('presenter');
-  const [emailType, setEmailType] = useState<'robe' | 'folder'>('robe');
+  const [emailType, setEmailType] = useState<'robe' | 'folder' | 'presenter'>('presenter');
   
   return {
     newTeacherName,

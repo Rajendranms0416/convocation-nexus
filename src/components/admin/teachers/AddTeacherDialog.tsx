@@ -28,7 +28,7 @@ interface AddTeacherDialogProps {
     name: string, 
     email: string, 
     role: Role, 
-    emailType: 'robe' | 'folder', 
+    emailType: 'robe' | 'folder' | 'presenter', 
     selectedClasses: string[]
   ) => void;
 }
@@ -41,7 +41,7 @@ const AddTeacherDialog: React.FC<AddTeacherDialogProps> = ({
   const [newTeacherName, setNewTeacherName] = useState('');
   const [newTeacherEmail, setNewTeacherEmail] = useState('');
   const [newTeacherRole, setNewTeacherRole] = useState<Role>('presenter');
-  const [emailType, setEmailType] = useState<'robe' | 'folder'>('robe');
+  const [emailType, setEmailType] = useState<'robe' | 'folder' | 'presenter'>('presenter');
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
   const toggleClassSelection = (className: string) => {
@@ -65,7 +65,7 @@ const AddTeacherDialog: React.FC<AddTeacherDialogProps> = ({
     setNewTeacherName('');
     setNewTeacherEmail('');
     setNewTeacherRole('presenter');
-    setEmailType('robe');
+    setEmailType('presenter');
     setSelectedClasses([]);
     setIsOpen(false);
   };
@@ -109,18 +109,26 @@ const AddTeacherDialog: React.FC<AddTeacherDialogProps> = ({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="emailType">Email Type</Label>
+            <Label htmlFor="emailType">Role Type</Label>
             <Select 
               value={emailType} 
               onValueChange={(value) => {
-                setEmailType(value as 'robe' | 'folder');
-                setNewTeacherRole(value === 'robe' ? 'robe-in-charge' : 'folder-in-charge');
+                setEmailType(value as 'robe' | 'folder' | 'presenter');
+                
+                if (value === 'robe') {
+                  setNewTeacherRole('robe-in-charge');
+                } else if (value === 'folder') {
+                  setNewTeacherRole('folder-in-charge');
+                } else {
+                  setNewTeacherRole('presenter');
+                }
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select email type" />
+                <SelectValue placeholder="Select role type" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="presenter">Presenter</SelectItem>
                 <SelectItem value="robe">Robe Email (Robe In-charge)</SelectItem>
                 <SelectItem value="folder">Folder Email (Folder In-charge)</SelectItem>
               </SelectContent>

@@ -17,7 +17,7 @@ export const useTeacherAdd = (
     name: string, 
     email: string, 
     role: Role, 
-    emailType: 'robe' | 'folder', 
+    emailType: 'robe' | 'folder' | 'presenter', 
     classes: string[]
   ) => {
     if (!name || !email || !role) {
@@ -37,26 +37,10 @@ export const useTeacherAdd = (
         "Folder Email ID": emailType === 'folder' ? email : '',
         "Accompanying Teacher": emailType === 'robe' ? name : '',
         "Folder in Charge": emailType === 'folder' ? name : '',
+        "Presenter Email ID": emailType === 'presenter' ? email : '',
+        "Presenter": emailType === 'presenter' ? name : '',
         "Class Wise/\nSection Wise": '',
       };
-      
-      // Insert into database
-      const { data: insertedTeacher, error } = await supabase
-        .from('teachers')
-        .insert({
-          program_name: classes[0] || '',
-          robe_email: emailType === 'robe' ? email : '',
-          folder_email: emailType === 'folder' ? email : '',
-          robe_in_charge: emailType === 'robe' ? name : '',
-          folder_in_charge: emailType === 'folder' ? name : '',
-          class_section: '',
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        throw error;
-      }
       
       // Get the current teachers list and add the new teacher for local storage
       const currentTeachers = getAllTeachers();
