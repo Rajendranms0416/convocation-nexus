@@ -10,7 +10,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
 
 interface FileUploaderProps {
-  onDataLoaded: (data: any[], sessionInfo: string) => void;
+  onDataLoaded: (data: any[], sessionInfo: string, tableId?: string) => void;
 }
 
 const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
@@ -44,7 +44,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         <Alert variant="warning" className="mt-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            The file will be processed and saved to local storage only.
+            The file will be processed and stored as a new database table.
           </AlertDescription>
         </Alert>
       )}

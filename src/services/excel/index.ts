@@ -30,13 +30,18 @@ export const filterTeacherData = (data: Record<string, string>[], searchTerm: st
 };
 
 /**
- * Save teacher data with session information
+ * Save teacher data with session information and optional table name
  * @param data The data to save
  * @param sessionInfo The session information
+ * @param tableName Optional table name for database reference
  * @returns The saved data
  */
-export const saveTeacherData = (data: Record<string, string>[], sessionInfo: string = '') => {
-  return updateTeachersList(data, sessionInfo);
+export const saveTeacherData = (
+  data: Record<string, string>[], 
+  sessionInfo: string = '',
+  tableName?: string
+) => {
+  return updateTeachersList(data, sessionInfo, tableName);
 };
 
 // Re-export all functionality through a single service object

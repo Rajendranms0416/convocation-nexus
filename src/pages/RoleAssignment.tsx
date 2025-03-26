@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -9,6 +8,15 @@ import { getAllSessions } from '@/utils/authHelpers';
 import RoleAssignmentHeader from '@/components/admin/teachers/RoleAssignmentHeader';
 import TeacherManagementContent from '@/components/admin/teachers/TeacherManagementContent';
 import DialogsContainer from '@/components/admin/teachers/DialogsContainer';
+import { supabase } from '@/integrations/supabase/client';
+
+interface DatabaseInfo {
+  id: string;
+  tableName: string;
+  session: string;
+  uploadDate: string;
+  recordCount: number;
+}
 
 const RoleAssignment: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -17,6 +25,7 @@ const RoleAssignment: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentSession, setCurrentSession] = useState<string>("April 22, 2023 - Morning (09:00 AM)");
   const [availableSessions, setAvailableSessions] = useState<string[]>([]);
+  const [currentDatabase, setCurrentDatabase] = useState<DatabaseInfo | null>(null);
   
   const {
     teachers,
@@ -45,7 +54,6 @@ const RoleAssignment: React.FC = () => {
     loadTeacherData
   } = useTeacherManagement();
 
-  // Effect to load available sessions
   useEffect(() => {
     const loadSessions = () => {
       const sessions = getAllSessions();
@@ -58,11 +66,9 @@ const RoleAssignment: React.FC = () => {
     
     loadSessions();
     
-    // Listen for data updates from other components
     const handleDataUpdate = (event: CustomEvent) => {
       loadSessions();
       
-      // Update current session if provided in the event
       if (event.detail?.session) {
         setCurrentSession(event.detail.session);
       }
@@ -90,12 +96,11 @@ const RoleAssignment: React.FC = () => {
     }
   }, [isLoading, isAuthenticated, user, navigate, toast]);
 
-  // Load teacher data for the current session
   useEffect(() => {
     const loadSessionData = async () => {
       setIsRefreshing(true);
       try {
-        await loadTeacherData(currentSession);
+        await loadTeacherData(currentSession, currentDatabase);
       } catch (error) {
         console.error("Error loading session data:", error);
         toast({
@@ -109,20 +114,26 @@ const RoleAssignment: React.FC = () => {
     };
     
     loadSessionData();
-  }, [currentSession, loadTeacherData, toast]);
+  }, [currentSession, currentDatabase, loadTeacherData, toast]);
 
   const handleSessionChange = (session: string) => {
     setCurrentSession(session);
+    setCurrentDatabase(null);
+  };
+
+  const handleDatabaseChange = (database: DatabaseInfo) => {
+    setCurrentDatabase(database);
+    setCurrentSession(database.session);
   };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await loadTeacherData(currentSession);
+      await loadTeacherData(currentSession, currentDatabase);
       
       toast({
         title: "Data refreshed",
-        description: `Teacher data has been refreshed for session: ${currentSession}`
+        description: `Teacher data has been refreshed for ${currentDatabase ? 'database: ' + currentDatabase.session : 'session: ' + currentSession}`
       });
     } catch (error) {
       console.error("Error refreshing data:", error);
@@ -136,12 +147,40 @@ const RoleAssignment: React.FC = () => {
     }
   };
 
-  const handleDataLoaded = (data: any[], sessionInfo: string) => {
-    // Set the current session when data is loaded
+  const handleDataLoaded = (data: any[], sessionInfo: string, tableId?: string) => {
     setCurrentSession(sessionInfo);
     
-    // Trigger data refresh
-    loadTeacherData(sessionInfo);
+    if (tableId) {
+      const getDbInfo = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('file_uploads')
+            .select('id, table_name, session_info, upload_date, record_count')
+            .eq('id', tableId)
+            .single();
+            
+          if (error) throw error;
+          
+          const dbInfo: DatabaseInfo = {
+            id: data.id.toString(),
+            tableName: data.table_name,
+            session: data.session_info || 'Unknown Session',
+            uploadDate: new Date(data.upload_date).toLocaleString(),
+            recordCount: data.record_count || 0
+          };
+          
+          setCurrentDatabase(dbInfo);
+          loadTeacherData(sessionInfo, dbInfo);
+        } catch (error) {
+          console.error('Error getting database info:', error);
+          loadTeacherData(sessionInfo);
+        }
+      };
+      
+      getDbInfo();
+    } else {
+      loadTeacherData(sessionInfo);
+    }
   };
 
   if (isLoading) {
@@ -176,6 +215,8 @@ const RoleAssignment: React.FC = () => {
           onDeleteTeacher={handleDeleteTeacher}
           onAssignClasses={handleAssignClasses}
           onDataLoaded={handleDataLoaded}
+          onDatabaseChange={handleDatabaseChange}
+          currentDatabaseId={currentDatabase?.id}
         />
       </Card>
 

@@ -4,18 +4,32 @@ import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useDataExport = () => {
+export const useDataExport = (tableName?: string) => {
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
   const exportCurrentData = async () => {
     setIsExporting(true);
     try {
-      const { data: teachersData, error } = await supabase
-        .from('teachers')
-        .select('*');
-        
-      if (error) throw error;
+      let teachersData: any[] = [];
+      
+      if (tableName) {
+        // Export data from the specific table
+        const { data, error } = await supabase
+          .from(tableName)
+          .select('*');
+          
+        if (error) throw error;
+        teachersData = data;
+      } else {
+        // Fallback to the default teachers table
+        const { data, error } = await supabase
+          .from('teachers')
+          .select('*');
+          
+        if (error) throw error;
+        teachersData = data;
+      }
       
       const formattedData = teachersData.map(teacher => ({
         'Programme Name': teacher.Programme_Name || '',
@@ -42,7 +56,7 @@ export const useDataExport = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'teachers_data.csv';
+      a.download = tableName ? `${tableName}_data.csv` : 'teachers_data.csv';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

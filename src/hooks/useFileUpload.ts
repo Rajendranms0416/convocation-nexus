@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseFileUploadOptions {
-  onDataLoaded: (data: any[], sessionInfo: string) => void;
+  onDataLoaded: (data: any[], sessionInfo: string, tableId?: string) => void;
 }
 
 export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
@@ -119,20 +120,75 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
         throw new Error('No data found in the file');
       }
       
-      // Save the data to localStorage with the session info
-      excelService.saveTeacherData(parsedData, sessionInfo);
+      // Generate a table name based on the session info
+      const safeTableName = `upload_${new Date().getTime()}`;
+      
+      // Create a new table for this upload
+      const { data: functionResult, error: functionError } = await supabase.rpc(
+        'create_upload_table',
+        { table_name: safeTableName }
+      );
+      
+      if (functionError) {
+        console.error('Error creating table:', functionError);
+        throw new Error(`Failed to create table: ${functionError.message}`);
+      }
+      
+      // Record this upload in the file_uploads table
+      const { data: uploadRecord, error: uploadError } = await supabase
+        .from('file_uploads')
+        .insert({
+          filename: file.name,
+          table_name: safeTableName,
+          session_info: sessionInfo,
+          record_count: parsedData.length
+        })
+        .select('id')
+        .single();
+      
+      if (uploadError) {
+        console.error('Error recording upload:', uploadError);
+        throw new Error(`Failed to record upload: ${uploadError.message}`);
+      }
+      
+      // Now insert the data into the newly created table
+      const formattedData = parsedData.map((item: any) => ({
+        "Programme_Name": item["Programme Name"] || '',
+        "Robe_Email_ID": item["Robe Email ID"] || '',
+        "Folder_Email_ID": item["Folder Email ID"] || '',
+        "Accompanying_Teacher": item["Accompanying Teacher"] || '',
+        "Folder_in_Charge": item["Folder in Charge"] || '',
+        "Class_Section": item["Class Wise/\nSection Wise"] || ''
+      }));
+      
+      // Insert data in batches to avoid payload size limits
+      const batchSize = 100;
+      for (let i = 0; i < formattedData.length; i += batchSize) {
+        const batch = formattedData.slice(i, i + batchSize);
+        const { error: insertError } = await supabase
+          .from(safeTableName)
+          .insert(batch);
+          
+        if (insertError) {
+          console.error(`Error inserting batch ${i}:`, insertError);
+          // Continue anyway to insert as much data as possible
+        }
+      }
+      
+      // Save the data to localStorage with the session info and table reference
+      excelService.saveTeacherData(parsedData, sessionInfo, safeTableName);
       
       toast({
         title: 'File processed successfully',
-        description: `Loaded ${parsedData.length} records for ${sessionInfo}.`,
+        description: `Created database "${sessionInfo}" with ${parsedData.length} records.`,
         variant: 'default',
       });
       
-      onDataLoaded(parsedData, sessionInfo);
+      onDataLoaded(parsedData, sessionInfo, uploadRecord?.id?.toString());
       
       // Notify any listeners that data has been updated
       window.dispatchEvent(new CustomEvent('teacherDataUpdated', { 
-        detail: { session: sessionInfo } 
+        detail: { session: sessionInfo, tableId: uploadRecord?.id?.toString() } 
       }));
       
     } catch (error) {

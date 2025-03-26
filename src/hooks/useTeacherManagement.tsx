@@ -3,6 +3,15 @@ import { useTeacherState } from './teacher/useTeacherState';
 import { useTeacherOperations } from './teacher/useTeacherOperations';
 import { useClassAssignment } from './teacher/useClassAssignment';
 import { useTeacherActions } from './teacher/useTeacherActions';
+import { supabase } from '@/integrations/supabase/client';
+
+interface DatabaseInfo {
+  id: string;
+  tableName: string;
+  session: string;
+  uploadDate: string;
+  recordCount: number;
+}
 
 /**
  * Main hook for teacher management functionality
