@@ -81,7 +81,9 @@ export const useTeacherManagement = () => {
     setIsEditDialogOpen,
     // Create wrapper function to adapt the incompatible function signatures
     handleUpdateTeacher: (teacher, name, email, role, classes) => {
-      return baseHandleUpdateTeacher(teacher.id, name, email, role);
+      // Pass tableName as undefined if classes is an array
+      return baseHandleUpdateTeacher(teacher.id, name, email, role, 
+        Array.isArray(classes) ? undefined : classes);
     },
     baseHandleAssignClasses,
     baseSaveClassAssignments
