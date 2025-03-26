@@ -157,21 +157,23 @@ const RoleAssignment: React.FC = () => {
           const { data, error } = await supabase
             .from('file_uploads')
             .select('id, table_name, session_info, upload_date, record_count')
-            .eq('id', tableId)
+            .eq('id', parseInt(tableId))
             .single();
             
           if (error) throw error;
           
-          const dbInfo: DatabaseInfo = {
-            id: data.id.toString(),
-            tableName: data.table_name,
-            session: data.session_info || 'Unknown Session',
-            uploadDate: new Date(data.upload_date).toLocaleString(),
-            recordCount: data.record_count || 0
-          };
-          
-          setCurrentDatabase(dbInfo);
-          loadTeacherData(sessionInfo, dbInfo);
+          if (data) {
+            const dbInfo: DatabaseInfo = {
+              id: String(data.id),
+              tableName: data.table_name,
+              session: data.session_info || 'Unknown Session',
+              uploadDate: new Date(data.upload_date).toLocaleString(),
+              recordCount: data.record_count || 0
+            };
+            
+            setCurrentDatabase(dbInfo);
+            loadTeacherData(sessionInfo, dbInfo);
+          }
         } catch (error) {
           console.error('Error getting database info:', error);
           loadTeacherData(sessionInfo);

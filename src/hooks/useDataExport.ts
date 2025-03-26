@@ -20,7 +20,9 @@ export const useDataExport = (tableName?: string) => {
           .select('*');
           
         if (error) throw error;
-        teachersData = data as DynamicTableRow[];
+        
+        // Safe conversion to DynamicTableRow[]
+        teachersData = (data || []) as unknown as DynamicTableRow[];
       } else {
         // Fallback to the default teachers table
         const { data, error } = await supabase
@@ -28,7 +30,7 @@ export const useDataExport = (tableName?: string) => {
           .select('*');
           
         if (error) throw error;
-        teachersData = data;
+        teachersData = data || [];
       }
       
       const formattedData = teachersData.map(teacher => {

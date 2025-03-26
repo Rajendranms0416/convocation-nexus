@@ -1,6 +1,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
-import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
+import { DynamicTableInsert, TeachersInsert } from '@/integrations/supabase/custom-types';
+import { updateDynamicTable, insertIntoDynamicTable, updateTeachersTable, insertIntoTeachersTable } from '@/utils/dynamicTableHelpers';
 
 /**
  * Hook to manage class assignments for teachers
@@ -46,14 +47,14 @@ export const useClassAssignment = (
       // Check if we're using a dynamic table or the default table
       if (currentTeacher.dbTable) {
         // Prepare the data for database update with the correct field names for dynamic tables
-        let teacherData = {
-          "Programme_Name": selectedClasses[0] || '',
-          "Robe_Email_ID": currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
-          "Folder_Email_ID": currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
-          "Accompanying_Teacher": currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
-          "Folder_in_Charge": currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
-          "Class_Section": currentTeacher.section || '',
-          "updated_at": new Date().toISOString()
+        const teacherData: DynamicTableInsert = {
+          Programme_Name: selectedClasses[0] || '',
+          Robe_Email_ID: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
+          Folder_Email_ID: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
+          Accompanying_Teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
+          Folder_in_Charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
+          Class_Section: currentTeacher.section || '',
+          updated_at: new Date().toISOString()
         };
         
         console.log('Data to save to dynamic table:', teacherData);
@@ -62,25 +63,27 @@ export const useClassAssignment = (
         if (currentTeacher.dbId) {
           // If we have a database ID, use that for the update
           console.log(`Updating existing record with ID ${currentTeacher.dbId} in table ${currentTeacher.dbTable}`);
-          const response = await queryDynamicTable(currentTeacher.dbTable)
-            .update(teacherData)
-            .eq('id', currentTeacher.dbId)
-            .select();
+          const response = await updateDynamicTable(
+            currentTeacher.dbTable,
+            teacherData,
+            currentTeacher.dbId
+          );
             
           upsertResult = response.data;
         } else {
           // Otherwise insert a new record
           console.log(`Inserting new record in table ${currentTeacher.dbTable}`);
-          const response = await queryDynamicTable(currentTeacher.dbTable)
-            .insert([teacherData])
-            .select();
+          const response = await insertIntoDynamicTable(
+            currentTeacher.dbTable,
+            teacherData
+          );
             
           upsertResult = response.data;
         }
       } else {
         // Using the default teachers table
         // Prepare data for the default table structure
-        let teacherData = {
+        const teacherData: TeachersInsert = {
           "Programme Name": selectedClasses[0] || '',
           "Robe Email ID": currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
           "Folder Email ID": currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
@@ -92,19 +95,15 @@ export const useClassAssignment = (
         
         if (currentTeacher.dbId) {
           console.log(`Updating existing record with ID ${currentTeacher.dbId} in default table`);
-          const response = await supabase
-            .from('teachers')
-            .update(teacherData)
-            .eq('id', currentTeacher.dbId)
-            .select();
+          const response = await updateTeachersTable(
+            teacherData,
+            currentTeacher.dbId
+          );
             
           upsertResult = response.data;
         } else {
           console.log('Inserting new record in default table');
-          const response = await supabase
-            .from('teachers')
-            .insert([teacherData])
-            .select();
+          const response = await insertIntoTeachersTable(teacherData);
             
           upsertResult = response.data;
         }

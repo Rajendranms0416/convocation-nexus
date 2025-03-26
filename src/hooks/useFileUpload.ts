@@ -1,8 +1,8 @@
-
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
-import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
+import { createDynamicTable, createFileUploadRecord, insertIntoDynamicTable } from '@/utils/dynamicTableHelpers';
+import { DynamicTableInsert } from '@/integrations/supabase/custom-types';
 
 interface UseFileUploadOptions {
   onDataLoaded: (data: any[], sessionInfo: string, tableId?: string) => void;
@@ -82,7 +82,6 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
     setUploadError(null);
 
     try {
-      // Parse the file based on its extension
       const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
       let parsedData;
       
@@ -112,39 +111,28 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
         throw new Error('No data found in the file');
       }
       
-      // Create a safe table name using timestamp
       const safeTableName = `upload_${new Date().getTime()}`;
       
       try {
-        // Call the RPC function to create a new table
-        const { data: functionResult, error: functionError } = await supabase.rpc(
-          'create_upload_table',
-          { table_name: safeTableName }
-        );
+        const { error: createTableError } = await createDynamicTable(safeTableName);
         
-        if (functionError) {
-          console.error('Error creating table:', functionError);
-          throw new Error(`Failed to create table: ${functionError.message}`);
+        if (createTableError) {
+          console.error('Error creating table:', createTableError);
+          throw new Error(`Failed to create table: ${createTableError.message}`);
         }
         
-        // Record the upload in the file_uploads table
-        const { data: uploadRecord, error: uploadError } = await supabase
-          .from('file_uploads')
-          .insert({
-            filename: file.name,
-            table_name: safeTableName,
-            session_info: sessionInfo,
-            record_count: parsedData.length
-          })
-          .select()
-          .single();
+        const { data: uploadRecord, error: uploadError } = await createFileUploadRecord(
+          file.name,
+          safeTableName,
+          sessionInfo,
+          parsedData.length
+        );
         
         if (uploadError) {
           console.error('Error recording upload:', uploadError);
           throw new Error(`Failed to record upload: ${uploadError.message}`);
         }
         
-        // Format the data for insertion into the new table
         const formattedData = parsedData.map((item: any) => ({
           "Programme_Name": item["Programme Name"] || '',
           "Robe_Email_ID": item["Robe Email ID"] || '',
@@ -152,21 +140,18 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
           "Accompanying_Teacher": item["Accompanying Teacher"] || '',
           "Folder_in_Charge": item["Folder in Charge"] || '',
           "Class_Section": item["Class Wise/\nSection Wise"] || ''
-        }));
+        })) as DynamicTableInsert[];
         
-        // Insert the data in batches
         const batchSize = 100;
         for (let i = 0; i < formattedData.length; i += batchSize) {
           const batch = formattedData.slice(i, i + batchSize);
-          const { error: insertError } = await queryDynamicTable(safeTableName)
-            .insert(batch);
+          const { error: insertError } = await insertIntoDynamicTable(safeTableName, batch);
           
           if (insertError) {
             console.error(`Error inserting batch ${i}:`, insertError);
           }
         }
         
-        // Save to local storage too for offline capability
         excelService.saveTeacherData(parsedData, sessionInfo, safeTableName);
         
         toast({

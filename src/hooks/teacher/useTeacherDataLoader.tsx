@@ -43,8 +43,13 @@ export const useTeacherDataLoader = () => {
           throw error;
         }
         
+        if (!tableData) {
+          setTeachers([]);
+          return;
+        }
+        
         // Transform to the format needed for the table
-        const formattedTeachers = (tableData as DynamicTableRow[]).map((teacher, index) => {
+        const formattedTeachers = (tableData as unknown as DynamicTableRow[]).map((teacher, index) => {
           const formattedTeacher: any[] = [];
           
           // Process teacher with Robe Email ID
@@ -159,15 +164,17 @@ export const useTeacherDataLoader = () => {
               
             if (error) throw error;
             
-            const dbInfo: DatabaseInfo = {
-              id: data.id.toString(),
-              tableName: data.table_name,
-              session: data.session_info || 'Unknown Session',
-              uploadDate: new Date(data.upload_date).toLocaleString(),
-              recordCount: data.record_count || 0
-            };
-            
-            loadTeacherData(dbInfo.session, dbInfo);
+            if (data) {
+              const dbInfo: DatabaseInfo = {
+                id: String(data.id),
+                tableName: data.table_name,
+                session: data.session_info || 'Unknown Session',
+                uploadDate: new Date(data.upload_date).toLocaleString(),
+                recordCount: data.record_count || 0
+              };
+              
+              loadTeacherData(dbInfo.session, dbInfo);
+            }
           } catch (error) {
             console.error('Error getting database info:', error);
             if (eventSession) {

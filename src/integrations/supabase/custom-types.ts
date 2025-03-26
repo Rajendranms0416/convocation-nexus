@@ -49,7 +49,36 @@ export interface DynamicTableRow {
   updated_at?: string;
 }
 
+// Type for dynamic table insert/update operations
+export interface DynamicTableInsert {
+  Programme_Name?: string | null;
+  Robe_Email_ID?: string | null;
+  Folder_Email_ID?: string | null;
+  Accompanying_Teacher?: string | null;
+  Folder_in_Charge?: string | null;
+  Class_Section?: string | null;
+}
+
+// Interface for teachers table operations to match column names
+export interface TeachersInsert {
+  "Programme Name"?: string | null;
+  "Robe Email ID"?: string | null;
+  "Folder Email ID"?: string | null;
+  "Robe in Charge"?: string | null;
+  "Folder in Charge"?: string | null;
+  id?: number;
+}
+
+export interface TeachersUpdate {
+  "Programme Name"?: string | null;
+  "Robe Email ID"?: string | null;
+  "Folder Email ID"?: string | null;
+  "Robe in Charge"?: string | null;
+  "Folder in Charge"?: string | null;
+  id?: number;
+}
+
 // Add a type for our RLS function
-export type CustomFunctions = {
+export interface CustomFunctions {
   create_upload_table: (table_name: string) => void;
-};
+}

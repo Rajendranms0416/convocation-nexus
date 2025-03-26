@@ -39,25 +39,27 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
         
       if (error) throw error;
       
-      const formattedData = data.map(item => ({
-        id: item.id.toString(),
-        tableName: item.table_name,
-        session: item.session_info || 'Unknown Session',
-        uploadDate: new Date(item.upload_date).toLocaleString(),
-        recordCount: item.record_count || 0
-      }));
-      
-      setDatabases(formattedData);
-      
-      // If there's data and no selection, select the first one
-      if (formattedData.length > 0 && !selectedId) {
-        setSelectedId(formattedData[0].id);
-        onDatabaseChange(formattedData[0]);
-      } else if (selectedId) {
-        // Find the currently selected database to update its data
-        const selected = formattedData.find(db => db.id === selectedId);
-        if (selected) {
-          onDatabaseChange(selected);
+      if (data) {
+        const formattedData = data.map(item => ({
+          id: String(item.id),
+          tableName: item.table_name,
+          session: item.session_info || 'Unknown Session',
+          uploadDate: new Date(item.upload_date).toLocaleString(),
+          recordCount: item.record_count || 0
+        }));
+        
+        setDatabases(formattedData);
+        
+        // If there's data and no selection, select the first one
+        if (formattedData.length > 0 && !selectedId) {
+          setSelectedId(formattedData[0].id);
+          onDatabaseChange(formattedData[0]);
+        } else if (selectedId) {
+          // Find the currently selected database to update its data
+          const selected = formattedData.find(db => db.id === selectedId);
+          if (selected) {
+            onDatabaseChange(selected);
+          }
         }
       }
     } catch (error) {
