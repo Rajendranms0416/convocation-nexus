@@ -1,194 +1,134 @@
-
-import { useState } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { queryDynamicTable, supabase } from '@/integrations/supabase/client';
-import { DynamicTableRow } from '@/integrations/supabase/custom-types';
+import { useToast } from '@/hooks/use-toast';
+import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Hook to manage class assignment operations
+ * Hook to manage class assignments for teachers
  */
 export const useClassAssignment = (
   teachers: any[],
   setTeachers: React.Dispatch<React.SetStateAction<any[]>>,
-  setIsClassAssignDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setIsClassAssignDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
 ) => {
-  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
-  /**
-   * Handle class assignment dialog open
-   */
-  const handleAssignClasses = (teacher: any) => {
+  const handleAssignClasses = (
+    teacher: any,
+    setCurrentTeacher: React.Dispatch<React.SetStateAction<any>>,
+    setSelectedClasses: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    setCurrentTeacher(teacher);
+    setSelectedClasses(teacher.assignedClasses || []);
     setIsClassAssignDialogOpen(true);
-    return teacher;
   };
 
-  /**
-   * Save class assignments to the database
-   */
-  const saveClassAssignments = async (teacherId: string, classNames: string[]) => {
-    setIsSaving(true);
+  const saveClassAssignments = async (
+    currentTeacher: any,
+    selectedClasses: string[]
+  ) => {
+    if (!currentTeacher) return;
     
     try {
-      // Find the teacher to update
-      const teacher = teachers.find(t => t.id === teacherId);
+      console.log('Saving class assignments for teacher:', currentTeacher);
+      console.log('Selected classes:', selectedClasses);
       
-      if (!teacher) {
-        throw new Error(`Teacher with ID ${teacherId} not found`);
-      }
+      // Update in the UI first
+      const updatedTeachers = teachers.map(teacher => 
+        teacher.id === currentTeacher.id 
+          ? { ...teacher, assignedClasses: selectedClasses } 
+          : teacher
+      );
       
-      // Check if we're using a dynamic table (from file upload)
-      if (teacher.tableName) {
-        // Update in dynamic table
-        const updatedData = {
-          Programme_Name: teacher.Programme_Name || '',
-          Robe_Email_ID: teacher.Robe_Email_ID,
-          Folder_Email_ID: teacher.Folder_Email_ID,
-          Accompanying_Teacher: teacher.Accompanying_Teacher,
-          Folder_in_Charge: teacher.Folder_in_Charge,
-          Class_Section: classNames.join(', '),
-          updated_at: new Date().toISOString()
-        };
-        
-        // Cast to any to avoid TypeScript errors with dynamic tables
-        const { error: updateError } = await queryDynamicTable(teacher.tableName)
-          .update(updatedData as any)
-          .eq('id', teacher.id);
-        
-        if (updateError) {
-          throw updateError;
-        }
-        
-        // Update multiple records if needed (for bulk class assignment)
-        if (classNames.length > 1) {
-          const bulkUpdates = classNames.map(className => ({
-            Programme_Name: teacher.Programme_Name || '',
-            Robe_Email_ID: teacher.Robe_Email_ID,
-            Folder_Email_ID: teacher.Folder_Email_ID,
-            Accompanying_Teacher: teacher.Accompanying_Teacher,
-            Folder_in_Charge: teacher.Folder_in_Charge,
-            Class_Section: className,
-            updated_at: new Date().toISOString()
-          }));
-          
-          // Insert new records for additional classes
-          if (bulkUpdates.length > 1) {
-            const { error: insertError } = await queryDynamicTable(teacher.tableName)
-              .insert(bulkUpdates.slice(1) as any[]);
-            
-            if (insertError) {
-              console.error('Error inserting additional class records:', insertError);
-            }
-          }
-        }
-      } else {
-        // Update in the standard teachers table
-        const updatedData = {
-          "Programme Name": teacher["Programme Name"] || '',
-          "Robe Email ID": teacher["Robe Email ID"],
-          "Folder Email ID": teacher["Folder Email ID"],
-          "Robe in Charge": teacher["Robe in Charge"],
-          "Folder in Charge": teacher["Folder in Charge"],
-        };
-        
-        // Cast to any to avoid TypeScript errors with dynamic tables
-        const { error: updateError } = await supabase
+      setTeachers(updatedTeachers);
+      
+      // Prepare the data for database update
+      let teacherData = {
+        program_name: selectedClasses[0] || '',
+        robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
+        folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
+        robe_in_charge: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
+        folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
+        class_section: currentTeacher.section || '',
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('Data to save to database:', teacherData);
+      
+      // Try to upsert the record
+      let upsertResponse;
+      
+      if (currentTeacher.dbId) {
+        // If we have a database ID, use that for the update
+        console.log(`Updating existing record with ID ${currentTeacher.dbId}`);
+        upsertResponse = await supabase
           .from('teachers')
-          .update(updatedData as any)
-          .eq('id', teacher.id);
-        
-        if (updateError) {
-          throw updateError;
-        }
-        
-        // Insert new records for additional classes if needed
-        if (classNames.length > 1) {
-          const bulkUpdates = classNames.map(className => ({
-            "Programme Name": teacher["Programme Name"] || '',
-            "Robe Email ID": teacher["Robe Email ID"],
-            "Folder Email ID": teacher["Folder Email ID"],
-            "Robe in Charge": teacher["Robe in Charge"],
-            "Folder in Charge": teacher["Folder in Charge"]
-          }));
-          
-          // Insert new records for additional classes
-          if (bulkUpdates.length > 1) {
-            const { error: insertError } = await supabase
-              .from('teachers')
-              .insert(bulkUpdates.slice(1) as any[]);
-            
-            if (insertError) {
-              console.error('Error inserting additional class records:', insertError);
-            }
-          }
-        }
-      }
-      
-      // Update local state
-      const updatedTeachers = teachers.map(t => {
-        if (t.id === teacherId) {
-          // Handle type consistency based on table type
-          if (t.tableName) {
-            return { ...t, Class_Section: classNames.join(', ') };
-          } else {
-            return { ...t, "Class Section": classNames.join(', ') };
-          }
-        }
-        return t;
-      });
-      
-      // Add new records for additional classes if needed
-      if (classNames.length > 1) {
-        const originalTeacher = teachers.find(t => t.id === teacherId);
-        const additionalTeachers = classNames.slice(1).map((className, index) => {
-          const newId = `${teacherId}-${index + 1}`;
-          if (originalTeacher?.tableName) {
-            return {
-              ...originalTeacher,
-              id: newId,
-              Class_Section: className
-            };
-          } else {
-            return {
-              ...originalTeacher,
-              id: newId,
-              "Class Section": className
-            };
-          }
-        });
-        
-        // Combine original updated teachers with new ones
-        setTeachers([...updatedTeachers, ...additionalTeachers]);
+          .update(teacherData)
+          .eq('id', currentTeacher.dbId)
+          .select();
       } else {
-        setTeachers(updatedTeachers);
+        // Otherwise insert a new record
+        console.log('Inserting new record');
+        upsertResponse = await supabase
+          .from('teachers')
+          .insert(teacherData)
+          .select();
       }
       
-      toast({
-        title: 'Classes assigned successfully',
-        description: `Classes have been assigned to the teacher.`,
-      });
+      const { data: upsertResult, error: upsertError } = upsertResponse;
       
-      // Close the dialog
-      setIsClassAssignDialogOpen(false);
+      if (upsertError) {
+        console.error('Error updating/inserting teacher record:', upsertError);
+        throw new Error(`Database error: ${upsertError.message}`);
+      }
       
-      return true;
+      console.log('Upsert result:', upsertResult);
+      
+      // If we got a result back, update the teacher with the database ID
+      if (upsertResult && upsertResult.length > 0) {
+        const dbId = upsertResult[0].id;
+        
+        // Update the teachers list with the new dbId
+        const teachersWithDbId = teachers.map(teacher => 
+          teacher.id === currentTeacher.id 
+            ? { ...teacher, dbId, assignedClasses: selectedClasses } 
+            : teacher
+        );
+        
+        setTeachers(teachersWithDbId);
+      }
+      
+      // Update in local storage
+      const allTeachers = getAllTeachers();
+      const teacherIndex = allTeachers.findIndex(t => 
+        (currentTeacher.role === 'robe-in-charge' && t['Robe Email ID'] === currentTeacher.email) ||
+        (currentTeacher.role === 'folder-in-charge' && t['Folder Email ID'] === currentTeacher.email) ||
+        t['Programme Name'] === currentTeacher.program
+      );
+      
+      if (teacherIndex >= 0 && selectedClasses.length > 0) {
+        allTeachers[teacherIndex] = {
+          ...allTeachers[teacherIndex],
+          "Programme Name": selectedClasses[0] // Use first selected class as programme name
+        };
+        
+        updateTeachersList(allTeachers);
+      }
+      
+      // Trigger data refresh
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
     } catch (error) {
       console.error('Error assigning classes:', error);
-      
       toast({
-        title: 'Failed to assign classes',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
+        title: "Error Assigning Classes",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
       });
-      
-      return false;
-    } finally {
-      setIsSaving(false);
+      throw error; // Re-throw to let the dialog component handle it
     }
   };
-  
+
   return {
     handleAssignClasses,
     saveClassAssignments,
-    isSaving
   };
 };

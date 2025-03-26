@@ -43,20 +43,18 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && !isLoading && deviceType && user) {
-      console.log('User authenticated:', user);
-      console.log('Login mode:', loginMode);
+      console.log('Authenticated, redirecting based on login mode:', loginMode);
       
       // If admin login, redirect to role assignment page
-      if (user.role === 'super-admin') {
-        console.log('User is super-admin, redirecting to role assignment');
+      if (user.role === 'super-admin' && loginMode === 'admin') {
         navigate('/role-assignment', { replace: true });
         return;
       }
       
       // For teachers, log device usage and redirect to appropriate dashboard
       logDeviceUsage(user, deviceType)
-        .then(() => {
-          console.log('Device usage logged successfully');
+        .then((logEntry) => {
+          console.log('Device usage logged successfully:', logEntry);
           
           // Redirect to appropriate dashboard based on device type
           if (deviceType === 'mobile') {

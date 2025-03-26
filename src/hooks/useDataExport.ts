@@ -1,67 +1,71 @@
 
 import { useState } from 'react';
-import * as XLSX from 'xlsx';
-import { queryDynamicTable } from '@/integrations/supabase/client';
-import { DynamicTableRow } from '@/integrations/supabase/custom-types';
+import { useToast } from '@/hooks/use-toast';
+import { excelService } from '@/services/excel';
+import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Hook for exporting data to Excel
- */
 export const useDataExport = () => {
   const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
-  /**
-   * Export table data to Excel
-   */
-  const exportToExcel = async (tableName: string, fileName: string) => {
+  const exportCurrentData = async () => {
     setIsExporting(true);
-    
     try {
-      // Fetch data from the dynamic table using updated queryDynamicTable helper
-      const { data, error } = await queryDynamicTable(tableName).select('*');
+      const { data: teachersData, error } = await supabase
+        .from('teachers')
+        .select('*');
+        
+      if (error) throw error;
       
-      if (error) {
-        throw error;
-      }
-      
-      if (!data || data.length === 0) {
-        throw new Error('No data to export');
-      }
-      
-      // Convert data for Excel format
-      const excelData = (data as any[]).map(row => ({
-        "Id": row.id,
-        "Programme Name": row.Programme_Name || '',
-        "Robe Email ID": row.Robe_Email_ID || '',
-        "Folder Email ID": row.Folder_Email_ID || '',
-        "Accompanying Teacher": row.Accompanying_Teacher || '',
-        "Folder in Charge": row.Folder_in_Charge || '',
-        "Class Section": row.Class_Section || '',
-        "Created At": row.created_at ? new Date(row.created_at).toLocaleString() : '',
-        "Updated At": row.updated_at ? new Date(row.updated_at).toLocaleString() : ''
+      const formattedData = teachersData.map(teacher => ({
+        'Programme Name': teacher.program_name,
+        'Robe Email ID': teacher.robe_email,
+        'Folder Email ID': teacher.folder_email,
+        'Accompanying Teacher': teacher.robe_in_charge,
+        'Folder in Charge': teacher.folder_in_charge,
+        'Class Wise/\nSection Wise': teacher.class_section
       }));
       
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
+      const csvContent = excelService.generateCSV(formattedData);
       
-      // Add the worksheet to the workbook
-      XLSX.utils.book_append_sheet(wb, ws, 'Teachers');
+      if (!csvContent) {
+        toast({
+          title: 'No data to export',
+          description: 'There are no teacher records currently loaded.',
+          variant: 'destructive',
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'teachers_data.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
-      // Generate Excel file and trigger download
-      XLSX.writeFile(wb, `${fileName}.xlsx`);
-      
-      return true;
+      toast({
+        title: 'Data exported successfully',
+        description: `Exported teacher records.`,
+      });
     } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      throw error;
+      console.error('Export error:', error);
+      toast({
+        title: 'Failed to export data',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: 'destructive',
+      });
     } finally {
       setIsExporting(false);
     }
   };
 
   return {
-    exportToExcel,
-    isExporting
+    isExporting,
+    exportCurrentData
   };
 };

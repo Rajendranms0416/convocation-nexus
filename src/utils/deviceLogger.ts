@@ -1,148 +1,148 @@
+
+import { User, DeviceLog } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@/types';
 
-export interface DeviceLog {
-  id: string;
-  userId: string;
-  userName: string;
-  userRole: string;
-  deviceType: 'mobile' | 'desktop';
-  userAgent: string;
-  timestamp: string;
-  ipAddress?: string;
-}
-
+// Log device usage to Supabase
 export const logDeviceUsage = async (user: User, deviceType: 'mobile' | 'desktop') => {
   try {
-    console.log('Logging device usage for user:', user.name, 'Device:', deviceType);
+    // Create a new log entry
+    const logEntry: DeviceLog = {
+      id: uuidv4(),
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      deviceType,
+      userAgent: navigator.userAgent,
+      timestamp: new Date(),
+      ipAddress: '127.0.0.1' // In a real app, you'd get this from the server
+    };
     
-    // Get device information
-    const userAgent = navigator.userAgent;
+    console.log(`Logging device usage for ${user.name}, device type: ${deviceType}`);
     
-    // Try to insert into device_logs table
-    try {
-      const { data, error } = await supabase
-        .from('device_logs')
-        .insert({
-          user_id: user.id,
-          user_name: user.name,
-          user_role: user.role,
-          device_type: deviceType,
-          user_agent: userAgent,
-          ip_address: 'Client IP not available client-side'
-        });
+    // Store in Supabase - Convert types to match what Supabase expects
+    const { error } = await supabase
+      .from('device_logs')
+      .insert({
+        id: logEntry.id,
+        user_id: logEntry.userId,
+        user_name: logEntry.userName,
+        user_role: logEntry.userRole,
+        device_type: logEntry.deviceType,
+        user_agent: logEntry.userAgent,
+        timestamp: logEntry.timestamp.toISOString(), // Convert Date to ISO string format
+        ip_address: logEntry.ipAddress
+      });
+    
+    if (error) {
+      console.error('Error inserting device log:', error);
       
-      if (error) {
-        throw error;
-      }
-      
-      console.log('Device usage logged successfully to database');
-      return true;
-    } catch (dbError) {
-      console.warn('Error logging to database, falling back to localStorage:', dbError);
-      
-      // Fallback to localStorage
-      const logs = JSON.parse(localStorage.getItem('device_logs') || '[]');
+      // Fallback to localStorage if Supabase fails
+      const storedLogs = localStorage.getItem('device_logs');
+      const logs: Array<Omit<DeviceLog, 'timestamp'> & { timestamp: string }> = storedLogs ? JSON.parse(storedLogs) : [];
       logs.push({
-        userId: user.id,
-        userName: user.name,
-        userRole: user.role,
-        deviceType,
-        userAgent,
-        timestamp: new Date().toISOString()
+        ...logEntry,
+        timestamp: logEntry.timestamp.toISOString() // Store as ISO string in localStorage
       });
       localStorage.setItem('device_logs', JSON.stringify(logs));
-      console.log('Device usage logged successfully to localStorage');
-      return true;
     }
+    
+    // Log to console
+    console.log(`Device usage logged: ${user.name} (${user.role}) using ${deviceType} device`);
+    
+    return logEntry;
   } catch (error) {
-    console.error('Error in logDeviceUsage:', error);
-    return false;
+    console.error('Error logging device usage:', error);
+    
+    // Create a minimal log
+    const logEntry: DeviceLog = {
+      id: uuidv4(),
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      deviceType,
+      userAgent: navigator.userAgent,
+      timestamp: new Date(),
+      ipAddress: '127.0.0.1'
+    };
+    
+    // Try to save to localStorage as fallback
+    try {
+      const storedLogs = localStorage.getItem('device_logs');
+      const logs: Array<Omit<DeviceLog, 'timestamp'> & { timestamp: string }> = storedLogs ? JSON.parse(storedLogs) : [];
+      logs.push({
+        ...logEntry,
+        timestamp: logEntry.timestamp.toISOString() // Store as ISO string in localStorage
+      });
+      localStorage.setItem('device_logs', JSON.stringify(logs));
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
+    
+    return logEntry;
   }
 };
 
-export const fetchDeviceLogs = async ({ limit = 100, offset = 0, filterBy = null, sortBy = 'timestamp', sortOrder = 'desc' }) => {
+// Get all device logs from Supabase
+export const getDeviceLogs = async (): Promise<DeviceLog[]> => {
   try {
-    console.log('Fetching device logs with params:', { limit, offset, filterBy, sortBy, sortOrder });
-    
-    // Start building the query
-    let query = supabase
+    const { data, error } = await supabase
       .from('device_logs')
-      .select('*');
-    
-    // Apply filters if provided
-    if (filterBy) {
-      if (filterBy.deviceType) {
-        query = query.eq('device_type', filterBy.deviceType);
-      }
-      
-      if (filterBy.userRole) {
-        query = query.eq('user_role', filterBy.userRole);
-      }
-      
-      if (filterBy.userId) {
-        query = query.eq('user_id', filterBy.userId);
-      }
-    }
-    
-    // Apply sorting
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-    
-    // Apply pagination
-    query = query.range(offset, offset + limit - 1);
-    
-    // Execute the query
-    const { data, error, count } = await query;
+      .select('*')
+      .order('timestamp', { ascending: false });
     
     if (error) {
-      console.warn('Error fetching device logs from Supabase, falling back to localStorage:', error);
-      
-      // Fallback to localStorage if database error
-      const localLogs = JSON.parse(localStorage.getItem('device_logs') || '[]');
-      console.log('Fallback to localStorage, found logs:', localLogs.length);
-      
-      return {
-        logs: localLogs.map((log: any, index: number) => ({
-          id: `local-${index}`,
-          userId: log.userId,
-          userName: log.userName,
-          userRole: log.userRole,
-          deviceType: log.deviceType,
-          userAgent: log.userAgent,
-          timestamp: log.timestamp,
-          ipAddress: 'local'
-        })),
-        total: localLogs.length
-      };
+      throw error;
     }
     
-    console.log('Successfully fetched device logs:', data?.length);
-    
-    // Transform the data to match the DeviceLog interface
-    const transformedLogs: DeviceLog[] = data.map(log => ({
-      id: String(log.id),
+    // Convert the data to match our DeviceLog type
+    return data.map((log: any) => ({
+      id: log.id,
       userId: log.user_id,
       userName: log.user_name,
       userRole: log.user_role,
-      deviceType: log.device_type,
+      deviceType: log.device_type as 'mobile' | 'desktop',
       userAgent: log.user_agent,
-      timestamp: log.created_at,
+      timestamp: new Date(log.timestamp),
       ipAddress: log.ip_address
     }));
-    
-    return {
-      logs: transformedLogs,
-      total: count || transformedLogs.length
-    };
   } catch (error) {
-    console.error('Error in fetchDeviceLogs:', error);
-    return { logs: [], total: 0 };
+    console.error('Error getting device logs from Supabase:', error);
+    
+    // Fallback to localStorage
+    try {
+      const storedLogs = localStorage.getItem('device_logs');
+      if (!storedLogs) return [];
+      
+      const parsedLogs = JSON.parse(storedLogs);
+      // Ensure all timestamp strings are properly converted to Date objects
+      return parsedLogs.map((log: any) => ({
+        ...log,
+        timestamp: new Date(log.timestamp)
+      }));
+    } catch (error) {
+      console.error('Error getting device logs from localStorage:', error);
+      return [];
+    }
   }
 };
 
-// This function is no longer needed since we'll create the table via SQL migrations
-// But we'll keep it for backward compatibility, it will just return true without doing anything
-export const createDeviceLogsTable = async () => {
-  console.log('Device logs table is expected to be created via migrations');
-  return true;
+// Clear all device logs
+export const clearDeviceLogs = async (): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('device_logs')
+      .delete()
+      .neq('id', 'placeholder'); // Delete all records
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Also clear localStorage backup
+    localStorage.removeItem('device_logs');
+    console.log('Device logs cleared');
+  } catch (error) {
+    console.error('Error clearing device logs:', error);
+  }
 };

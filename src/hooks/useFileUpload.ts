@@ -1,108 +1,161 @@
 
 import { useState } from 'react';
-import { toast } from './use-toast';
-import * as XLSX from 'xlsx';
-import { updateTeachersList } from '@/utils/authHelpers';
+import { useToast } from '@/hooks/use-toast';
+import { excelService } from '@/services/excel';
 
-export const useFileUpload = () => {
+interface UseFileUploadOptions {
+  onDataLoaded: (data: any[], sessionInfo: string) => void;
+}
+
+export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
+  const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [data, setData] = useState<any[] | null>(null);
-  const [fileUploaded, setFileUploaded] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [fileInfo, setFileInfo] = useState<string | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<string>('');
+  const { toast } = useToast();
 
-  /**
-   * Parses an Excel file and extracts data
-   */
-  const parseExcelFile = async (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = e.target?.result;
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(worksheet);
-          resolve(json);
-        } catch (err) {
-          reject(new Error('Failed to parse Excel file'));
-        }
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsBinaryString(file);
-    });
-  };
-
-  /**
-   * Main function to handle file uploads - simplified to skip database operations
-   */
-  const uploadFile = async (file: File, sessionInfo: string) => {
-    setIsUploading(true);
-    setError(null);
-    setFileName(file.name);
-    setFileUploaded(false);
+  // Function to parse session info from filename
+  const parseSessionInfo = (filename: string): string => {
+    // Default session if we can't extract anything
+    let session = "April 22, 2023 - Morning (09:00 AM)";
     
     try {
-      // 1. Parse the Excel file
-      const parsedData = await parseExcelFile(file);
-      setData(parsedData);
+      // Try to extract date and time from filename
+      // Expected format: something_DD-MM-YYYY_Morning.xlsx or similar
+      const dateMatch = filename.match(/(\d{1,2})[-_](\d{1,2})[-_](\d{4})/);
+      const timeMatch = filename.match(/morning|evening|afternoon/i);
       
-      if (parsedData.length === 0) {
-        throw new Error('No data found in Excel file');
+      if (dateMatch) {
+        const day = dateMatch[1];
+        const month = dateMatch[2];
+        const year = dateMatch[3];
+        
+        // Convert month number to name
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"];
+        const monthName = monthNames[parseInt(month) - 1] || "April";
+        
+        // Default time is morning if not specified
+        const timeOfDay = timeMatch 
+          ? timeMatch[0].charAt(0).toUpperCase() + timeMatch[0].slice(1).toLowerCase() 
+          : "Morning";
+        
+        const startTime = timeOfDay === "Morning" ? "09:00 AM" 
+                        : timeOfDay === "Afternoon" ? "01:00 PM" 
+                        : "05:00 PM";
+        
+        session = `${monthName} ${day}, ${year} - ${timeOfDay} (${startTime})`;
+      }
+    } catch (error) {
+      console.error("Error parsing session info:", error);
+    }
+    
+    return session;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      
+      const validExtensions = ['.csv', '.xlsx', '.xls'];
+      const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
+      
+      if (!validExtensions.includes(fileExtension)) {
+        setUploadError(`Invalid file type. Please select a CSV or Excel file (${validExtensions.join(', ')})`);
+        setFile(null);
+        setFileInfo(null);
+        setSessionInfo('');
+        return;
       }
       
-      // Transform the data for consistency with our expected format
-      const transformedData = parsedData.map((item, index) => ({
-        ...item,
-        id: index + 1,
-        Programme_Name: item['Programme Name'] || '',
-        Robe_Email_ID: item['Robe Email ID'] || '',
-        Folder_Email_ID: item['Folder Email ID'] || '',
-        Accompanying_Teacher: item['Accompanying Teacher'] || '',
-        Folder_in_Charge: item['Folder in Charge'] || '',
-        Class_Section: item['Class Wise/Section Wise'] || '',
-      }));
+      // Parse session info from filename
+      const extractedSession = parseSessionInfo(selectedFile.name);
+      setSessionInfo(extractedSession);
       
-      // Save transformed data to localStorage with session info
-      updateTeachersList(transformedData, sessionInfo);
+      setFile(selectedFile);
+      setUploadError(null);
+      setFileInfo(`Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      setUploadError('Please select a file to upload');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+      let parsedData;
       
-      setFileUploaded(true);
+      if (fileExtension === '.csv') {
+        const fileContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (typeof e.target?.result === 'string') {
+              resolve(e.target.result);
+            } else {
+              reject(new Error('Failed to read file'));
+            }
+          };
+          reader.onerror = () => reject(new Error('Error reading file'));
+          reader.readAsText(file);
+        });
+        
+        parsedData = excelService.parseCSV(fileContent, true);
+      } else {
+        const fileBuffer = await file.arrayBuffer();
+        parsedData = await excelService.parseExcel(fileBuffer);
+      }
+      
+      console.log('Parsed data:', parsedData);
+      
+      // Minimal validation - just check if there's data
+      if (!parsedData || parsedData.length === 0) {
+        throw new Error('No data found in the file');
+      }
+      
+      // Save the data to localStorage with the session info
+      excelService.saveTeacherData(parsedData, sessionInfo);
       
       toast({
         title: 'File processed successfully',
-        description: `${transformedData.length} records loaded from file`,
+        description: `Loaded ${parsedData.length} records for ${sessionInfo}.`,
+        variant: 'default',
       });
       
-      // Fire event to notify that teacher data has been updated
-      const customEvent = new CustomEvent('teacherDataUpdated', {
-        detail: { session: sessionInfo }
-      });
-      window.dispatchEvent(customEvent);
+      onDataLoaded(parsedData, sessionInfo);
       
-      return { data: transformedData, sessionInfo };
-    } catch (err) {
-      console.error('File upload error:', err);
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      // Notify any listeners that data has been updated
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated', { 
+        detail: { session: sessionInfo } 
+      }));
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
       
       toast({
-        title: 'File processing failed',
-        description: err instanceof Error ? err.message : 'An unknown error occurred',
+        title: 'Failed to process file',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: 'destructive',
       });
-      
-      return null;
     } finally {
       setIsUploading(false);
     }
   };
 
   return {
-    uploadFile,
+    file,
+    fileInfo,
+    sessionInfo,
     isUploading,
-    error,
-    fileName,
-    data,
-    fileUploaded
+    uploadError,
+    handleFileChange,
+    handleUpload
   };
 };

@@ -1,17 +1,8 @@
 
 import { useTeacherState } from './teacher/useTeacherState';
 import { useTeacherOperations } from './teacher/useTeacherOperations';
+import { useClassAssignment } from './teacher/useClassAssignment';
 import { useTeacherActions } from './teacher/useTeacherActions';
-import { supabase } from '@/integrations/supabase/client';
-import { Role } from '@/types';
-
-interface DatabaseInfo {
-  id: string;
-  tableName: string;
-  session: string;
-  uploadDate: string;
-  recordCount: number;
-}
 
 /**
  * Main hook for teacher management functionality
@@ -45,17 +36,23 @@ export const useTeacherManagement = () => {
     loadTeacherData
   } = teacherState;
 
-  // Get base operations - ensure the types match what's needed
+  // Get base operations
   const { 
     handleAddTeacher,
-    handleUpdateTeacher: baseHandleUpdateTeacher,
-    handleDeleteTeacher,
-    handleAssignClasses: baseHandleAssignClasses,
-    saveClassAssignments: baseSaveClassAssignments
+    handleUpdateTeacher,
+    handleDeleteTeacher
   } = useTeacherOperations(
     teachers, 
-    setTeachers,
-    setIsEditDialogOpen,
+    setTeachers, 
+    setIsEditDialogOpen
+  );
+
+  const { 
+    handleAssignClasses: baseHandleAssignClasses, 
+    saveClassAssignments: baseSaveClassAssignments 
+  } = useClassAssignment(
+    teachers, 
+    setTeachers, 
     setIsClassAssignDialogOpen
   );
 
@@ -79,12 +76,7 @@ export const useTeacherManagement = () => {
     selectedClasses,
     setSelectedClasses,
     setIsEditDialogOpen,
-    // Create wrapper function to adapt the incompatible function signatures
-    handleUpdateTeacher: (teacher, name, email, role, classes) => {
-      // Pass tableName as undefined if classes is an array
-      return baseHandleUpdateTeacher(teacher.id, name, email, role, 
-        Array.isArray(classes) ? undefined : classes);
-    },
+    handleUpdateTeacher,
     baseHandleAssignClasses,
     baseSaveClassAssignments
   });

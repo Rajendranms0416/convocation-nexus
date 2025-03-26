@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { CardContent } from '@/components/ui/card';
+import ExcelUpload from '@/components/admin/ExcelUpload';
 import TeachersList from '@/components/admin/teachers/TeachersList';
 import AddTeacherDialog from '@/components/admin/teachers/AddTeacherDialog';
 import SessionSelector from '@/components/admin/teachers/SessionSelector';
-import FileUploader from '@/components/admin/excel/FileUploader';
 
 interface TeacherManagementContentProps {
   sessions: string[];
@@ -18,7 +18,6 @@ interface TeacherManagementContentProps {
   onEditTeacher: (teacher: any) => void;
   onDeleteTeacher: (id: string) => void;
   onAssignClasses: (teacher: any) => void;
-  onDataLoaded: (data: any[], sessionInfo: string) => void;
 }
 
 const TeacherManagementContent: React.FC<TeacherManagementContentProps> = ({
@@ -32,12 +31,10 @@ const TeacherManagementContent: React.FC<TeacherManagementContentProps> = ({
   onAddTeacher,
   onEditTeacher,
   onDeleteTeacher,
-  onAssignClasses,
-  onDataLoaded
+  onAssignClasses
 }) => {
   return (
     <CardContent className="space-y-6">
-      {/* Session selector */}
       <SessionSelector 
         sessions={sessions}
         currentSession={currentSession}
@@ -46,10 +43,7 @@ const TeacherManagementContent: React.FC<TeacherManagementContentProps> = ({
         isRefreshing={isRefreshing}
       />
       
-      <div className="p-4 border rounded-md bg-card">
-        <h3 className="text-lg font-medium mb-4">Upload Teacher Data</h3>
-        <FileUploader onDataLoaded={onDataLoaded} />
-      </div>
+      <ExcelUpload />
       
       <div className="flex justify-between mb-6">
         <h3 className="text-lg font-medium">

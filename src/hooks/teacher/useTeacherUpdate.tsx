@@ -1,125 +1,95 @@
 
-import { toast } from '@/hooks/use-toast';
-import { queryDynamicTable, supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Role } from '@/types';
+import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Hook to manage teacher updates
+ * Hook for updating teacher functionality
  */
 export const useTeacherUpdate = (
   teachers: any[],
   setTeachers: React.Dispatch<React.SetStateAction<any[]>>,
-  setIsEditDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setIsEditDialogOpen: React.Dispatch<React.SetStateAction<boolean>>,
 ) => {
-  /**
-   * Update a teacher's information
-   */
+  const { toast } = useToast();
+
   const handleUpdateTeacher = async (
-    id: string,
-    name: string,
-    email: string,
-    role: string,
-    tableName?: string
+    currentTeacher: any,
+    newTeacherName: string,
+    newTeacherEmail: string,
+    newTeacherRole: Role,
+    selectedClasses: string[]
   ) => {
+    if (!currentTeacher) return;
+    
     try {
-      // Find the teacher to update
-      const teacher = teachers.find(t => t.id === id);
-      
-      if (!teacher) {
-        throw new Error(`Teacher with ID ${id} not found`);
-      }
-      
-      // Check if we're using a dynamic table (from file upload)
-      if (tableName) {
-        // Update in dynamic table
-        const updatedData = {
-          Programme_Name: name,
-          Robe_Email_ID: email,
-          Folder_Email_ID: email,
-          Accompanying_Teacher: role === 'accompanying' ? name : '',
-          Folder_in_Charge: role === 'folder' ? name : '',
-          updated_at: new Date().toISOString()
-        };
-        
-        // Cast to any to avoid TypeScript errors with dynamic tables
-        const { error: updateError } = await queryDynamicTable(tableName)
-          .update(updatedData as any)
-          .eq('id', id);
-        
-        if (updateError) {
-          throw updateError;
-        }
-      } else {
-        // Update in the standard teachers table - convert string ID to number explicitly
-        const updatedData = {
-          "Programme Name": name,
-          "Robe Email ID": email,
-          "Folder Email ID": email,
-          "Robe in Charge": role === 'robe' ? name : '',
-          "Folder in Charge": role === 'folder' ? name : ''
-        };
-        
-        // Cast to any to avoid TypeScript errors with dynamic tables
-        const { error: updateError } = await supabase
-          .from('teachers')
-          .update(updatedData as any)
-          .eq('id', parseInt(id, 10));  // Explicitly parse to number with base 10
-        
-        if (updateError) {
-          throw updateError;
-        }
-      }
-      
-      // Update local state
-      const updatedTeachers = teachers.map(t => {
-        if (t.id === id) {
-          // Handle type consistency based on table type
-          if (tableName) {
-            return {
-              ...t,
-              Programme_Name: name,
-              Robe_Email_ID: email,
-              Folder_Email_ID: email,
-              Accompanying_Teacher: role === 'accompanying' ? name : '',
-              Folder_in_Charge: role === 'folder' ? name : ''
-            };
-          } else {
-            return {
-              ...t,
-              "Programme Name": name,
-              "Robe Email ID": email,
-              "Folder Email ID": email,
-              "Robe in Charge": role === 'robe' ? name : '',
-              "Folder in Charge": role === 'folder' ? name : ''
-            };
-          }
-        }
-        return t;
-      });
+      // Update in the UI first
+      const updatedTeachers = teachers.map(teacher => 
+        teacher.id === currentTeacher.id 
+          ? { 
+              ...teacher, 
+              name: newTeacherName, 
+              email: newTeacherEmail, 
+              role: newTeacherRole,
+              assignedClasses: selectedClasses
+            } 
+          : teacher
+      );
       
       setTeachers(updatedTeachers);
       
+      // Update in the database
+      const { error } = await supabase
+        .from('teachers')
+        .update({
+          program_name: selectedClasses[0] || '',
+          robe_email: newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
+          folder_email: newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
+          robe_in_charge: newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
+          folder_in_charge: newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentTeacher.dbId || '');
+      
+      if (error) {
+        console.error('Supabase update error:', error);
+        // Continue anyway to update local storage
+      }
+      
+      // Update in local storage
+      const allTeachers = getAllTeachers();
+      const index = parseInt(currentTeacher.id) - 1;
+      
+      if (index >= 0 && index < allTeachers.length) {
+        allTeachers[index] = {
+          ...allTeachers[index],
+          "Programme Name": selectedClasses[0] || allTeachers[index]["Programme Name"],
+          "Robe Email ID": newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
+          "Folder Email ID": newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
+          "Accompanying Teacher": newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
+          "Folder in Charge": newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
+        };
+        
+        updateTeachersList(allTeachers);
+      }
+      
       toast({
-        title: 'Teacher updated successfully',
-        description: `Teacher "${name}" has been updated.`,
+        title: "Teacher Updated",
+        description: `${newTeacherName}'s information has been updated`,
       });
       
-      // Close the dialog
       setIsEditDialogOpen(false);
-      
-      return true;
     } catch (error) {
       console.error('Error updating teacher:', error);
-      
       toast({
-        title: 'Failed to update teacher',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
+        title: "Error Updating Teacher",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
       });
-      
-      return false;
     }
   };
-  
+
   return {
     handleUpdateTeacher
   };

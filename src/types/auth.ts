@@ -1,21 +1,13 @@
 
-export type Role = 'super-admin' | 'robe-in-charge' | 'folder-in-charge' | 'presenter';
+import { User, Role } from '@/types';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatar?: string;
-  assignedClasses?: string[];
-}
-
-export interface AuthState {
+export interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string, deviceType: 'mobile' | 'desktop', loginMode?: 'teacher' | 'admin') => Promise<void>;
+  logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: User | null;
-  error: Error | null;
 }
 
-// Default super admin email
-export const SUPER_ADMIN_EMAIL = 'admin@example.com';
+export const SUPER_ADMIN_EMAIL = 'admin@convocation.edu';
+export const SUPER_ADMIN_PASSWORD = 'admin123';

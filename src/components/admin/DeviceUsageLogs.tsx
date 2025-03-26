@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { DeviceLog } from '@/types';
-import { fetchDeviceLogs } from '@/utils/deviceLogger';
+import { getDeviceLogs, clearDeviceLogs } from '@/utils/deviceLogger';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Smartphone, Monitor, Trash2, RefreshCw } from 'lucide-react';
@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 const DeviceUsageLogs: React.FC = () => {
   const [logs, setLogs] = useState<DeviceLog[]>([]);
@@ -30,7 +29,7 @@ const DeviceUsageLogs: React.FC = () => {
   const refreshLogs = async () => {
     setIsLoading(true);
     try {
-      const { logs: fetchedLogs } = await fetchDeviceLogs({});
+      const fetchedLogs = await getDeviceLogs();
       console.log('Fetched logs:', fetchedLogs);
       setLogs(fetchedLogs);
       toast({
@@ -53,11 +52,7 @@ const DeviceUsageLogs: React.FC = () => {
     if (confirm('Are you sure you want to clear all device logs? This action cannot be undone.')) {
       setIsLoading(true);
       try {
-        // Use direct Supabase query to clear logs since we don't have a clearDeviceLogs function
-        const { error } = await supabase.from('device_logs').delete().neq('id', 'preserve-none');
-        
-        if (error) throw error;
-        
+        await clearDeviceLogs();
         setLogs([]);
         toast({
           title: "Logs cleared",

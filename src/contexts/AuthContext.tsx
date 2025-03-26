@@ -1,104 +1,67 @@
 
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
+import { AuthContextType } from '@/types/auth';
 import { useAuthOperations } from '@/hooks/useAuthOperations';
-import { logDeviceUsage } from '@/utils/deviceLogger';
-import { Role, User } from '@/types';
-
-interface AuthContextType {
-  user: User | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  login: (email: string, password: string, deviceType: 'mobile' | 'desktop', loginMode?: 'teacher' | 'admin') => Promise<boolean>;
-  logout: () => void;
-}
+import { User } from '@/types';
+import { getTeacherData } from '@/services/excel/database';
+import { loadTeachersFromStorage } from '@/utils/authHelpers';
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  setUser: () => {},
+  login: async () => {},
+  logout: () => {},
   isAuthenticated: false,
-  isLoading: false,
-  setIsLoading: () => {},
-  login: async () => false,
-  logout: () => {}
+  isLoading: true,
 });
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { login: baseLogin, logout: baseLogout } = useAuthOperations();
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { 
+    user, 
+    setUser, 
+    isLoading, 
+    setIsLoading, 
+    login, 
+    logout 
+  } = useAuthOperations();
 
-  // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('convocation_user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser) as User;
-        setUser(parsedUser);
-        console.log("Restored user from localStorage:", parsedUser);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('convocation_user');
-      }
-    }
-  }, []);
-
-  const login = async (
-    email: string, 
-    password: string, 
-    deviceType: 'mobile' | 'desktop', 
-    loginMode?: 'teacher' | 'admin'
-  ): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      console.log(`Starting login with mode: ${loginMode}, email: ${email}`);
-      const success = await baseLogin(email, password);
+    const initializeAuth = async () => {
+      setIsLoading(true);
       
-      if (success) {
-        // Retrieve user from localStorage
+      try {
+        // Check for stored user in localStorage
         const storedUser = localStorage.getItem('convocation_user');
         if (storedUser) {
-          const parsedUser = JSON.parse(storedUser) as User;
-          console.log('Loaded user from storage:', parsedUser);
-          setUser(parsedUser);
-          
-          // Log device usage
           try {
-            await logDeviceUsage(parsedUser, deviceType);
+            const parsedUser = JSON.parse(storedUser) as User;
+            setUser(parsedUser);
+            
+            // Load teacher data from database when user is present
+            await getTeacherData()
+              .then(() => console.log('Teacher data loaded on app init'))
+              .catch(err => console.error('Failed to load teacher data on init:', err));
           } catch (error) {
-            console.error('Failed to log device usage, but login still successful:', error);
+            console.error('Error parsing stored user:', error);
+            localStorage.removeItem('convocation_user');
           }
         }
-        return true;
-      } else {
-        console.error('Login failed');
-        return false;
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    baseLogout();
-    setUser(null);
-  };
-
-  const isAuthenticated = !!user;
+    };
+    
+    initializeAuth();
+  }, [setUser, setIsLoading]);
 
   return (
     <AuthContext.Provider value={{
       user,
-      setUser,
-      isAuthenticated,
-      isLoading,
-      setIsLoading,
       login,
-      logout
+      logout,
+      isAuthenticated: !!user,
+      isLoading,
     }}>
       {children}
     </AuthContext.Provider>

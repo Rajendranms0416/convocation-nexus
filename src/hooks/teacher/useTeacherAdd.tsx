@@ -1,120 +1,95 @@
 
-import { toast } from '@/hooks/use-toast';
-import { queryDynamicTable, supabase } from '@/integrations/supabase/client';
-import { DynamicTableInsert } from '@/integrations/supabase/custom-types';
+import { useToast } from '@/hooks/use-toast';
+import { Role } from '@/types';
+import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Hook to manage adding new teachers
+ * Hook for adding teacher functionality
  */
 export const useTeacherAdd = (
   teachers: any[],
-  setTeachers: React.Dispatch<React.SetStateAction<any[]>>
+  setTeachers: React.Dispatch<React.SetStateAction<any[]>>,
 ) => {
-  /**
-   * Add a new teacher to the database
-   */
+  const { toast } = useToast();
+
   const handleAddTeacher = async (
-    name: string,
-    email: string,
-    role: string,
-    emailType: string,
-    classes: string[],
-    tableName?: string
+    name: string, 
+    email: string, 
+    role: Role, 
+    emailType: 'robe' | 'folder', 
+    classes: string[]
   ) => {
+    if (!name || !email || !role) {
+      toast({
+        title: "Invalid Input",
+        description: "Please fill all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
-      let newTeacherId: number = teachers.length > 0 
-        ? Math.max(...teachers.map(t => typeof t.id === 'number' ? t.id : 0)) + 1
-        : 1;
+      // Create a new teacher entry in the Excel-compatible format
+      const newTeacherRaw: Record<string, string> = {
+        "Programme Name": classes[0] || '',
+        "Robe Email ID": emailType === 'robe' ? email : '',
+        "Folder Email ID": emailType === 'folder' ? email : '',
+        "Accompanying Teacher": emailType === 'robe' ? name : '',
+        "Folder in Charge": emailType === 'folder' ? name : '',
+        "Class Wise/\nSection Wise": '',
+      };
       
-      // Check if we're using a dynamic table (from file upload)
-      if (tableName) {
-        // Add to dynamic table
-        const newTeacher: DynamicTableInsert = {
-          Programme_Name: name,
-          Robe_Email_ID: emailType === 'robe' ? email : '',
-          Folder_Email_ID: emailType === 'folder' ? email : '',
-          Accompanying_Teacher: role === 'accompanying' ? name : '',
-          Folder_in_Charge: role === 'folder' ? name : '',
-          Class_Section: classes.join(', ')
-        };
-        
-        // Cast to any to avoid TypeScript errors with dynamic tables
-        const { data, error } = await queryDynamicTable(tableName)
-          .insert(newTeacher as any)
-          .select();
-        
-        if (error) {
-          throw error;
-        }
-        
-        if (data && data.length > 0) {
-          newTeacherId = (data[0] as any).id;
-        }
-      } else {
-        // Add to the standard teachers table
-        const { data, error } = await supabase
-          .from('teachers')
-          .insert({
-            "Programme Name": name,
-            "Robe Email ID": emailType === 'robe' ? email : '',
-            "Folder Email ID": emailType === 'folder' ? email : '',
-            "Folder in Charge": role === 'folder' ? name : '',
-            "Robe in Charge": role === 'robe' ? name : ''
-          } as any)
-          .select();
-        
-        if (error) {
-          throw error;
-        }
-        
-        if (data && data.length > 0) {
-          newTeacherId = (data[0] as any).id;
-        }
+      // Insert into database
+      const { data: insertedTeacher, error } = await supabase
+        .from('teachers')
+        .insert({
+          program_name: classes[0] || '',
+          robe_email: emailType === 'robe' ? email : '',
+          folder_email: emailType === 'folder' ? email : '',
+          robe_in_charge: emailType === 'robe' ? name : '',
+          folder_in_charge: emailType === 'folder' ? name : '',
+          class_section: '',
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        throw error;
       }
       
-      // Create a new teacher object for the local state
-      const newTeacher = tableName 
-        ? {
-            id: newTeacherId,
-            Programme_Name: name,
-            Robe_Email_ID: emailType === 'robe' ? email : '',
-            Folder_Email_ID: emailType === 'folder' ? email : '',
-            Accompanying_Teacher: role === 'accompanying' ? name : '',
-            Folder_in_Charge: role === 'folder' ? name : '',
-            Class_Section: classes.join(', '),
-            tableName
-          }
-        : {
-            id: newTeacherId,
-            "Programme Name": name,
-            "Robe Email ID": emailType === 'robe' ? email : '',
-            "Folder Email ID": emailType === 'folder' ? email : '',
-            "Folder in Charge": role === 'folder' ? name : '',
-            "Robe in Charge": role === 'robe' ? name : ''
-          };
+      // Get the current teachers list and add the new teacher for local storage
+      const currentTeachers = getAllTeachers();
+      const updatedTeachers = [...currentTeachers, newTeacherRaw];
+      updateTeachersList(updatedTeachers);
       
-      // Update the local state
-      setTeachers([...teachers, newTeacher]);
+      // Format for the UI table
+      const newTeacherFormatted = {
+        id: (teachers.length + 1).toString(),
+        name: name,
+        email: email,
+        role: role,
+        program: classes[0] || '',
+        assignedClasses: classes,
+        rawData: newTeacherRaw
+      };
+      
+      setTeachers([...teachers, newTeacherFormatted]);
       
       toast({
-        title: 'Teacher added successfully',
-        description: `Teacher "${name}" has been added to the database.`,
+        title: "Teacher Added",
+        description: `${name} has been added as ${role}`,
       });
-      
-      return true;
     } catch (error) {
       console.error('Error adding teacher:', error);
-      
       toast({
-        title: 'Failed to add teacher',
-        description: error instanceof Error ? error.message : 'An unknown error occurred',
-        variant: 'destructive',
+        title: "Error Adding Teacher",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
       });
-      
-      return false;
     }
   };
-  
+
   return {
     handleAddTeacher
   };

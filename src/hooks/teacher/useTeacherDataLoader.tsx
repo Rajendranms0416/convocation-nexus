@@ -1,79 +1,97 @@
 
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect, useCallback } from 'react';
 import { getTeachersBySession } from '@/utils/authHelpers';
+import { Role } from '@/types';
 
 /**
- * A hook to load teacher data from localStorage
+ * Hook to load and format teacher data based on selected session
  */
-export const useTeacherDataLoader = (setTeachers: React.Dispatch<React.SetStateAction<any[]>>) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+export const useTeacherDataLoader = () => {
+  const [teachers, setTeachers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentSession, setCurrentSession] = useState<string>("April 22, 2023 - Morning (09:00 AM)");
 
-  /**
-   * Load teacher data for a specific session from localStorage
-   */
-  const loadTeacherData = async (sessionInfo: string) => {
-    console.log('Loading teacher data for session:', sessionInfo);
-    setLoading(true);
-    setError(null);
-
+  const loadTeacherData = useCallback(async (session: string = currentSession) => {
+    setIsLoading(true);
+    setCurrentSession(session);
+    
     try {
-      // Load data from localStorage by session name
-      const teacherData = getTeachersBySession(sessionInfo);
-      console.log('Teacher data retrieved from localStorage:', teacherData);
+      // Load from localStorage for the specific session
+      const loadedTeachers = getTeachersBySession(session);
       
-      if (teacherData && teacherData.length > 0) {
-        // Transform the data to match our teacher schema if needed
-        const transformedData = teacherData.map(item => ({
-          ...item,
-          // Standardize names for unified handling in the UI
-          id: item.id || Math.random().toString(36).substr(2, 9),
-          name: item.Programme_Name || item['Programme Name'] || 'Unnamed Program',
-          email: item.Robe_Email_ID || item['Robe Email ID'] || 
-                 item.Folder_Email_ID || item['Folder Email ID'] || '',
-          role: item.Accompanying_Teacher ? 'robe-in-charge' : 
-                item.Folder_in_Charge ? 'folder-in-charge' : 'unknown'
-        }));
-        
-        console.log('Transformed data:', transformedData.slice(0, 2));
-        setTeachers(transformedData);
-        setLoading(false);
-        
-        return transformedData;
-      } else {
-        // If no data found for this session, set empty array
-        console.log('No data found for session:', sessionInfo);
-        setTeachers([]);
-        setLoading(false);
-        
-        useToast().toast({
-          title: 'No data for this session',
-          description: `No teacher data found for session: ${sessionInfo}. Upload a file to add data.`,
-          variant: 'default',
-        });
-        
-        return [];
-      }
-    } catch (err) {
-      console.error('Error loading teacher data:', err);
-      setError(err instanceof Error ? err : new Error('Unknown error loading teacher data'));
+      // Array to hold our formatted teachers
+      const formattedTeachers: any[] = [];
       
-      useToast().toast({
-        title: 'Failed to load teacher data',
-        description: err instanceof Error ? err.message : 'An unknown error occurred',
-        variant: 'destructive',
+      // Transform to the format needed for the table
+      loadedTeachers.forEach((teacher, index) => {
+        // Process teacher with Robe Email ID
+        if (teacher['Robe Email ID'] && teacher['Robe Email ID'].includes('@')) {
+          formattedTeachers.push({
+            id: `robe-${index + 1}`,
+            name: teacher['Accompanying Teacher'] || 'Unknown',
+            email: teacher['Robe Email ID'],
+            role: 'robe-in-charge' as Role,
+            program: teacher['Programme Name'] || '',
+            section: teacher['Class Wise/\nSection Wise'] || '',
+            assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
+            session: session,
+            rawData: teacher
+          });
+        }
+        
+        // Process teacher with Folder Email ID (as a separate teacher entry)
+        if (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@')) {
+          formattedTeachers.push({
+            id: `folder-${index + 1}`,
+            name: teacher['Folder in Charge'] || 'Unknown',
+            email: teacher['Folder Email ID'],
+            role: 'folder-in-charge' as Role,
+            program: teacher['Programme Name'] || '',
+            section: teacher['Class Wise/\nSection Wise'] || '',
+            assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
+            session: session,
+            rawData: teacher
+          });
+        }
       });
       
+      console.log(`Loaded and formatted teachers for session ${session}:`, formattedTeachers);
+      setTeachers(formattedTeachers);
+    } catch (error) {
+      console.error('Error loading teachers:', error);
       setTeachers([]);
-      setLoading(false);
-      return [];
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [currentSession]);
+
+  // Set up initial data loading and update listener
+  useEffect(() => {
+    loadTeacherData(currentSession);
+    
+    // Listen for data updates from other components
+    const handleDataUpdate = (event: CustomEvent) => {
+      // If the event includes a session, load data for that session
+      if (event.detail?.session) {
+        loadTeacherData(event.detail.session);
+      } else {
+        loadTeacherData(currentSession);
+      }
+    };
+    
+    window.addEventListener('teacherDataUpdated', handleDataUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('teacherDataUpdated', handleDataUpdate as EventListener);
+    };
+  }, [loadTeacherData, currentSession]);
 
   return {
-    loading,
-    error,
-    loadTeacherData
+    teachers,
+    setTeachers,
+    isLoading,
+    currentSession,
+    setCurrentSession,
+    loadTeacherData,
   };
 };

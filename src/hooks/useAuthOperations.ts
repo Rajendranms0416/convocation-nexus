@@ -1,130 +1,158 @@
 
 import { useState } from 'react';
-import { useToast } from './use-toast';
-import { Role } from '@/types';
+import { User } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
-// Mock data structure for users
-interface UserCredentials {
-  id: string;
-  email: string;
-  name: string;
-  password: string;
-  role: Role;
-}
-
-// Mock user database
-const MOCK_USERS: UserCredentials[] = [
-  {
-    id: '1',
-    email: 'admin@example.com',
-    name: 'Admin User',
-    password: 'password123',
-    role: 'super-admin'
-  },
-  {
-    id: '2',
-    email: 'robe@example.com',
-    name: 'Robe Teacher',
-    password: 'password123',
-    role: 'robe-in-charge'
-  },
-  {
-    id: '3',
-    email: 'folder@example.com',
-    name: 'Folder Teacher',
-    password: 'password123',
-    role: 'folder-in-charge'
-  },
-  {
-    id: '4',
-    email: 'presenter@example.com',
-    name: 'Presenter',
-    password: 'password123',
-    role: 'presenter'
-  }
-];
-
-// Simple encoding function for the token
-const createToken = (user: UserCredentials): string => {
-  const payload = {
-    sub: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 24 hours
-  };
-  return btoa(JSON.stringify(payload));
-};
+import { logDeviceUsage } from '@/utils/deviceLogger';
+import { 
+  handleSession, 
+  createAdminUser, 
+  determineUserRole, 
+  verifyTeacherEmail,
+  getTeacherByEmail,
+  loadTeachersFromStorage 
+} from '@/utils/authHelpers';
+import { SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD } from '@/types/auth';
 
 export const useAuthOperations = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  // Make sure we load any teachers data from storage when the hook is initialized
+  loadTeachersFromStorage();
+
+  const login = async (
+    email: string, 
+    password: string, 
+    deviceType: 'mobile' | 'desktop' = 'desktop', 
+    loginMode: 'teacher' | 'admin' = 'teacher'
+  ) => {
     try {
       setIsLoading(true);
-      console.log("Login attempt with email:", email);
+      // Strip whitespace from email
+      const cleanEmail = email.trim();
+      console.log(`Attempting login with email: ${cleanEmail}, device: ${deviceType}, mode: ${loginMode}`);
       
-      // We'll check both our mock database and Supabase
-      // First, try to find the user in our mock database
-      const user = MOCK_USERS.find(u => u.email === email);
-
-      if (!user || user.password !== password) {
-        console.error("Invalid credentials. User not found or password doesn't match");
+      // Handle super admin login
+      if (cleanEmail === SUPER_ADMIN_EMAIL || loginMode === 'admin') {
+        console.log('Attempting admin login');
+        
+        // For admin login, just check the hardcoded password
+        if (cleanEmail === SUPER_ADMIN_EMAIL && password !== SUPER_ADMIN_PASSWORD) {
+          throw new Error('Invalid admin credentials');
+        }
+        
+        // Create admin user object without actually signing up in Supabase
+        const adminUser: User = {
+          id: 'admin-user-id', // Using a placeholder ID for admin
+          name: 'Super Admin',
+          email: SUPER_ADMIN_EMAIL,
+          role: 'super-admin',
+          avatar: `https://ui-avatars.com/api/?name=Super+Admin&background=random&color=fff`,
+        };
+        
+        // Set the admin user in state
+        setUser(adminUser);
+        
+        // Store admin user in localStorage for persistence
+        localStorage.setItem('convocation_user', JSON.stringify(adminUser));
+        
         toast({
-          title: 'Login Failed',
-          description: 'Invalid email or password',
-          variant: 'destructive',
+          title: 'Admin Login successful',
+          description: 'Welcome, Super Admin!',
         });
-        return false;
+        
+        setIsLoading(false);
+        return;
       }
       
-      console.log('Found user with role:', user.role);
-
-      // Create a JWT-like token
-      const token = createToken(user);
-
-      // Store the token and user data
-      localStorage.setItem('convocation_token', token);
-      localStorage.setItem('convocation_user', JSON.stringify({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }));
-
-      toast({
-        title: 'Login Successful',
-        description: `Welcome back, ${user.name}`,
-      });
+      // If not admin login, proceed with teacher login flow
+      // First check if the email exists in teacher list before signup/login
+      const isTeacher = verifyTeacherEmail(cleanEmail);
       
-      return true;
-    } catch (error) {
-      console.error('Login error:', error);
+      if (!isTeacher) {
+        console.error('Email not found in teacher list:', cleanEmail);
+        throw new Error('Email not found in authorized teachers list');
+      }
+      
+      const teacher = getTeacherByEmail(cleanEmail);
+      console.log('Teacher found:', teacher);
+      
+      // For simplicity in this prototype, we'll skip the actual Supabase auth
+      // and create a user object directly
+      if (password !== 'password123') {
+        throw new Error('Invalid password. Default password is password123.');
+      }
+      
+      // Determine user role from Excel data
+      let userRole = determineUserRole(teacher, cleanEmail);
+      console.log('Determined role:', userRole);
+
+      // Create teacher user
+      const teacherUser: User = {
+        id: `teacher-${Date.now()}`, // Generate a temporary ID
+        name: cleanEmail.split('@')[0].replace(/\./g, ' '),
+        email: cleanEmail,
+        role: userRole,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0].replace(/\./g, '+'))}&background=random&color=fff`
+      };
+      
+      // Set the user
+      setUser(teacherUser);
+      
+      // Store in localStorage
+      localStorage.setItem('convocation_user', JSON.stringify(teacherUser));
+      
+      // Log device usage
+      await logDeviceUsage(teacherUser, deviceType);
+      console.log(`Logged in successfully as ${teacherUser.name} using ${deviceType} device`);
+      
       toast({
-        title: 'Login Error',
-        description: 'An unexpected error occurred',
+        title: 'Login successful',
+        description: `Welcome back, ${teacherUser.name}!`,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Login error:', error);
+      
+      toast({
+        title: 'Login failed',
+        description: errorMessage || 'Invalid email or password.',
         variant: 'destructive',
       });
-      return false;
+      
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('convocation_token');
-    localStorage.removeItem('convocation_user');
-    toast({
-      title: 'Logged Out',
-      description: 'You have been successfully logged out',
-    });
+  const logout = async () => {
+    try {
+      // No need to call Supabase signOut in this prototype
+      setUser(null);
+      localStorage.removeItem('convocation_user');
+      toast({
+        title: 'Logged out',
+        description: 'You have been logged out successfully.',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: 'Logout failed',
+        description: 'There was an error logging out.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return {
+    user,
+    setUser,
+    isLoading,
+    setIsLoading,
     login,
-    logout,
-    isLoading
+    logout
   };
 };

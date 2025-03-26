@@ -1,3 +1,4 @@
+
 import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -8,10 +9,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { StudentProvider } from "@/contexts/StudentContext";
 import DeviceSelectionPrompt from "@/components/common/DeviceSelectionPrompt";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { setupDatabase } from "@/utils/databaseHelper";
-
-// Initialize database on app load
-setupDatabase().catch(console.error);
 
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -53,23 +50,14 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   
   useEffect(() => {
-    // Debug logs
-    console.log("AuthGuard effect running");
-    console.log("isLoading:", isLoading, "isAuthenticated:", isAuthenticated);
-    console.log("Current user:", user);
-    console.log("Current path:", location.pathname);
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
+      navigate('/login', { replace: true });
+    }
     
-    if (!isLoading) {
-      if (!isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
-        console.log("Not authenticated, redirecting to login page");
-        navigate('/login', { replace: true });
-      } else if (isAuthenticated && user) {
-        console.log("User is authenticated with role:", user.role);
-        
-        // Role-based redirects
-        if (user.role === 'super-admin' && location.pathname === '/login') {
-          navigate('/role-assignment', { replace: true });
-        }
+    // Redirect to appropriate dashboard based on role
+    if (!isLoading && isAuthenticated && user) {
+      if (user.role === 'super-admin' && location.pathname === '/login') {
+        navigate('/role-assignment', { replace: true });
       }
     }
   }, [isAuthenticated, isLoading, navigate, location.pathname, user]);
@@ -96,25 +84,6 @@ const DeviceRouteGuard = ({ children }: { children: React.ReactNode }) => {
   
   if (devicePreference === 'desktop' && window.location.pathname === '/mobile-dashboard') {
     return <Navigate to="/dashboard" replace />;
-  }
-  
-  return <>{children}</>;
-};
-
-// Super Admin route guard
-const SuperAdminGuard = ({ children }: { children: React.ReactNode }) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const navigate = useNavigate();
-  
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && user && user.role !== 'super-admin') {
-      console.log("User is not super-admin, redirecting to dashboard");
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, isAuthenticated, isLoading, navigate]);
-  
-  if (isLoading) {
-    return <PageLoader />;
   }
   
   return <>{children}</>;
@@ -159,9 +128,7 @@ const AppRoutes = () => {
             path="/role-assignment" 
             element={
               <AuthGuard>
-                <SuperAdminGuard>
-                  <RoleAssignment />
-                </SuperAdminGuard>
+                <RoleAssignment />
               </AuthGuard>
             } 
           />
