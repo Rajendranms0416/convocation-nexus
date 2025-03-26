@@ -10,7 +10,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useOfflineMode } from '@/hooks/useOfflineMode';
 
 interface FileUploaderProps {
-  onDataLoaded: (data: any[], sessionInfo: string, tableId?: string) => void;
+  onDataLoaded: (data: any[], sessionInfo: string) => void;
 }
 
 const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
@@ -24,8 +24,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     error,
     fileName,
     data,
-    fileUploaded,
-    tableInfo
+    fileUploaded
   } = useFileUpload();
   
   const { exportToExcel, isExporting } = useDataExport();
@@ -48,7 +47,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     try {
       const result = await uploadFile(uploadedFile, sessionInfo);
       if (result) {
-        onDataLoaded(result.data, result.sessionInfo, result.id.toString());
+        onDataLoaded(result.data, result.sessionInfo);
       }
     } catch (err) {
       console.error('Error during file upload:', err);
@@ -78,7 +77,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         <Alert variant="warning" className="mt-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            The file will be processed and stored as a new database table.
+            The file will be processed locally. No database operations will be performed.
           </AlertDescription>
         </Alert>
       )}

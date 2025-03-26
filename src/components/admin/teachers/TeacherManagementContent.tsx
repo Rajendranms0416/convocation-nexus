@@ -1,20 +1,10 @@
 
 import React from 'react';
 import { CardContent } from '@/components/ui/card';
-import ExcelUpload from '@/components/admin/ExcelUpload';
 import TeachersList from '@/components/admin/teachers/TeachersList';
 import AddTeacherDialog from '@/components/admin/teachers/AddTeacherDialog';
 import SessionSelector from '@/components/admin/teachers/SessionSelector';
 import FileUploader from '@/components/admin/excel/FileUploader';
-import DatabaseSelector from '@/components/admin/teachers/DatabaseSelector';
-
-interface DatabaseInfo {
-  id: string;
-  tableName: string;
-  session: string;
-  uploadDate: string;
-  recordCount: number;
-}
 
 interface TeacherManagementContentProps {
   sessions: string[];
@@ -28,9 +18,7 @@ interface TeacherManagementContentProps {
   onEditTeacher: (teacher: any) => void;
   onDeleteTeacher: (id: string) => void;
   onAssignClasses: (teacher: any) => void;
-  onDataLoaded: (data: any[], sessionInfo: string, tableId?: string) => void;
-  onDatabaseChange?: (database: DatabaseInfo) => void;
-  currentDatabaseId?: string;
+  onDataLoaded: (data: any[], sessionInfo: string) => void;
 }
 
 const TeacherManagementContent: React.FC<TeacherManagementContentProps> = ({
@@ -45,23 +33,11 @@ const TeacherManagementContent: React.FC<TeacherManagementContentProps> = ({
   onEditTeacher,
   onDeleteTeacher,
   onAssignClasses,
-  onDataLoaded,
-  onDatabaseChange,
-  currentDatabaseId
+  onDataLoaded
 }) => {
   return (
     <CardContent className="space-y-6">
-      {/* Database selector comes first */}
-      {onDatabaseChange && (
-        <div className="p-4 border rounded-md bg-card">
-          <DatabaseSelector 
-            onDatabaseChange={onDatabaseChange}
-            currentDatabaseId={currentDatabaseId}
-          />
-        </div>
-      )}
-      
-      {/* Legacy session selector as backup */}
+      {/* Session selector */}
       <SessionSelector 
         sessions={sessions}
         currentSession={currentSession}

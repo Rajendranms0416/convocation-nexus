@@ -16,9 +16,7 @@ interface SessionDataLoaderProps {
   setCurrentSession: (session: string) => void;
   availableSessions: string[];
   setAvailableSessions: (sessions: string[]) => void;
-  currentDatabase: DatabaseInfo | null;
-  setCurrentDatabase: (database: DatabaseInfo | null) => void;
-  loadTeacherData: (session: string) => Promise<any>; // Updated type to accept any Promise return
+  loadTeacherData: (session: string) => Promise<any>; 
   children: React.ReactNode;
 }
 
@@ -27,8 +25,6 @@ const SessionDataLoader: React.FC<SessionDataLoaderProps> = ({
   setCurrentSession,
   availableSessions,
   setAvailableSessions,
-  currentDatabase,
-  setCurrentDatabase,
   loadTeacherData,
   children
 }) => {
@@ -82,7 +78,7 @@ const SessionDataLoader: React.FC<SessionDataLoaderProps> = ({
     };
     
     loadSessionData();
-  }, [currentSession, currentDatabase, loadTeacherData, toast]);
+  }, [currentSession, loadTeacherData, toast]);
 
   // Pass isRefreshing state to children
   return (

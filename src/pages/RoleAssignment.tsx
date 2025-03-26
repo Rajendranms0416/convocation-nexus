@@ -7,14 +7,13 @@ import RoleAssignmentHeader from '@/components/admin/teachers/RoleAssignmentHead
 import TeacherManagementContent from '@/components/admin/teachers/TeacherManagementContent';
 import DialogsContainer from '@/components/admin/teachers/DialogsContainer';
 import RoleAssignmentGuard from '@/components/admin/teachers/RoleAssignmentGuard';
-import SessionDataLoader, { DatabaseInfo } from '@/components/admin/teachers/SessionDataLoader';
+import SessionDataLoader from '@/components/admin/teachers/SessionDataLoader';
 import { useRoleAssignmentCallbacks } from '@/components/admin/teachers/RoleAssignmentCallbacks';
 
 const RoleAssignment: React.FC = () => {
-  // State for sessions and database
+  // State for sessions
   const [currentSession, setCurrentSession] = useState<string>("April 22, 2023 - Morning (09:00 AM)");
   const [availableSessions, setAvailableSessions] = useState<string[]>([]);
-  const [currentDatabase, setCurrentDatabase] = useState<DatabaseInfo | null>(null);
   
   // Get teacher management functionality
   const teacherManagement = useTeacherManagement();
@@ -50,13 +49,11 @@ const RoleAssignment: React.FC = () => {
   // Get callback handlers
   const {
     handleSessionChange,
-    handleDatabaseChange,
     handleRefresh,
     handleDataLoaded
   } = useRoleAssignmentCallbacks({
     currentSession,
     setCurrentSession,
-    setCurrentDatabase,
     loadTeacherData
   });
 
@@ -67,8 +64,6 @@ const RoleAssignment: React.FC = () => {
         setCurrentSession={setCurrentSession}
         availableSessions={availableSessions}
         setAvailableSessions={setAvailableSessions}
-        currentDatabase={currentDatabase}
-        setCurrentDatabase={setCurrentDatabase}
         loadTeacherData={loadTeacherData}
       >
         <div className="container mx-auto p-4 max-w-6xl">
@@ -91,8 +86,6 @@ const RoleAssignment: React.FC = () => {
               onDeleteTeacher={handleDeleteTeacher}
               onAssignClasses={handleAssignClasses}
               onDataLoaded={handleDataLoaded}
-              onDatabaseChange={handleDatabaseChange}
-              currentDatabaseId={currentDatabase?.id}
             />
           </Card>
 
