@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
@@ -16,14 +15,10 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
   const [sessionInfo, setSessionInfo] = useState<string>('');
   const { toast } = useToast();
 
-  // Function to parse session info from filename
   const parseSessionInfo = (filename: string): string => {
-    // Default session if we can't extract anything
     let session = "April 22, 2023 - Morning (09:00 AM)";
     
     try {
-      // Try to extract date and time from filename
-      // Expected format: something_DD-MM-YYYY_Morning.xlsx or similar
       const dateMatch = filename.match(/(\d{1,2})[-_](\d{1,2})[-_](\d{4})/);
       const timeMatch = filename.match(/morning|evening|afternoon/i);
       
@@ -32,12 +27,10 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
         const month = dateMatch[2];
         const year = dateMatch[3];
         
-        // Convert month number to name
         const monthNames = ["January", "February", "March", "April", "May", "June",
           "July", "August", "September", "October", "November", "December"];
         const monthName = monthNames[parseInt(month) - 1] || "April";
         
-        // Default time is morning if not specified
         const timeOfDay = timeMatch 
           ? timeMatch[0].charAt(0).toUpperCase() + timeMatch[0].slice(1).toLowerCase() 
           : "Morning";
@@ -70,9 +63,7 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
         return;
       }
       
-      // Parse session info from filename
-      const extractedSession = parseSessionInfo(selectedFile.name);
-      setSessionInfo(extractedSession);
+      setSessionInfo(parseSessionInfo(selectedFile.name));
       
       setFile(selectedFile);
       setUploadError(null);
@@ -115,81 +106,77 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
       
       console.log('Parsed data:', parsedData);
       
-      // Minimal validation - just check if there's data
       if (!parsedData || parsedData.length === 0) {
         throw new Error('No data found in the file');
       }
       
-      // Generate a table name based on the session info
       const safeTableName = `upload_${new Date().getTime()}`;
       
-      // Create a new table for this upload
-      const { data: functionResult, error: functionError } = await supabase.rpc(
-        'create_upload_table',
-        { table_name: safeTableName }
-      );
-      
-      if (functionError) {
-        console.error('Error creating table:', functionError);
-        throw new Error(`Failed to create table: ${functionError.message}`);
-      }
-      
-      // Record this upload in the file_uploads table
-      const { data: uploadRecord, error: uploadError } = await supabase
-        .from('file_uploads')
-        .insert({
-          filename: file.name,
-          table_name: safeTableName,
-          session_info: sessionInfo,
-          record_count: parsedData.length
-        })
-        .select('id')
-        .single();
-      
-      if (uploadError) {
-        console.error('Error recording upload:', uploadError);
-        throw new Error(`Failed to record upload: ${uploadError.message}`);
-      }
-      
-      // Now insert the data into the newly created table
-      const formattedData = parsedData.map((item: any) => ({
-        "Programme_Name": item["Programme Name"] || '',
-        "Robe_Email_ID": item["Robe Email ID"] || '',
-        "Folder_Email_ID": item["Folder Email ID"] || '',
-        "Accompanying_Teacher": item["Accompanying Teacher"] || '',
-        "Folder_in_Charge": item["Folder in Charge"] || '',
-        "Class_Section": item["Class Wise/\nSection Wise"] || ''
-      }));
-      
-      // Insert data in batches to avoid payload size limits
-      const batchSize = 100;
-      for (let i = 0; i < formattedData.length; i += batchSize) {
-        const batch = formattedData.slice(i, i + batchSize);
-        const { error: insertError } = await supabase
-          .from(safeTableName)
-          .insert(batch);
-          
-        if (insertError) {
-          console.error(`Error inserting batch ${i}:`, insertError);
-          // Continue anyway to insert as much data as possible
+      try {
+        const { data: functionResult, error: functionError } = await supabase.rpc(
+          'create_upload_table',
+          { table_name: safeTableName }
+        );
+        
+        if (functionError) {
+          console.error('Error creating table:', functionError);
+          throw new Error(`Failed to create table: ${functionError.message}`);
         }
+        
+        const { data: uploadRecord, error: uploadError } = await supabase
+          .from('file_uploads')
+          .insert({
+            filename: file.name,
+            table_name: safeTableName,
+            session_info: sessionInfo,
+            record_count: parsedData.length
+          } as any)
+          .select('id')
+          .single();
+        
+        if (uploadError) {
+          console.error('Error recording upload:', uploadError);
+          throw new Error(`Failed to record upload: ${uploadError.message}`);
+        }
+        
+        const formattedData = parsedData.map((item: any) => ({
+          "Programme_Name": item["Programme Name"] || '',
+          "Robe_Email_ID": item["Robe Email ID"] || '',
+          "Folder_Email_ID": item["Folder Email ID"] || '',
+          "Accompanying_Teacher": item["Accompanying Teacher"] || '',
+          "Folder_in_Charge": item["Folder in Charge"] || '',
+          "Class_Section": item["Class Wise/\nSection Wise"] || ''
+        }));
+        
+        const batchSize = 100;
+        for (let i = 0; i < formattedData.length; i += batchSize) {
+          const batch = formattedData.slice(i, i + batchSize);
+          const { error: insertError } = await supabase
+            .from(safeTableName)
+            .insert(batch);
+          
+          if (insertError) {
+            console.error(`Error inserting batch ${i}:`, insertError);
+          }
+        }
+        
+        excelService.saveTeacherData(parsedData, sessionInfo, safeTableName);
+        
+        toast({
+          title: 'File processed successfully',
+          description: `Created database "${sessionInfo}" with ${parsedData.length} records.`,
+          variant: 'default',
+        });
+        
+        onDataLoaded(parsedData, sessionInfo, uploadRecord?.id?.toString());
+        
+        window.dispatchEvent(new CustomEvent('teacherDataUpdated', { 
+          detail: { session: sessionInfo, tableId: uploadRecord?.id?.toString() } 
+        }));
+      } catch (error) {
+        console.error('Database operation error:', error);
+        throw error;
       }
-      
-      // Save the data to localStorage with the session info and table reference
-      excelService.saveTeacherData(parsedData, sessionInfo, safeTableName);
-      
-      toast({
-        title: 'File processed successfully',
-        description: `Created database "${sessionInfo}" with ${parsedData.length} records.`,
-        variant: 'default',
-      });
-      
-      onDataLoaded(parsedData, sessionInfo, uploadRecord?.id?.toString());
-      
-      // Notify any listeners that data has been updated
-      window.dispatchEvent(new CustomEvent('teacherDataUpdated', { 
-        detail: { session: sessionInfo, tableId: uploadRecord?.id?.toString() } 
-      }));
       
     } catch (error) {
       console.error('Upload error:', error);

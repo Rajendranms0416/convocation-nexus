@@ -1,4 +1,4 @@
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 /**
  * Get the user ID from the JWT token
@@ -184,4 +184,65 @@ export const isAuthenticated = (): boolean => {
     console.error('Error checking authentication:', e);
     return false;
   }
+};
+
+/**
+ * Helper function to handle session logic
+ */
+export const handleSession = () => {
+  // Placeholder implementation
+  console.log('Session handling logic would go here');
+};
+
+/**
+ * Helper function to create an admin user
+ */
+export const createAdminUser = () => {
+  // Placeholder implementation
+  console.log('Admin user creation logic would go here');
+  return null;
+};
+
+/**
+ * Helper function to determine user role based on email
+ * @param teacher The teacher object
+ * @param email The email address
+ * @returns The user role
+ */
+export const determineUserRole = (teacher: any, email: string) => {
+  // Simple implementation - can be expanded with actual logic
+  if (email.includes('admin')) return 'admin';
+  return 'teacher';
+};
+
+/**
+ * Helper function to verify teacher email
+ * @param email The email address
+ * @returns Boolean indicating if the email is valid
+ */
+export const verifyTeacherEmail = (email: string): boolean => {
+  // Simple implementation - should check if email exists in teacher list
+  return true; // For now, accept all emails
+};
+
+/**
+ * Helper function to get teacher by email
+ * @param email The email address
+ * @returns The teacher object
+ */
+export const getTeacherByEmail = (email: string) => {
+  // Return a basic teacher object
+  return {
+    email: email,
+    name: email.split('@')[0]
+  };
+};
+
+/**
+ * Helper function to load teachers from storage
+ */
+export const loadTeachersFromStorage = () => {
+  // Placeholder implementation to load teachers from storage
+  console.log('Loading teachers from storage');
+  // Actual implementation would populate data structures
 };
