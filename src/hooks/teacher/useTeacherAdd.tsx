@@ -2,7 +2,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { Role } from '@/types';
 import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
-import { DynamicTableInsert, TeachersInsert } from '@/integrations/supabase/custom-types';
+import { DynamicTableInsert } from '@/integrations/supabase/custom-types';
 import { insertIntoDynamicTable, insertIntoTeachersTable } from '@/utils/dynamicTableHelpers';
 
 /**
@@ -63,7 +63,7 @@ export const useTeacherAdd = (
         insertedTeacher = data?.[0];
       } else {
         // Insert into the default teachers table
-        const teachersInsert: TeachersInsert = {
+        const teachersInsert = {
           "Programme Name": classes[0] || '',
           "Robe Email ID": emailType === 'robe' ? email : '',
           "Folder Email ID": emailType === 'folder' ? email : '',

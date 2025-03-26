@@ -12,8 +12,8 @@ export const supabase = createClient<ExtendedDatabase>(
 );
 
 // Helper function to safely query dynamic tables with proper type handling
-export const queryDynamicTable = (tableName: keyof ExtendedDatabase['public']['Tables']) => {
-  return supabase.from(tableName);
+export const queryDynamicTable = (tableName: keyof ExtendedDatabase['public']['Tables'] | string) => {
+  return supabase.from(tableName as any);
 };
 
 // Helper for handling RPC functions

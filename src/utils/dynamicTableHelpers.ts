@@ -14,8 +14,8 @@ export const insertIntoDynamicTable = async (
     const isArray = Array.isArray(data);
     const dataToInsert = isArray ? data : [data];
     
-    // Cast to any to bypass TypeScript's type checking for dynamic tables
-    const result = await queryDynamicTable(tableName)
+    // Use the queryDynamicTable helper which handles the type casting
+    const result = await queryDynamicTable(tableName as any)
       .insert(dataToInsert as any)
       .select();
       
@@ -41,8 +41,8 @@ export const updateDynamicTable = async (
   id: number
 ): Promise<{ data: DynamicTableRow[] | null, error: PostgrestError | null }> => {
   try {
-    // Cast to any to bypass TypeScript's type checking for dynamic tables
-    const result = await queryDynamicTable(tableName)
+    // Use the queryDynamicTable helper which handles the type casting
+    const result = await queryDynamicTable(tableName as any)
       .update(data as any)
       .eq('id', id)
       .select();
@@ -120,7 +120,7 @@ export const updateTeachersTable = async (
  */
 export const createDynamicTable = async (tableName: string): Promise<{ error: PostgrestError | null }> => {
   try {
-    const { error } = await callFunction('create_upload_table', tableName);
+    const { error } = await callFunction('create_upload_table' as any, tableName);
     return { error };
   } catch (error) {
     console.error('Error creating dynamic table:', error);

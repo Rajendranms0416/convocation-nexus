@@ -1,102 +1,67 @@
 
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { excelService } from '@/services/excel';
-import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
+import * as XLSX from 'xlsx';
+import { queryDynamicTable } from '@/integrations/supabase/client';
 import { DynamicTableRow } from '@/integrations/supabase/custom-types';
 
-export const useDataExport = (tableName?: string) => {
+/**
+ * Hook for exporting data to Excel
+ */
+export const useDataExport = () => {
   const [isExporting, setIsExporting] = useState(false);
-  const { toast } = useToast();
 
-  const exportCurrentData = async () => {
+  /**
+   * Export table data to Excel
+   */
+  const exportToExcel = async (tableName: string, fileName: string) => {
     setIsExporting(true);
+    
     try {
-      let teachersData: any[] = [];
+      // Fetch data from the dynamic table
+      const { data, error } = await queryDynamicTable(tableName as any).select('*');
       
-      if (tableName) {
-        // Export data from the specific table
-        const { data, error } = await queryDynamicTable(tableName)
-          .select('*');
-          
-        if (error) throw error;
-        
-        // Safe conversion to DynamicTableRow[]
-        teachersData = (data || []) as unknown as DynamicTableRow[];
-      } else {
-        // Fallback to the default teachers table
-        const { data, error } = await supabase
-          .from('teachers')
-          .select('*');
-          
-        if (error) throw error;
-        teachersData = data || [];
+      if (error) {
+        throw error;
       }
       
-      const formattedData = teachersData.map(teacher => {
-        if ('Programme_Name' in teacher) {
-          // For dynamic tables
-          return {
-            'Programme Name': teacher.Programme_Name || '',
-            'Robe Email ID': teacher.Robe_Email_ID || '',
-            'Folder Email ID': teacher.Folder_Email_ID || '',
-            'Accompanying Teacher': teacher.Accompanying_Teacher || '',
-            'Folder in Charge': teacher.Folder_in_Charge || '',
-            'Class Wise/\nSection Wise': teacher.Class_Section || ''
-          };
-        } else {
-          // For the default teachers table
-          return {
-            'Programme Name': teacher['Programme Name'] || '',
-            'Robe Email ID': teacher['Robe Email ID'] || '',
-            'Folder Email ID': teacher['Folder Email ID'] || '',
-            'Accompanying Teacher': teacher['Robe in Charge'] || '',
-            'Folder in Charge': teacher['Folder in Charge'] || '',
-            'Class Wise/\nSection Wise': ''
-          };
-        }
-      });
-      
-      const csvContent = excelService.generateCSV(formattedData);
-      
-      if (!csvContent) {
-        toast({
-          title: 'No data to export',
-          description: 'There are no teacher records currently loaded.',
-          variant: 'destructive',
-        });
-        setIsExporting(false);
-        return;
+      if (!data || data.length === 0) {
+        throw new Error('No data to export');
       }
-
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = tableName ? `${tableName}_data.csv` : 'teachers_data.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
       
-      toast({
-        title: 'Data exported successfully',
-        description: `Exported teacher records.`,
-      });
+      // Convert data for Excel format
+      const excelData = (data as unknown as DynamicTableRow[]).map(row => ({
+        "Id": row.id,
+        "Programme Name": row.Programme_Name || '',
+        "Robe Email ID": row.Robe_Email_ID || '',
+        "Folder Email ID": row.Folder_Email_ID || '',
+        "Accompanying Teacher": row.Accompanying_Teacher || '',
+        "Folder in Charge": row.Folder_in_Charge || '',
+        "Class Section": row.Class_Section || '',
+        "Created At": row.created_at ? new Date(row.created_at).toLocaleString() : '',
+        "Updated At": row.updated_at ? new Date(row.updated_at).toLocaleString() : ''
+      }));
+      
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // Add the worksheet to the workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Teachers');
+      
+      // Generate Excel file and trigger download
+      XLSX.writeFile(wb, `${fileName}.xlsx`);
+      
+      return true;
     } catch (error) {
-      console.error('Export error:', error);
-      toast({
-        title: 'Failed to export data',
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
-        variant: 'destructive',
-      });
+      console.error('Error exporting to Excel:', error);
+      throw error;
     } finally {
       setIsExporting(false);
     }
   };
 
   return {
-    isExporting,
-    exportCurrentData
+    exportToExcel,
+    isExporting
   };
 };

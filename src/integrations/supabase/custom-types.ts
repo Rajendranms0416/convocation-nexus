@@ -35,6 +35,23 @@ export type ExtendedDatabase = Database & {
   };
 };
 
+// Teachers table insert and update types
+export interface TeachersInsert {
+  "Programme Name"?: string | null;
+  "Robe Email ID"?: string | null;
+  "Folder Email ID"?: string | null;
+  "Folder in Charge"?: string | null;
+  "Robe in Charge"?: string | null;
+}
+
+export interface TeachersUpdate {
+  "Programme Name"?: string | null;
+  "Robe Email ID"?: string | null;
+  "Folder Email ID"?: string | null;
+  "Folder in Charge"?: string | null;
+  "Robe in Charge"?: string | null;
+}
+
 // Precise definition for dynamic table row
 export interface DynamicTableRow {
   id: number;

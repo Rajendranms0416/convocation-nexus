@@ -1,7 +1,6 @@
 
 import { useTeacherState } from './teacher/useTeacherState';
 import { useTeacherOperations } from './teacher/useTeacherOperations';
-import { useClassAssignment } from './teacher/useClassAssignment';
 import { useTeacherActions } from './teacher/useTeacherActions';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -49,19 +48,13 @@ export const useTeacherManagement = () => {
   const { 
     handleAddTeacher,
     handleUpdateTeacher,
-    handleDeleteTeacher
+    handleDeleteTeacher,
+    handleAssignClasses: baseHandleAssignClasses,
+    saveClassAssignments: baseSaveClassAssignments
   } = useTeacherOperations(
     teachers, 
-    setTeachers, 
-    setIsEditDialogOpen
-  );
-
-  const { 
-    handleAssignClasses: baseHandleAssignClasses, 
-    saveClassAssignments: baseSaveClassAssignments 
-  } = useClassAssignment(
-    teachers, 
-    setTeachers, 
+    setTeachers,
+    setIsEditDialogOpen,
     setIsClassAssignDialogOpen
   );
 

@@ -35,7 +35,7 @@ export const useTeacherDataLoader = () => {
         setCurrentDatabase(database);
         
         // Load from Supabase using the specific table name
-        const { data: tableData, error } = await queryDynamicTable(database.tableName)
+        const { data: tableData, error } = await queryDynamicTable(database.tableName as any)
           .select('*');
         
         if (error) {
