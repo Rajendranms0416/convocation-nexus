@@ -1,208 +1,199 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
-import { TeachersRow } from '@/integrations/supabase/custom-types';
 
 /**
- * Hook to load teacher data from Supabase
+ * A hook to load teacher data from different sources:
+ * - Static teacher data from the "teachers" table
+ * - Dynamic data from uploaded files in dynamically created tables
  */
-export const useTeacherDataLoader = () => {
-  const [teachers, setTeachers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+export const useTeacherDataLoader = (setTeachers: React.Dispatch<React.SetStateAction<any[]>>) => {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [currentDatabase, setCurrentDatabase] = useState<{
-    id: string;
-    tableName: string;
-    sessionInfo: string;
-    uploadDate: string;
-    recordCount: number;
-  } | null>(null);
 
   /**
-   * Load teacher data from default table or a specific dynamic table
+   * Load teacher data for a specific session
    */
-  const loadTeacherData = useCallback(async (tableName?: string) => {
-    setIsLoading(true);
+  const loadTeacherData = async (sessionInfo: string) => {
+    setLoading(true);
     setError(null);
-    
-    try {
-      let data;
-      
-      if (tableName) {
-        // If a specific table is requested, query that
-        const { data: dynamicData, error: dynamicError } = await queryDynamicTable(tableName)
-          .select('*')
-          .order('id', { ascending: true });
-        
-        if (dynamicError) {
-          throw dynamicError;
-        }
-        
-        data = dynamicData;
-        
-        // Ensure we're using consistent property names
-        data = (data as any[]).map(item => ({
-          ...item,
-          // Add tableName to each record for reference in update/delete operations
-          tableName,
-        }));
-      } else {
-        // Default to the teachers table
-        const { data: teachersData, error: teachersError } = await supabase
-          .from('teachers')
-          .select('*')
-          .order('id', { ascending: true });
-        
-        if (teachersError) {
-          throw teachersError;
-        }
-        
-        data = teachersData;
-      }
-      
-      setTeachers(data || []);
-      return data;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load teacher data';
-      console.error('Error loading teacher data:', error);
-      setError(error instanceof Error ? error : new Error(errorMessage));
-      
-      toast({
-        title: 'Error loading teachers',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-      
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
 
-  /**
-   * Load all sessions from file_uploads table
-   */
-  const loadSessions = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      // First, check if there's a dynamic table for this session
+      const { data: fileUploads, error: fileError } = await supabase
         .from('file_uploads')
-        .select('*')
-        .order('upload_date', { ascending: false });
-      
-      if (error) {
-        throw error;
-      }
-      
-      return data.map(item => item.session_info || 'Unknown Session');
-    } catch (error) {
-      console.error('Error loading sessions:', error);
-      
-      toast({
-        title: 'Error loading sessions',
-        description: error instanceof Error ? error.message : 'Failed to load sessions',
-        variant: 'destructive',
-      });
-      
-      return [];
-    }
-  }, [toast]);
-
-  /**
-   * Load teacher data by session info
-   */
-  const loadTeachersBySession = useCallback(async (sessionInfo: string) => {
-    try {
-      // First find the table name for this session
-      const { data: uploadData, error: uploadError } = await supabase
-        .from('file_uploads')
-        .select('*')
+        .select('id, table_name')
         .eq('session_info', sessionInfo)
         .order('upload_date', { ascending: false })
         .limit(1);
-      
-      if (uploadError) {
-        throw uploadError;
+
+      if (fileError) {
+        throw fileError;
       }
-      
-      if (!uploadData || uploadData.length === 0) {
-        throw new Error(`No database found for session: ${sessionInfo}`);
+
+      // If we found a dynamic table for this session, load from there
+      if (fileUploads && fileUploads.length > 0) {
+        const { table_name: tableName, id: tableId } = fileUploads[0];
+        return await loadDynamicTeacherData(tableName, tableId);
       }
-      
-      const uploadRecord = uploadData[0];
-      
-      // Set the current database
-      setCurrentDatabase({
-        id: String(uploadRecord.id),
-        tableName: uploadRecord.table_name,
-        sessionInfo: uploadRecord.session_info || '',
-        uploadDate: new Date(uploadRecord.upload_date).toLocaleString(),
-        recordCount: uploadRecord.record_count || 0
-      });
-      
-      // Now load data from that table
-      return await loadTeacherData(uploadRecord.table_name);
-    } catch (error) {
-      console.error('Error loading teachers by session:', error);
+
+      // Otherwise, load from the static teachers table
+      return await loadStaticTeacherData();
+    } catch (err) {
+      console.error('Error loading teacher data:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error loading teacher data'));
       
       toast({
-        title: 'Error loading session data',
-        description: error instanceof Error ? error.message : 'Failed to load teacher data for session',
+        title: 'Failed to load teacher data',
+        description: err instanceof Error ? err.message : 'An unknown error occurred',
         variant: 'destructive',
       });
       
+      setTeachers([]);
+      setLoading(false);
       return [];
     }
-  }, [loadTeacherData, toast]);
+  };
 
   /**
-   * Load teacher data by database ID
+   * Load data from a dynamically created table (from file uploads)
    */
-  const loadTeachersByDatabaseId = useCallback(async (databaseId: string) => {
+  const loadDynamicTeacherData = async (tableName: string, tableId: string) => {
     try {
-      // Find the database record - convert string ID to number if needed
-      const { data: uploadData, error: uploadError } = await supabase
-        .from('file_uploads')
+      const { data, error } = await supabase
+        .from(tableName)
         .select('*')
-        .eq('id', parseInt(databaseId))
-        .single();
-      
-      if (uploadError) {
-        throw uploadError;
+        .order('Programme_Name', { ascending: true });
+
+      if (error) {
+        throw error;
       }
+
+      // Check if data structure matches expected format
+      if (data && data.length > 0) {
+        // Transform the data to match our teacher schema
+        const transformedData = data.map(item => ({
+          ...item,
+          // Make sure we have a unique identifier
+          tableId: tableId,
+          // Standardize names for unified handling in the UI
+          name: item.Programme_Name || 'Unnamed Program',
+          email: item.Robe_Email_ID || item.Folder_Email_ID || '',
+          role: item.Accompanying_Teacher ? 'accompanying' : 
+                item.Folder_in_Charge ? 'folder' : 'unknown'
+        }));
+        
+        setTeachers(transformedData);
+        setLoading(false);
+        
+        return transformedData;
+      } else {
+        setTeachers([]);
+        setLoading(false);
+        return [];
+      }
+    } catch (err) {
+      console.error('Error loading dynamic teacher data:', err);
+      throw err;
+    }
+  };
+
+  /**
+   * Load data from the static "teachers" table
+   */
+  const loadStaticTeacherData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('*')
+        .order('"Programme Name"', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        // Transform the data to match our teacher schema
+        const transformedData = data.map(item => ({
+          ...item,
+          // Standardize names for unified handling in the UI
+          name: item['Programme Name'] || 'Unnamed Program',
+          email: item['Robe Email ID'] || item['Folder Email ID'] || '',
+          role: item['Robe in Charge'] ? 'robe' : 
+                item['Folder in Charge'] ? 'folder' : 'unknown'
+        }));
+        
+        setTeachers(transformedData);
+        setLoading(false);
+        
+        return transformedData;
+      } else {
+        setTeachers([]);
+        setLoading(false);
+        return [];
+      }
+    } catch (err) {
+      console.error('Error loading static teacher data:', err);
+      throw err;
+    }
+  };
+
+  /**
+   * Load teacher data from a specific database by ID
+   */
+  const loadTeacherDataFromDatabase = async (databaseId: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // First, get the database info
+      const { data: fileUpload, error: fileError } = await supabase
+        .from('file_uploads')
+        .select('id, table_name, session_info')
+        .eq('id', parseInt(databaseId, 10))  // Use parseInt with base 10
+        .single();
+
+      if (fileError) {
+        throw fileError;
+      }
+
+      if (!fileUpload) {
+        throw new Error(`Database with ID ${databaseId} not found`);
+      }
+
+      // Now load the data from this table
+      const result = await loadDynamicTeacherData(fileUpload.table_name, databaseId);
       
-      // Set the current database
-      setCurrentDatabase({
-        id: String(uploadData.id),
-        tableName: uploadData.table_name,
-        sessionInfo: uploadData.session_info || '',
-        uploadDate: new Date(uploadData.upload_date).toLocaleString(),
-        recordCount: uploadData.record_count || 0
+      // Emit a custom event so other components can update
+      const customEvent = new CustomEvent('teacherDataUpdated', {
+        detail: { 
+          databaseId,
+          session: fileUpload.session_info
+        }
       });
+      window.dispatchEvent(customEvent);
       
-      // Now load data from that table
-      return await loadTeacherData(uploadData.table_name);
-    } catch (error) {
-      console.error('Error loading teachers by database ID:', error);
+      return result;
+    } catch (err) {
+      console.error('Error loading teacher data from database:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error loading teacher data'));
       
       toast({
-        title: 'Error loading database',
-        description: error instanceof Error ? error.message : 'Failed to load teacher data from database',
+        title: 'Failed to load teacher data from database',
+        description: err instanceof Error ? err.message : 'An unknown error occurred',
         variant: 'destructive',
       });
       
+      setTeachers([]);
+      setLoading(false);
       return [];
     }
-  }, [loadTeacherData, toast]);
+  };
 
   return {
-    teachers,
-    setTeachers,
-    isLoading,
+    loading,
     error,
-    currentDatabase,
     loadTeacherData,
-    loadSessions,
-    loadTeachersBySession,
-    loadTeachersByDatabaseId
+    loadTeacherDataFromDatabase
   };
 };

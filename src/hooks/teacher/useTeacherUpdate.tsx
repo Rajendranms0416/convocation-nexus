@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { queryDynamicTable, supabase } from '@/integrations/supabase/client';
 
@@ -48,7 +49,7 @@ export const useTeacherUpdate = (
           throw updateError;
         }
       } else {
-        // Update in the standard teachers table - convert string ID to number if needed
+        // Update in the standard teachers table - convert string ID to number explicitly
         const updatedData = {
           "Programme Name": name,
           "Robe Email ID": email,
@@ -61,7 +62,7 @@ export const useTeacherUpdate = (
         const { error: updateError } = await supabase
           .from('teachers')
           .update(updatedData as any)
-          .eq('id', parseInt(id));
+          .eq('id', parseInt(id, 10));  // Explicitly parse to number with base 10
         
         if (updateError) {
           throw updateError;

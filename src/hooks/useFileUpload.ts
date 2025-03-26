@@ -1,203 +1,185 @@
+
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { excelService } from '@/services/excel';
-import { createDynamicTable, createFileUploadRecord, insertIntoDynamicTable } from '@/utils/dynamicTableHelpers';
-import { DynamicTableInsert } from '@/integrations/supabase/custom-types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from './use-toast';
+import * as XLSX from 'xlsx';
 
-interface UseFileUploadOptions {
-  onDataLoaded: (data: any[], sessionInfo: string, tableId?: string) => void;
-}
-
-export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
-  const [file, setFile] = useState<File | null>(null);
+export const useFileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [fileInfo, setFileInfo] = useState<string | null>(null);
-  const [sessionInfo, setSessionInfo] = useState<string>('');
-  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [data, setData] = useState<any[] | null>(null);
+  const [fileUploaded, setFileUploaded] = useState(false);
+  const [tableInfo, setTableInfo] = useState<{ tableName: string, id: number } | null>(null);
 
-  const parseSessionInfo = (filename: string): string => {
-    let session = "April 22, 2023 - Morning (09:00 AM)";
-    
-    try {
-      const dateMatch = filename.match(/(\d{1,2})[-_](\d{1,2})[-_](\d{4})/);
-      const timeMatch = filename.match(/morning|evening|afternoon/i);
-      
-      if (dateMatch) {
-        const day = dateMatch[1];
-        const month = dateMatch[2];
-        const year = dateMatch[3];
-        
-        const monthNames = ["January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"];
-        const monthName = monthNames[parseInt(month) - 1] || "April";
-        
-        const timeOfDay = timeMatch 
-          ? timeMatch[0].charAt(0).toUpperCase() + timeMatch[0].slice(1).toLowerCase() 
-          : "Morning";
-        
-        const startTime = timeOfDay === "Morning" ? "09:00 AM" 
-                        : timeOfDay === "Afternoon" ? "01:00 PM" 
-                        : "05:00 PM";
-        
-        session = `${monthName} ${day}, ${year} - ${timeOfDay} (${startTime})`;
-      }
-    } catch (error) {
-      console.error("Error parsing session info:", error);
-    }
-    
-    return session;
+  /**
+   * Parses an Excel file and extracts data
+   */
+  const parseExcelFile = async (file: File): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet);
+          resolve(json);
+        } catch (err) {
+          reject(new Error('Failed to parse Excel file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsBinaryString(file);
+    });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
+  /**
+   * Creates a dynamic table in Supabase to store the uploaded data
+   */
+  const createDynamicTable = async (tableName: string) => {
+    try {
+      // Use Supabase's stored procedure to create a new table
+      const { error } = await supabase.rpc('create_upload_table', { table_name: tableName });
       
-      const validExtensions = ['.csv', '.xlsx', '.xls'];
-      const fileExtension = selectedFile.name.substring(selectedFile.name.lastIndexOf('.')).toLowerCase();
+      if (error) throw error;
       
-      if (!validExtensions.includes(fileExtension)) {
-        setUploadError(`Invalid file type. Please select a CSV or Excel file (${validExtensions.join(', ')})`);
-        setFile(null);
-        setFileInfo(null);
-        setSessionInfo('');
-        return;
-      }
-      
-      setSessionInfo(parseSessionInfo(selectedFile.name));
-      
-      setFile(selectedFile);
-      setUploadError(null);
-      setFileInfo(`Selected: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)`);
+      return true;
+    } catch (err) {
+      console.error('Error creating dynamic table:', err);
+      throw new Error('Failed to create table in database');
     }
   };
 
-  const handleUpload = async () => {
-    if (!file) {
-      setUploadError('Please select a file to upload');
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadError(null);
-
+  /**
+   * Uploads data to the dynamic table
+   */
+  const uploadDataToTable = async (tableName: string, data: any[]) => {
     try {
-      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-      let parsedData;
+      // Transform data to match table schema
+      const transformedData = data.map(item => ({
+        Programme_Name: item['Programme Name'] || '',
+        Robe_Email_ID: item['Robe Email ID'] || '',
+        Folder_Email_ID: item['Folder Email ID'] || '',
+        Accompanying_Teacher: item['Accompanying Teacher'] || '',
+        Folder_in_Charge: item['Folder in Charge'] || '',
+        Class_Section: item['Class Wise/Section Wise'] || '',
+      }));
       
-      if (fileExtension === '.csv') {
-        const fileContent = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            if (typeof e.target?.result === 'string') {
-              resolve(e.target.result);
-            } else {
-              reject(new Error('Failed to read file'));
-            }
-          };
-          reader.onerror = () => reject(new Error('Error reading file'));
-          reader.readAsText(file);
-        });
-        
-        parsedData = excelService.parseCSV(fileContent, true);
-      } else {
-        const fileBuffer = await file.arrayBuffer();
-        parsedData = await excelService.parseExcel(fileBuffer);
-      }
+      // Insert the data into the newly created table
+      const { error } = await supabase.from(tableName).insert(transformedData);
       
-      console.log('Parsed data:', parsedData);
+      if (error) throw error;
       
-      if (!parsedData || parsedData.length === 0) {
-        throw new Error('No data found in the file');
-      }
-      
-      const safeTableName = `upload_${new Date().getTime()}`;
-      
-      try {
-        const { error: createTableError } = await createDynamicTable(safeTableName);
-        
-        if (createTableError) {
-          console.error('Error creating table:', createTableError);
-          throw new Error(`Failed to create table: ${createTableError.message}`);
-        }
-        
-        const uploadRecordResult = await createFileUploadRecord(
-          file.name,
-          safeTableName,
-          sessionInfo,
-          parsedData.length
-        );
-        
-        if (uploadRecordResult.error) {
-          console.error('Error recording upload:', uploadRecordResult.error);
-          throw new Error(`Failed to record upload: ${uploadRecordResult.error.message}`);
-        }
-        
-        // Safe access to data property with type checking
-        const uploadRecordId = uploadRecordResult.error ? null : 
-                              (uploadRecordResult as any).data && 
-                              Array.isArray((uploadRecordResult as any).data) && 
-                              (uploadRecordResult as any).data.length > 0 ? 
-                              (uploadRecordResult as any).data[0].id : null;
-        
-        const formattedData = parsedData.map((item: any) => ({
-          "Programme_Name": item["Programme Name"] || '',
-          "Robe_Email_ID": item["Robe Email ID"] || '',
-          "Folder_Email_ID": item["Folder Email ID"] || '',
-          "Accompanying_Teacher": item["Accompanying Teacher"] || '',
-          "Folder_in_Charge": item["Folder in Charge"] || '',
-          "Class_Section": item["Class Wise/\nSection Wise"] || ''
-        })) as DynamicTableInsert[];
-        
-        const batchSize = 100;
-        for (let i = 0; i < formattedData.length; i += batchSize) {
-          const batch = formattedData.slice(i, i + batchSize);
-          const { error: insertError } = await insertIntoDynamicTable(safeTableName, batch);
-          
-          if (insertError) {
-            console.error(`Error inserting batch ${i}:`, insertError);
+      return { success: true, count: transformedData.length };
+    } catch (err) {
+      console.error('Error uploading data to table:', err);
+      throw new Error('Failed to upload data to database');
+    }
+  };
+
+  /**
+   * Records the file upload in the file_uploads table
+   */
+  const recordFileUpload = async (
+    fileName: string, 
+    tableName: string, 
+    recordCount: number,
+    sessionInfo: string
+  ) => {
+    try {
+      const { data, error } = await supabase
+        .from('file_uploads')
+        .insert([
+          { 
+            filename: fileName,
+            table_name: tableName,
+            record_count: recordCount,
+            session_info: sessionInfo
           }
-        }
-        
-        excelService.saveTeacherData(parsedData, sessionInfo, safeTableName);
-        
-        toast({
-          title: 'File processed successfully',
-          description: `Created database "${sessionInfo}" with ${parsedData.length} records.`,
-          variant: 'default',
-        });
-        
-        onDataLoaded(parsedData, sessionInfo, uploadRecordId?.toString());
-        
-        window.dispatchEvent(new CustomEvent('teacherDataUpdated', { 
-          detail: { session: sessionInfo, tableId: uploadRecordId?.toString() } 
-        }));
-      } catch (error) {
-        console.error('Database operation error:', error);
-        throw error;
+        ])
+        .select();
+      
+      if (error) throw error;
+      
+      // Handle response safely by checking for data presence
+      if (data && data.length > 0) {
+        return { id: data[0].id, tableName: data[0].table_name };
+      } else {
+        throw new Error('No data returned from file upload record');
+      }
+    } catch (err) {
+      console.error('Error recording file upload:', err);
+      throw new Error('Failed to record file upload');
+    }
+  };
+
+  /**
+   * Main function to handle file uploads
+   */
+  const uploadFile = async (file: File, sessionInfo: string) => {
+    setIsUploading(true);
+    setError(null);
+    setFileName(file.name);
+    setFileUploaded(false);
+    setTableInfo(null);
+    
+    try {
+      // 1. Parse the Excel file
+      const parsedData = await parseExcelFile(file);
+      setData(parsedData);
+      
+      if (parsedData.length === 0) {
+        throw new Error('No data found in Excel file');
       }
       
-    } catch (error) {
-      console.error('Upload error:', error);
-      setUploadError(error instanceof Error ? error.message : 'Failed to upload file');
+      // 2. Create a unique table name for this upload
+      const timestamp = Date.now();
+      const tableName = `upload_${timestamp}`;
+      
+      // 3. Create a new table in Supabase
+      await createDynamicTable(tableName);
+      
+      // 4. Upload the data to the new table
+      const { count } = await uploadDataToTable(tableName, parsedData);
+      
+      // 5. Record the file upload
+      const { id } = await recordFileUpload(file.name, tableName, count, sessionInfo);
+      
+      // 6. Update component state
+      setTableInfo({ tableName, id });
+      setFileUploaded(true);
       
       toast({
-        title: 'Failed to process file',
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        title: 'File uploaded successfully',
+        description: `${count} records uploaded to database`,
+      });
+      
+      return { tableName, id, data: parsedData, sessionInfo };
+    } catch (err) {
+      console.error('File upload error:', err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      
+      toast({
+        title: 'File upload failed',
+        description: err instanceof Error ? err.message : 'An unknown error occurred',
         variant: 'destructive',
       });
+      
+      return null;
     } finally {
       setIsUploading(false);
     }
   };
 
   return {
-    file,
-    fileInfo,
-    sessionInfo,
+    uploadFile,
     isUploading,
-    uploadError,
-    handleFileChange,
-    handleUpload
+    error,
+    fileName,
+    data,
+    fileUploaded,
+    tableInfo
   };
 };
