@@ -136,6 +136,14 @@ const RoleAssignment: React.FC = () => {
     }
   };
 
+  const handleDataLoaded = (data: any[], sessionInfo: string) => {
+    // Set the current session when data is loaded
+    setCurrentSession(sessionInfo);
+    
+    // Trigger data refresh
+    loadTeacherData(sessionInfo);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center">
@@ -167,6 +175,7 @@ const RoleAssignment: React.FC = () => {
           onEditTeacher={handleEditTeacher}
           onDeleteTeacher={handleDeleteTeacher}
           onAssignClasses={handleAssignClasses}
+          onDataLoaded={handleDataLoaded}
         />
       </Card>
 

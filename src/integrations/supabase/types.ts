@@ -84,6 +84,33 @@ export type Database = {
         }
         Relationships: []
       }
+      teachers: {
+        Row: {
+          "Folder Email ID": string | null
+          "Folder in Charge": string | null
+          id: number
+          "Programme Name": string | null
+          "Robe Email ID": string | null
+          "Robe in Charge": string | null
+        }
+        Insert: {
+          "Folder Email ID"?: string | null
+          "Folder in Charge"?: string | null
+          id?: number
+          "Programme Name"?: string | null
+          "Robe Email ID"?: string | null
+          "Robe in Charge"?: string | null
+        }
+        Update: {
+          "Folder Email ID"?: string | null
+          "Folder in Charge"?: string | null
+          id?: number
+          "Programme Name"?: string | null
+          "Robe Email ID"?: string | null
+          "Robe in Charge"?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -44,12 +44,12 @@ export const useTeacherAdd = (
       const { data: insertedTeacher, error } = await supabase
         .from('teachers')
         .insert({
-          program_name: classes[0] || '',
-          robe_email: emailType === 'robe' ? email : '',
-          folder_email: emailType === 'folder' ? email : '',
-          robe_in_charge: emailType === 'robe' ? name : '',
-          folder_in_charge: emailType === 'folder' ? name : '',
-          class_section: '',
+          Programme_Name: classes[0] || '',
+          Robe_Email_ID: emailType === 'robe' ? email : '',
+          Folder_Email_ID: emailType === 'folder' ? email : '',
+          Accompanying_Teacher: emailType === 'robe' ? name : '',
+          Folder_in_Charge: emailType === 'folder' ? name : '',
+          Class_Section: '',
         })
         .select()
         .single();
@@ -71,7 +71,8 @@ export const useTeacherAdd = (
         role: role,
         program: classes[0] || '',
         assignedClasses: classes,
-        rawData: newTeacherRaw
+        rawData: newTeacherRaw,
+        dbId: insertedTeacher?.id
       };
       
       setTeachers([...teachers, newTeacherFormatted]);

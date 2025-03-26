@@ -40,21 +40,23 @@ export const useTeacherUpdate = (
       setTeachers(updatedTeachers);
       
       // Update in the database
-      const { error } = await supabase
-        .from('teachers')
-        .update({
-          program_name: selectedClasses[0] || '',
-          robe_email: newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
-          folder_email: newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
-          robe_in_charge: newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
-          folder_in_charge: newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', currentTeacher.dbId || '');
-      
-      if (error) {
-        console.error('Supabase update error:', error);
-        // Continue anyway to update local storage
+      if (currentTeacher.dbId) {
+        const { error } = await supabase
+          .from('teachers')
+          .update({
+            Programme_Name: selectedClasses[0] || '',
+            Robe_Email_ID: newTeacherRole === 'robe-in-charge' ? newTeacherEmail : '',
+            Folder_Email_ID: newTeacherRole === 'folder-in-charge' ? newTeacherEmail : '',
+            Accompanying_Teacher: newTeacherRole === 'robe-in-charge' ? newTeacherName : '',
+            Folder_in_Charge: newTeacherRole === 'folder-in-charge' ? newTeacherName : '',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', currentTeacher.dbId);
+        
+        if (error) {
+          console.error('Supabase update error:', error);
+          // Continue anyway to update local storage
+        }
       }
       
       // Update in local storage

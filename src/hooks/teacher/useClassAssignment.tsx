@@ -1,3 +1,4 @@
+
 import { useToast } from '@/hooks/use-toast';
 import { getAllTeachers, updateTeachersList } from '@/utils/authHelpers';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,12 +44,12 @@ export const useClassAssignment = (
       
       // Prepare the data for database update
       let teacherData = {
-        program_name: selectedClasses[0] || '',
-        robe_email: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
-        folder_email: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
-        robe_in_charge: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
-        folder_in_charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
-        class_section: currentTeacher.section || '',
+        Programme_Name: selectedClasses[0] || '',
+        Robe_Email_ID: currentTeacher.role === 'robe-in-charge' ? currentTeacher.email : '',
+        Folder_Email_ID: currentTeacher.role === 'folder-in-charge' ? currentTeacher.email : '',
+        Accompanying_Teacher: currentTeacher.role === 'robe-in-charge' ? currentTeacher.name : '',
+        Folder_in_Charge: currentTeacher.role === 'folder-in-charge' ? currentTeacher.name : '',
+        Class_Section: currentTeacher.section || '',
         updated_at: new Date().toISOString()
       };
       
@@ -70,7 +71,7 @@ export const useClassAssignment = (
         console.log('Inserting new record');
         upsertResponse = await supabase
           .from('teachers')
-          .insert(teacherData)
+          .insert([teacherData])
           .select();
       }
       

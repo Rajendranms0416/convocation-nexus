@@ -18,12 +18,12 @@ export const useDataExport = () => {
       if (error) throw error;
       
       const formattedData = teachersData.map(teacher => ({
-        'Programme Name': teacher.program_name,
-        'Robe Email ID': teacher.robe_email,
-        'Folder Email ID': teacher.folder_email,
-        'Accompanying Teacher': teacher.robe_in_charge,
-        'Folder in Charge': teacher.folder_in_charge,
-        'Class Wise/\nSection Wise': teacher.class_section
+        'Programme Name': teacher.Programme_Name || '',
+        'Robe Email ID': teacher.Robe_Email_ID || '',
+        'Folder Email ID': teacher.Folder_Email_ID || '',
+        'Accompanying Teacher': teacher.Accompanying_Teacher || '',
+        'Folder in Charge': teacher.Folder_in_Charge || '',
+        'Class Wise/\nSection Wise': teacher.Class_Section || ''
       }));
       
       const csvContent = excelService.generateCSV(formattedData);
