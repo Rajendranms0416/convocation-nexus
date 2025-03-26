@@ -11,14 +11,18 @@ let TEACHERS_LIST = [
     "Robe Email ID": "john.doe@convocation.edu",
     "Folder Email ID": "jane.smith@convocation.edu",
     "Accompanying Teacher": "John Doe",
-    "Folder in Charge": "Jane Smith"
+    "Folder in Charge": "Jane Smith",
+    "Presenter Email ID": "",
+    "Presenter": ""
   },
   {
     "Programme Name": "MCA",
     "Robe Email ID": "alex.johnson@convocation.edu",
     "Folder Email ID": "sara.williams@convocation.edu",
     "Accompanying Teacher": "Alex Johnson",
-    "Folder in Charge": "Sara Williams"
+    "Folder in Charge": "Sara Williams",
+    "Presenter Email ID": "",
+    "Presenter": ""
   },
   // Add more teacher entries as needed
 ];
@@ -40,14 +44,17 @@ export const updateTeachersList = (newData: any[], sessionInfo: string = "April 
     if (!enhancedTeacher['Folder Email ID']) enhancedTeacher['Folder Email ID'] = '';
     if (!enhancedTeacher['Accompanying Teacher']) enhancedTeacher['Accompanying Teacher'] = '';
     if (!enhancedTeacher['Folder in Charge']) enhancedTeacher['Folder in Charge'] = '';
+    if (!enhancedTeacher['Presenter Email ID']) enhancedTeacher['Presenter Email ID'] = '';
+    if (!enhancedTeacher['Presenter']) enhancedTeacher['Presenter'] = '';
     
     return enhancedTeacher;
   });
   
-  // Filter out teachers that have neither robe nor folder email (likely invalid entries)
+  // Filter out teachers that have no email (likely invalid entries)
   const validTeachers = completeData.filter(teacher => 
     (teacher['Robe Email ID'] && teacher['Robe Email ID'].includes('@')) || 
-    (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@'))
+    (teacher['Folder Email ID'] && teacher['Folder Email ID'].includes('@')) ||
+    (teacher['Presenter Email ID'] && teacher['Presenter Email ID'].includes('@'))
   );
   
   console.log(`Saving teachers list with valid entries for session: ${sessionInfo}`, validTeachers.length);
@@ -138,7 +145,9 @@ export const handleSession = async (session: Session): Promise<User | null> => {
     
     // Find teacher in the TEACHERS_LIST (Excel data)
     const teacher = TEACHERS_LIST.find(teacher => 
-      teacher["Robe Email ID"] === email || teacher["Folder Email ID"] === email
+      teacher["Robe Email ID"] === email || 
+      teacher["Folder Email ID"] === email ||
+      teacher["Presenter Email ID"] === email
     );
     
     console.log('Teacher data from Excel:', teacher);
@@ -152,6 +161,8 @@ export const handleSession = async (session: Session): Promise<User | null> => {
         userRole = 'robe-in-charge';
       } else if (teacher["Folder Email ID"] === email) {
         userRole = 'folder-in-charge';
+      } else if (teacher["Presenter Email ID"] === email) {
+        userRole = 'presenter';
       }
     } else {
       console.log('No teacher found for email:', email);
@@ -201,6 +212,8 @@ export const determineUserRole = (teacher: any, email: string): Role => {
     return 'robe-in-charge';
   } else if (teacher["Folder Email ID"] === email) {
     return 'folder-in-charge';
+  } else if (teacher["Presenter Email ID"] === email) {
+    return 'presenter';
   }
   return 'presenter'; // Default role
 };
@@ -208,7 +221,9 @@ export const determineUserRole = (teacher: any, email: string): Role => {
 // Check if email exists in the teachers list
 export const verifyTeacherEmail = (email: string): boolean => {
   const exists = TEACHERS_LIST.some(teacher => 
-    teacher["Robe Email ID"] === email || teacher["Folder Email ID"] === email
+    teacher["Robe Email ID"] === email || 
+    teacher["Folder Email ID"] === email ||
+    teacher["Presenter Email ID"] === email
   );
   console.log(`Email ${email} verified in teachers list:`, exists);
   return exists;
@@ -217,7 +232,9 @@ export const verifyTeacherEmail = (email: string): boolean => {
 // Get teacher data for a specific email
 export const getTeacherByEmail = (email: string): any => {
   return TEACHERS_LIST.find(teacher => 
-    teacher["Robe Email ID"] === email || teacher["Folder Email ID"] === email
+    teacher["Robe Email ID"] === email || 
+    teacher["Folder Email ID"] === email ||
+    teacher["Presenter Email ID"] === email
   );
 };
 

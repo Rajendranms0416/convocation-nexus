@@ -53,6 +53,21 @@ export const useTeacherDataLoader = () => {
             rawData: teacher
           });
         }
+        
+        // Process teacher with Presenter Email ID
+        if (teacher['Presenter Email ID'] && teacher['Presenter Email ID'].includes('@')) {
+          formattedTeachers.push({
+            id: `presenter-${index + 1}`,
+            name: teacher['Presenter'] || 'Unknown',
+            email: teacher['Presenter Email ID'],
+            role: 'presenter' as Role,
+            program: teacher['Programme Name'] || '',
+            section: teacher['Class Wise/\nSection Wise'] || '',
+            assignedClasses: [teacher['Programme Name'] || ''].filter(Boolean),
+            session: session,
+            rawData: teacher
+          });
+        }
       });
       
       console.log(`Loaded and formatted teachers for session ${session}:`, formattedTeachers);
