@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 const AdminLoginForm = () => {
   const [email, setEmail] = useState('admin@example.com'); // Default to admin email for convenience
   const [password, setPassword] = useState('password123');
-  const { login, isLoading, user } = useAuth();
+  const { login, isLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -29,11 +29,11 @@ const AdminLoginForm = () => {
     
     try {
       console.log('Attempting admin login with email:', email);
-      await login(email, password, 'desktop', 'admin');
-      console.log('Admin login complete, checking result');
+      const success = await login(email, password, 'desktop', 'admin');
+      console.log('Admin login complete, success:', success);
       
-      // Check if user is in localStorage after login
-      setTimeout(() => {
+      if (success) {
+        // Check if user is in localStorage after login
         const storedUser = localStorage.getItem('convocation_user');
         if (storedUser) {
           const userObj = JSON.parse(storedUser);
@@ -52,8 +52,13 @@ const AdminLoginForm = () => {
           }
         } else {
           console.log('No user found in localStorage after login');
+          toast({
+            title: 'Login Error',
+            description: 'User data not found after login',
+            variant: 'destructive'
+          });
         }
-      }, 300);
+      }
     } catch (error) {
       console.error('Login error:', error);
       toast({

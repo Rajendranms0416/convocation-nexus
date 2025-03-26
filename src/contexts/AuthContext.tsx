@@ -10,7 +10,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  login: (email: string, password: string, deviceType: 'mobile' | 'desktop', loginMode?: 'teacher' | 'admin') => Promise<void>;
+  login: (email: string, password: string, deviceType: 'mobile' | 'desktop', loginMode?: 'teacher' | 'admin') => Promise<boolean>;
   logout: () => void;
 }
 
@@ -20,7 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: false,
   setIsLoading: () => {},
-  login: async () => {},
+  login: async () => false,
   logout: () => {}
 });
 
@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     password: string, 
     deviceType: 'mobile' | 'desktop', 
     loginMode?: 'teacher' | 'admin'
-  ) => {
+  ): Promise<boolean> => {
     setIsLoading(true);
     try {
       console.log(`Starting login with mode: ${loginMode}, email: ${email}`);
@@ -70,11 +70,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Failed to log device usage, but login still successful:', error);
           }
         }
+        return true;
       } else {
         console.error('Login failed');
+        return false;
       }
     } catch (error) {
       console.error('Login error:', error);
+      return false;
     } finally {
       setIsLoading(false);
     }

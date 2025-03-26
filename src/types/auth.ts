@@ -1,5 +1,5 @@
 
-import { Role } from '@/types';
+export type Role = 'super-admin' | 'robe-in-charge' | 'folder-in-charge' | 'presenter';
 
 export interface User {
   id: string;

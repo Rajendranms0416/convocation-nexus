@@ -113,28 +113,40 @@ export type Database = {
       }
       teachers: {
         Row: {
+          "Accompanying Teacher": string | null
+          "Class Wise/Section Wise": string | null
+          created_at: string | null
           "Folder Email ID": string | null
           "Folder in Charge": string | null
           id: number
           "Programme Name": string | null
           "Robe Email ID": string | null
           "Robe in Charge": string | null
+          updated_at: string | null
         }
         Insert: {
+          "Accompanying Teacher"?: string | null
+          "Class Wise/Section Wise"?: string | null
+          created_at?: string | null
           "Folder Email ID"?: string | null
           "Folder in Charge"?: string | null
           id?: number
           "Programme Name"?: string | null
           "Robe Email ID"?: string | null
           "Robe in Charge"?: string | null
+          updated_at?: string | null
         }
         Update: {
+          "Accompanying Teacher"?: string | null
+          "Class Wise/Section Wise"?: string | null
+          created_at?: string | null
           "Folder Email ID"?: string | null
           "Folder in Charge"?: string | null
           id?: number
           "Programme Name"?: string | null
           "Robe Email ID"?: string | null
           "Robe in Charge"?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useToast } from './use-toast';
 import { Role } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock data structure for users
 interface UserCredentials {
@@ -65,10 +66,8 @@ export const useAuthOperations = () => {
       setIsLoading(true);
       console.log("Login attempt with email:", email);
       
-      // Simple delay to simulate network request
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Find the user in our mock database
+      // We'll check both our mock database and Supabase
+      // First, try to find the user in our mock database
       const user = MOCK_USERS.find(u => u.email === email);
 
       if (!user || user.password !== password) {

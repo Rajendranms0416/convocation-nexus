@@ -1,4 +1,3 @@
-
 import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -9,6 +8,10 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { StudentProvider } from "@/contexts/StudentContext";
 import DeviceSelectionPrompt from "@/components/common/DeviceSelectionPrompt";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { setupDatabase } from "@/utils/databaseHelper";
+
+// Initialize database on app load
+setupDatabase().catch(console.error);
 
 const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
