@@ -63,6 +63,8 @@ export const useAuthOperations = () => {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setIsLoading(true);
+      console.log("Login attempt with email:", email);
+      
       // Simple delay to simulate network request
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -70,6 +72,7 @@ export const useAuthOperations = () => {
       const user = MOCK_USERS.find(u => u.email === email);
 
       if (!user || user.password !== password) {
+        console.error("Invalid credentials. User not found or password doesn't match");
         toast({
           title: 'Login Failed',
           description: 'Invalid email or password',

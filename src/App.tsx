@@ -56,17 +56,17 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
     console.log("Current user:", user);
     console.log("Current path:", location.pathname);
     
-    if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
-      console.log("Redirecting to login page");
-      navigate('/login', { replace: true });
-    }
-    
-    // Redirect to appropriate dashboard based on role
-    if (!isLoading && isAuthenticated && user) {
-      console.log("User is authenticated");
-      if (user.role === 'super-admin' && location.pathname === '/login') {
-        console.log("Redirecting admin to role assignment");
-        navigate('/role-assignment', { replace: true });
+    if (!isLoading) {
+      if (!isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
+        console.log("Not authenticated, redirecting to login page");
+        navigate('/login', { replace: true });
+      } else if (isAuthenticated && user) {
+        console.log("User is authenticated with role:", user.role);
+        
+        // Role-based redirects
+        if (user.role === 'super-admin' && location.pathname === '/login') {
+          navigate('/role-assignment', { replace: true });
+        }
       }
     }
   }, [isAuthenticated, isLoading, navigate, location.pathname, user]);
@@ -93,6 +93,25 @@ const DeviceRouteGuard = ({ children }: { children: React.ReactNode }) => {
   
   if (devicePreference === 'desktop' && window.location.pathname === '/mobile-dashboard') {
     return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Super Admin route guard
+const SuperAdminGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user && user.role !== 'super-admin') {
+      console.log("User is not super-admin, redirecting to dashboard");
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isAuthenticated, isLoading, navigate]);
+  
+  if (isLoading) {
+    return <PageLoader />;
   }
   
   return <>{children}</>;
@@ -137,7 +156,9 @@ const AppRoutes = () => {
             path="/role-assignment" 
             element={
               <AuthGuard>
-                <RoleAssignment />
+                <SuperAdminGuard>
+                  <RoleAssignment />
+                </SuperAdminGuard>
               </AuthGuard>
             } 
           />

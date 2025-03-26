@@ -28,20 +28,32 @@ const AdminLoginForm = () => {
     }
     
     try {
-      console.log('Attempting admin login...');
+      console.log('Attempting admin login with email:', email);
       await login(email, password, 'desktop', 'admin');
-      console.log('Admin login complete');
+      console.log('Admin login complete, checking result');
       
-      // Short delay to allow state to update
+      // Check if user is in localStorage after login
       setTimeout(() => {
-        if (localStorage.getItem('convocation_user')) {
-          const userObj = JSON.parse(localStorage.getItem('convocation_user') || '{}');
+        const storedUser = localStorage.getItem('convocation_user');
+        if (storedUser) {
+          const userObj = JSON.parse(storedUser);
+          console.log('User after login:', userObj);
+          
           if (userObj?.role === 'super-admin') {
             console.log('Redirecting admin to role assignment page');
             navigate('/role-assignment');
+          } else {
+            console.log('User is not super-admin:', userObj?.role);
+            toast({
+              title: 'Access Denied',
+              description: 'Only super admins can access role management',
+              variant: 'destructive'
+            });
           }
+        } else {
+          console.log('No user found in localStorage after login');
         }
-      }, 100);
+      }, 300);
     } catch (error) {
       console.error('Login error:', error);
       toast({

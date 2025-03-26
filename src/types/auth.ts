@@ -1,10 +1,5 @@
 
-export enum Role {
-  ADMIN = 'admin',
-  TEACHER = 'teacher',
-  STUDENT = 'student',
-  SUPER_ADMIN = 'super-admin'
-}
+import { Role } from '@/types';
 
 export interface User {
   id: string;

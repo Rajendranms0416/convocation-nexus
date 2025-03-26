@@ -2,16 +2,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useAuthOperations } from '@/hooks/useAuthOperations';
 import { logDeviceUsage } from '@/utils/deviceLogger';
-import { Role } from '@/types';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatar?: string;
-  assignedClasses?: string[];
-}
+import { Role, User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
@@ -45,6 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const parsedUser = JSON.parse(storedUser) as User;
         setUser(parsedUser);
+        console.log("Restored user from localStorage:", parsedUser);
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('convocation_user');
@@ -60,8 +52,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ) => {
     setIsLoading(true);
     try {
-      console.log(`Starting login with mode: ${loginMode}`);
+      console.log(`Starting login with mode: ${loginMode}, email: ${email}`);
       const success = await baseLogin(email, password);
+      
       if (success) {
         // Retrieve user from localStorage
         const storedUser = localStorage.getItem('convocation_user');
@@ -71,8 +64,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(parsedUser);
           
           // Log device usage
-          await logDeviceUsage(parsedUser, deviceType);
+          try {
+            await logDeviceUsage(parsedUser, deviceType);
+          } catch (error) {
+            console.error('Failed to log device usage, but login still successful:', error);
+          }
         }
+      } else {
+        console.error('Login failed');
       }
     } catch (error) {
       console.error('Login error:', error);
