@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { excelService } from '@/services/excel';
@@ -136,8 +135,10 @@ export const useFileUpload = ({ onDataLoaded }: UseFileUploadOptions) => {
         
         // Safe access to data property with type checking
         const uploadRecordId = uploadRecordResult.error ? null : 
-                              uploadRecordResult.data && uploadRecordResult.data.length > 0 ? 
-                              uploadRecordResult.data[0].id : null;
+                              (uploadRecordResult as any).data && 
+                              Array.isArray((uploadRecordResult as any).data) && 
+                              (uploadRecordResult as any).data.length > 0 ? 
+                              (uploadRecordResult as any).data[0].id : null;
         
         const formattedData = parsedData.map((item: any) => ({
           "Programme_Name": item["Programme Name"] || '',

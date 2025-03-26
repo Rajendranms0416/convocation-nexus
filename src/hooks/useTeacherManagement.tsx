@@ -48,7 +48,7 @@ export const useTeacherManagement = () => {
   // Get base operations - ensure the types match what's needed
   const { 
     handleAddTeacher,
-    handleUpdateTeacher,
+    handleUpdateTeacher: baseHandleUpdateTeacher,
     handleDeleteTeacher,
     handleAssignClasses: baseHandleAssignClasses,
     saveClassAssignments: baseSaveClassAssignments
@@ -79,7 +79,10 @@ export const useTeacherManagement = () => {
     selectedClasses,
     setSelectedClasses,
     setIsEditDialogOpen,
-    handleUpdateTeacher,
+    // Create wrapper function to adapt the incompatible function signatures
+    handleUpdateTeacher: (teacher, name, email, role, classes) => {
+      return baseHandleUpdateTeacher(teacher.id, name, email, role);
+    },
     baseHandleAssignClasses,
     baseSaveClassAssignments
   });

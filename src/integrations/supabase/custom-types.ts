@@ -1,3 +1,4 @@
+
 // Supabase types
 export type Json =
   | string
@@ -150,50 +151,10 @@ export interface Database {
   }
 }
 
-// Rest of the type definitions for custom types
-export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (Database["public"]["Tables"] & { row: any })
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName]["Row"]
-  : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] & { row: any })
-    ? (Database["public"]["Tables"] & { row: any })[PublicTableNameOrOptions]["Row"]
-    : never
-
-export type TableInsert<
-  PublicTableNameOrOptions extends
-    | keyof Database["public"]["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName]["Insert"]
-  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][PublicTableNameOrOptions]["Insert"]
-    : never
-
-export type TableUpdate<
-  PublicTableNameOrOptions extends
-    | keyof Database["public"]["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
-    : never = never
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName]["Update"]
-  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
-    ? Database["public"]["Tables"][PublicTableNameOrOptions]["Update"]
-    : never
-
-// Use interface instead of type for ExtendedDatabase
+// Use a simpler approach for ExtendedDatabase that doesn't try to modify Database type
 export interface ExtendedDatabase {
   public: {
-    Tables: Database['public']['Tables'] & {
+    Tables: {
       [key: string]: {
         Row: any;
         Insert: any;
@@ -201,15 +162,23 @@ export interface ExtendedDatabase {
         Relationships: any[];
       };
     };
-    Views: Database['public']['Views'];
-    Functions: Database['public']['Functions'] & {
+    Views: {
+      [key: string]: {
+        Row: any;
+      };
+    };
+    Functions: {
       [key: string]: {
         Args: any;
         Returns: any;
       };
     };
-    Enums: Database['public']['Enums'];
-    CompositeTypes: Database['public']['CompositeTypes'];
+    Enums: {
+      [key: string]: any;
+    };
+    CompositeTypes: {
+      [key: string]: any;
+    };
   };
 }
 

@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase, queryDynamicTable } from '@/integrations/supabase/client';
@@ -160,11 +159,11 @@ export const useTeacherDataLoader = () => {
    */
   const loadTeachersByDatabaseId = useCallback(async (databaseId: string) => {
     try {
-      // Find the database record
+      // Find the database record - convert string ID to number if needed
       const { data: uploadData, error: uploadError } = await supabase
         .from('file_uploads')
         .select('*')
-        .eq('id', databaseId)
+        .eq('id', parseInt(databaseId))
         .single();
       
       if (uploadError) {
