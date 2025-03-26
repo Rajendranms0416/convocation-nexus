@@ -1,13 +1,14 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { createDeviceLogsTable } from './deviceLogger';
 
 export const initializeTables = async () => {
   try {
     // Check if the device_logs table exists, if not create it
-    const { error: deviceLogsError } = await supabase.rpc('create_device_logs_table');
+    const isDeviceLogsCreated = await createDeviceLogsTable();
     
-    if (deviceLogsError) {
-      console.error('Error creating device_logs table:', deviceLogsError);
+    if (!isDeviceLogsCreated) {
+      console.error('Failed to create device_logs table');
     }
     
     return true;
