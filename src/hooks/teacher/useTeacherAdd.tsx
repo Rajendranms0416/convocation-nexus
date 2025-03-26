@@ -49,7 +49,7 @@ export const useTeacherAdd = (
       
       // Format for the UI table
       const newTeacherFormatted = {
-        id: (teachers.length + 1).toString(),
+        id: `${emailType}-${teachers.length + 1}`,
         name: name,
         email: email,
         role: role,
@@ -64,6 +64,9 @@ export const useTeacherAdd = (
         title: "Teacher Added",
         description: `${name} has been added as ${role}`,
       });
+
+      // Dispatch event to update other components
+      window.dispatchEvent(new CustomEvent('teacherDataUpdated'));
     } catch (error) {
       console.error('Error adding teacher:', error);
       toast({

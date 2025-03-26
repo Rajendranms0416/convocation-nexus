@@ -1,4 +1,3 @@
-
 /**
  * Excel Service - Database operations for teacher data
  */
@@ -41,12 +40,14 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
       
       // Prepare data for database insertion - ensure all required fields are present
       const dbRecords = enhancedData.map(teacher => ({
-        program_name: teacher['Programme Name'] || '',
-        robe_email: teacher['Robe Email ID'] || '',
-        folder_email: teacher['Folder Email ID'] || '',
-        robe_in_charge: teacher['Accompanying Teacher'] || '',
-        folder_in_charge: teacher['Folder in Charge'] || '',
-        class_section: teacher['Class Wise/\nSection Wise'] || '',
+        'Programme Name': teacher['Programme Name'] || '',
+        'Robe Email ID': teacher['Robe Email ID'] || '',
+        'Folder Email ID': teacher['Folder Email ID'] || '',
+        'Accompanying Teacher': teacher['Accompanying Teacher'] || '',
+        'Folder in Charge': teacher['Folder in Charge'] || '',
+        'Class Wise/Section Wise': teacher['Class Wise/\nSection Wise'] || '',
+        'Presenter Email ID': teacher['Presenter Email ID'] || '',
+        'Presenter': teacher['Presenter'] || '',
         updated_at: new Date().toISOString()
       }));
       
@@ -70,7 +71,7 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
           const { error } = await supabase
             .from('teachers')
             .upsert(batch, { 
-              onConflict: 'program_name',
+              onConflict: 'Programme Name',
               ignoreDuplicates: false
             });
           
@@ -90,18 +91,18 @@ export const saveTeacherData = async (data: Record<string, string>[]): Promise<R
               const { error: individualError } = await supabase
                 .from('teachers')
                 .upsert([record], { 
-                  onConflict: 'program_name',
+                  onConflict: 'Programme Name',
                   ignoreDuplicates: false
                 });
               
               if (!individualError) {
                 successCount++;
-                console.log(`Successfully saved individual record for ${record.program_name}`);
+                console.log(`Successfully saved individual record for ${record['Programme Name']}`);
               } else {
-                console.error(`Failed to save individual record for ${record.program_name}:`, individualError);
+                console.error(`Failed to save individual record for ${record['Programme Name']}:`, individualError);
               }
             } catch (individualSaveError) {
-              console.error(`Exception saving individual record for ${record.program_name}:`, individualSaveError);
+              console.error(`Exception saving individual record for ${record['Programme Name']}:`, individualSaveError);
             }
             
             // Add a small delay between individual saves
@@ -169,13 +170,14 @@ export const getTeacherData = async (): Promise<Record<string, string>[]> => {
       
       // Map database fields back to the expected format
       const formattedData = data.map(record => ({
-        id: record.id, // Include the database ID
-        'Programme Name': record.program_name || '',
-        'Robe Email ID': record.robe_email || '',
-        'Folder Email ID': record.folder_email || '',
-        'Accompanying Teacher': record.robe_in_charge || '',
-        'Folder in Charge': record.folder_in_charge || '',
-        'Class Wise/\nSection Wise': record.class_section || '',
+        'Programme Name': record['Programme Name'] || '',
+        'Robe Email ID': record['Robe Email ID'] || '',
+        'Folder Email ID': record['Folder Email ID'] || '',
+        'Accompanying Teacher': record['Accompanying Teacher'] || '',
+        'Folder in Charge': record['Folder in Charge'] || '',
+        'Class Wise/\nSection Wise': record['Class Wise/Section Wise'] || '',
+        'Presenter Email ID': record['Presenter Email ID'] || '',
+        'Presenter': record['Presenter'] || ''
       }));
       
       // Also update localStorage to keep offline capability
