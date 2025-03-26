@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useAuthOperations } from '@/hooks/useAuthOperations';
 import { logDeviceUsage } from '@/utils/deviceLogger';
 import { Role } from '@/types';
@@ -38,6 +38,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(false);
   const { login: baseLogin, logout: baseLogout } = useAuthOperations();
 
+  // Check for existing session on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('convocation_user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser) as User;
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('convocation_user');
+      }
+    }
+  }, []);
+
   const login = async (
     email: string, 
     password: string, 
@@ -46,12 +60,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ) => {
     setIsLoading(true);
     try {
+      console.log(`Starting login with mode: ${loginMode}`);
       const success = await baseLogin(email, password);
       if (success) {
         // Retrieve user from localStorage
         const storedUser = localStorage.getItem('convocation_user');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser) as User;
+          console.log('Loaded user from storage:', parsedUser);
           setUser(parsedUser);
           
           // Log device usage

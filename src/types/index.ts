@@ -1,4 +1,3 @@
-
 export type Role = 'robe-in-charge' | 'folder-in-charge' | 'super-admin' | 'presenter';
 
 export interface User {

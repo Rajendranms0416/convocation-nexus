@@ -77,6 +77,8 @@ export const useAuthOperations = () => {
         });
         return false;
       }
+      
+      console.log('Found user with role:', user.role);
 
       // Create a JWT-like token
       const token = createToken(user);
@@ -87,7 +89,7 @@ export const useAuthOperations = () => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role as Role // Ensure we're using the Role type
+        role: user.role
       }));
 
       toast({

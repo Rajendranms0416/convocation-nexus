@@ -50,13 +50,22 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   
   useEffect(() => {
+    // Debug logs
+    console.log("AuthGuard effect running");
+    console.log("isLoading:", isLoading, "isAuthenticated:", isAuthenticated);
+    console.log("Current user:", user);
+    console.log("Current path:", location.pathname);
+    
     if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
+      console.log("Redirecting to login page");
       navigate('/login', { replace: true });
     }
     
     // Redirect to appropriate dashboard based on role
     if (!isLoading && isAuthenticated && user) {
+      console.log("User is authenticated");
       if (user.role === 'super-admin' && location.pathname === '/login') {
+        console.log("Redirecting admin to role assignment");
         navigate('/role-assignment', { replace: true });
       }
     }

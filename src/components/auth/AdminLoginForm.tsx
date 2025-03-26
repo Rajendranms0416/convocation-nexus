@@ -1,9 +1,7 @@
 
-// We'll need to update this file to ensure it correctly handles super-admin authentication
-// and redirects users to the role management area
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { CardContent, CardFooter } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,8 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 const AdminLoginForm = () => {
   const [email, setEmail] = useState('admin@example.com'); // Default to admin email for convenience
   const [password, setPassword] = useState('password123');
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +31,17 @@ const AdminLoginForm = () => {
       console.log('Attempting admin login...');
       await login(email, password, 'desktop', 'admin');
       console.log('Admin login complete');
+      
+      // Short delay to allow state to update
+      setTimeout(() => {
+        if (localStorage.getItem('convocation_user')) {
+          const userObj = JSON.parse(localStorage.getItem('convocation_user') || '{}');
+          if (userObj?.role === 'super-admin') {
+            console.log('Redirecting admin to role assignment page');
+            navigate('/role-assignment');
+          }
+        }
+      }, 100);
     } catch (error) {
       console.error('Login error:', error);
       toast({

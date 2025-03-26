@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeacherManagement } from '@/hooks/useTeacherManagement';
@@ -56,6 +57,34 @@ const RoleAssignment: React.FC = () => {
   } = useTeacherManagement();
 
   useEffect(() => {
+    console.log("RoleAssignment component mounted, checking auth");
+    console.log("Auth state:", { isLoading, isAuthenticated, user });
+    
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        console.log("User not authenticated, redirecting to login");
+        toast({
+          title: "Authentication required",
+          description: "Please login to access this page",
+          variant: "destructive"
+        });
+        navigate('/login');
+        return;
+      }
+      
+      if (user && user.role !== 'super-admin') {
+        console.log("User doesn't have super-admin role, redirecting to dashboard");
+        toast({
+          title: "Access Denied",
+          description: "Only super admins can access this page",
+          variant: "destructive"
+        });
+        navigate('/dashboard');
+      }
+    }
+  }, [isLoading, isAuthenticated, user, navigate, toast]);
+
+  useEffect(() => {
     const loadSessions = () => {
       const sessions = getAllSessions();
       setAvailableSessions(sessions);
@@ -81,21 +110,6 @@ const RoleAssignment: React.FC = () => {
       window.removeEventListener('teacherDataUpdated', handleDataUpdate as EventListener);
     };
   }, [currentSession]);
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      if (user?.role !== 'super-admin') {
-        toast({
-          title: "Access Denied",
-          description: "Only super admins can access this page",
-          variant: "destructive"
-        });
-        navigate('/dashboard');
-      }
-    } else if (!isLoading && !isAuthenticated) {
-      navigate('/login');
-    }
-  }, [isLoading, isAuthenticated, user, navigate, toast]);
 
   useEffect(() => {
     const loadSessionData = async () => {
@@ -192,6 +206,18 @@ const RoleAssignment: React.FC = () => {
         <div className="animate-pulse space-y-4 flex flex-col items-center">
           <div className="h-12 w-12 rounded-full bg-convocation-100"></div>
           <div className="h-4 w-48 rounded bg-convocation-100"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role !== 'super-admin') {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+          <p>You do not have permission to access this page.</p>
+          <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
         </div>
       </div>
     );
