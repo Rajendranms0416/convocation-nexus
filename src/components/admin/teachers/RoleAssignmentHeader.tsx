@@ -16,6 +16,10 @@ const RoleAssignmentHeader: React.FC<RoleAssignmentHeaderProps> = ({
 }) => {
   const navigate = useNavigate();
 
+  const handleBackClick = () => {
+    navigate('/dashboard');
+  };
+
   return (
     <CardHeader>
       <div className="flex justify-between items-center">
@@ -34,7 +38,7 @@ const RoleAssignmentHeader: React.FC<RoleAssignmentHeaderProps> = ({
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button onClick={() => navigate(-1)} variant="outline">
+          <Button onClick={handleBackClick} variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
